@@ -102,7 +102,7 @@ export default function QRCodeTool() {
             <h3 className="font-bold text-lg">生成二维码</h3>
           </div>
           
-          <div className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-2xl p-4">
+          <div className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-2xl p-4 relative group">
             <input
               type="text"
               value={text}
@@ -111,8 +111,16 @@ export default function QRCodeTool() {
                 if (text) addToHistory('generate', text);
               }}
               placeholder="https://example.com"
-              className="w-full bg-transparent outline-none text-sm"
+              className="w-full bg-transparent outline-none text-sm pr-10"
             />
+            {text && (
+              <button
+                onClick={() => setText('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-[var(--hover-color)] rounded-full text-[var(--text-secondary)] hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           <div className="flex justify-center p-6 bg-white rounded-2xl border border-[var(--border-color)]">

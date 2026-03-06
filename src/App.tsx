@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Code, Hash, Menu, Search, X, Plus, Github, Home as HomeIcon, LogIn, LogOut, FileSearch, Settings, HelpCircle, History, Link2, FileText, Sun, Moon, Cloud, QrCode, Server } from 'lucide-react';
-import JsonFormatter from './components/JsonFormatter';
-import Base64Encoder from './components/Base64Encoder';
+import { Code, Hash, Menu, Search, X, Plus, Github, Home as HomeIcon, LogIn, LogOut, FileSearch, Settings, HelpCircle, History, Link2, FileText, Sun, Moon, Cloud, QrCode, Server, List } from 'lucide-react';
 import Home from './components/Home';
 import Login from './components/Login';
 import QRCodeTool from './components/QRCodeTool';
-import ProxyConverter from './components/ProxyConverter';
-import JsonToCsv from './components/JsonCsvConverter';
-import SmbConverter from './components/SmbConverter';
+import JsonCsvConverter from './components/JsonCsvConverter';
+import ChainProcessor from './components/ChainProcessor';
 
-type Tool = 'home' | 'json-formatter' | 'base64-encoder' | 'qrcode' | 'proxy-converter' | 'json-to-csv' | 'smb-converter';
+type Tool = 'home' | 'qrcode' | 'json-to-csv' | 'chain-processor';
 
 export default function App() {
   const [activeTool, setActiveTool] = useState<Tool>('home');
@@ -33,11 +30,8 @@ export default function App() {
   }, [isDarkMode]);
 
   const tools = [
-    { id: 'json-formatter', name: 'JSON 格式化 / 压缩', icon: Code, isPremium: false },
-    { id: 'base64-encoder', name: 'Base64 编码/解码', icon: Hash, isPremium: false },
-    { id: 'proxy-converter', name: '代理链接转换', icon: Link2, isPremium: false },
     { id: 'json-to-csv', name: 'JSON ↔ CSV 转换', icon: FileText, isPremium: false },
-    { id: 'smb-converter', name: 'SMB 互转', icon: Server, isPremium: false },
+    { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, isPremium: false },
     { id: 'qrcode', name: '二维码', icon: QrCode, isPremium: true },
   ];
 
@@ -353,7 +347,7 @@ export default function App() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
-          <div className="max-w-[840px] mx-auto w-full h-full flex flex-col">
+          <div className={`${activeTool === 'chain-processor' ? 'max-w-[1400px]' : 'max-w-[840px]'} mx-auto w-full h-full flex flex-col`}>
             {activeTool === 'home' ? (
               <div className="flex-1 flex flex-col pt-8 pb-20">
                 <Home 
@@ -370,11 +364,8 @@ export default function App() {
                   </h2>
                 </div>
                 <div className={activeTool === 'qrcode' ? '' : 'bg-[var(--bg-surface)] p-6 md:p-8 rounded-[28px] border border-[var(--border-color)] shadow-xl'}>
-                  {activeTool === 'json-formatter' && <JsonFormatter />}
-                  {activeTool === 'base64-encoder' && <Base64Encoder />}
-                  {activeTool === 'proxy-converter' && <ProxyConverter />}
-                  {activeTool === 'json-to-csv' && <JsonToCsv />}
-                  {activeTool === 'smb-converter' && <SmbConverter />}
+                  {activeTool === 'json-to-csv' && <JsonCsvConverter />}
+                  {activeTool === 'chain-processor' && <ChainProcessor />}
                   {activeTool === 'qrcode' && <QRCodeTool />}
                 </div>
               </div>
