@@ -29,22 +29,37 @@ export default function Login({ onLogin, onClose }: LoginProps) {
     }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    // Simulate social login skipping 2FA for demo
-    onLogin(`${provider} 用户`);
-    onClose();
+  const handleSocialLogin = async (provider: string) => {
+    if (provider === 'GitHub') {
+      try {
+        const baseUrl = (import.meta as any).env.VITE_API_URL || '';
+        const res = await fetch(`${baseUrl}/api/auth/github/login?t=${Date.now()}`);
+        const data = await res.json() as { url?: string };
+        if (data.url) {
+          window.location.href = data.url;
+        } else {
+          console.error('Failed to get GitHub login URL:', data);
+        }
+      } catch (err) {
+        console.error('Error fetching GitHub login URL:', err);
+      }
+    } else {
+      // Simulate social login skipping 2FA for demo
+      onLogin(`${provider} 用户`);
+      onClose();
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-[var(--bg-surface)] border border-[var(--border-color)] w-full max-w-md rounded-2xl p-8 relative shadow-2xl overflow-hidden">
-        <button 
+        <button
           onClick={onClose}
           className="absolute top-4 right-4 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors z-10"
         >
           <X className="w-5 h-5" />
         </button>
-        
+
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-[var(--bg-main)] rounded-2xl flex items-center justify-center mb-4">
             {step === 'credentials' ? (
@@ -57,8 +72,8 @@ export default function Login({ onLogin, onClose }: LoginProps) {
             {step === 'credentials' ? '欢迎回来' : '安全验证'}
           </h2>
           <p className="text-[var(--text-secondary)] text-sm mt-2 text-center">
-            {step === 'credentials' 
-              ? '登录以解锁高级开发者工具和进阶功能。' 
+            {step === 'credentials'
+              ? '登录以解锁高级开发者工具和进阶功能。'
               : '请输入发送至您设备的 6 位验证码。'}
           </p>
         </div>
@@ -66,14 +81,14 @@ export default function Login({ onLogin, onClose }: LoginProps) {
         {step === 'credentials' ? (
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="grid grid-cols-2 gap-3 mb-6">
-              <button 
+              <button
                 onClick={() => handleSocialLogin('GitHub')}
                 className="flex items-center justify-center gap-2 bg-[var(--bg-input)] border border-[var(--border-color)] hover:bg-[var(--hover-color)] text-[var(--text-primary)] py-2.5 rounded-xl transition-all text-sm font-medium"
               >
                 <Github className="w-5 h-5" />
                 GitHub
               </button>
-              <button 
+              <button
                 onClick={() => handleSocialLogin('Google')}
                 className="flex items-center justify-center gap-2 bg-[var(--bg-input)] border border-[var(--border-color)] hover:bg-[var(--hover-color)] text-[var(--text-primary)] py-2.5 rounded-xl transition-all text-sm font-medium"
               >
@@ -117,6 +132,7 @@ export default function Login({ onLogin, onClose }: LoginProps) {
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  autoComplete="username"
                   className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-4 py-3 text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent-color)] focus:border-transparent outline-none transition-all"
                   placeholder="请输入用户名"
                   required
@@ -131,6 +147,7 @@ export default function Login({ onLogin, onClose }: LoginProps) {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
                     className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl pl-4 pr-10 py-3 text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent-color)] focus:border-transparent outline-none transition-all"
                     placeholder="请输入密码"
                     required
@@ -159,6 +176,7 @@ export default function Login({ onLogin, onClose }: LoginProps) {
                     maxLength={6}
                     value={twoFactorCode}
                     onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                    autoComplete="one-time-code"
                     className="w-full max-w-[200px] bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-4 py-4 text-center text-2xl font-bold tracking-[0.5em] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent-color)] focus:border-transparent outline-none transition-all"
                     placeholder="000000"
                     autoFocus
@@ -187,7 +205,7 @@ export default function Login({ onLogin, onClose }: LoginProps) {
             </form>
           </div>
         )}
-        
+
         <div className="mt-8 text-center">
           <p className="text-[var(--text-secondary)] text-[10px]">
             登录即表示您同意我们的服务条款和隐私政策。

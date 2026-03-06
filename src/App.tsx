@@ -7,13 +7,14 @@ import Login from './components/Login';
 import QRCodeTool from './components/QRCodeTool';
 import ProxyConverter from './components/ProxyConverter';
 import JsonToCsv from './components/JsonCsvConverter';
+import { useAuth } from './hooks/useAuth';
 
 type Tool = 'home' | 'json-formatter' | 'base64-encoder' | 'qrcode' | 'proxy-converter' | 'json-to-csv';
 
 export default function App() {
-  const [activeTool, setActiveTool] = useState<Tool>('qrcode');
+  const { user, loading, logout } = useAuth();
+  const [activeTool, setActiveTool] = useState<Tool>('home');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [user, setUser] = useState<string | null>('GitHub 用户');
   const [showLogin, setShowLogin] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -39,7 +40,7 @@ export default function App() {
     { id: 'qrcode', name: '图片元数据提取', subName: '二维码', icon: QrCode, isPremium: true },
   ];
 
-  const filteredTools = tools.filter(tool => 
+  const filteredTools = tools.filter(tool =>
     tool.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -55,9 +56,12 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[var(--bg-main)] text-[var(--text-primary)] flex font-sans transition-colors duration-300">
       {showLogin && (
-        <Login 
-          onLogin={(name) => setUser(name)} 
-          onClose={() => setShowLogin(false)} 
+        <Login
+          onLogin={(name) => {
+            // 临时保留其它类型登录的回调（演示），真实 Github 登录会整页重定向
+            if (name !== 'GitHub 用户') setShowLogin(false);
+          }}
+          onClose={() => setShowLogin(false)}
         />
       )}
 
@@ -76,7 +80,7 @@ export default function App() {
         <div className="px-3 mb-4">
           {isSidebarOpen ? (
             <div className="relative group">
-              <input 
+              <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -94,7 +98,7 @@ export default function App() {
               )}
             </div>
           ) : (
-            <button 
+            <button
               onClick={() => setIsSidebarOpen(true)}
               className="w-10 h-10 flex items-center justify-center hover:bg-[var(--hover-color)] rounded-full border border-[var(--border-color)] transition-colors mx-auto"
               title="搜索工具"
@@ -107,9 +111,8 @@ export default function App() {
         <div className="flex-1 overflow-y-auto px-3 space-y-1 custom-scrollbar">
           <button
             onClick={() => setActiveTool('home')}
-            className={`flex items-center gap-3 w-full h-10 rounded-full transition-colors group ${
-              activeTool === 'home' ? 'bg-[var(--accent-color)] text-white' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'
-            } ${isSidebarOpen ? 'px-4' : 'justify-center'}`}
+            className={`flex items-center gap-3 w-full h-10 rounded-full transition-colors group ${activeTool === 'home' ? 'bg-[var(--accent-color)] text-white' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'
+              } ${isSidebarOpen ? 'px-4' : 'justify-center'}`}
             title={!isSidebarOpen ? '首页' : undefined}
           >
             <HomeIcon className={`w-5 h-5 shrink-0 ${activeTool === 'home' ? 'text-white' : 'text-[var(--text-secondary)]'}`} />
@@ -120,9 +123,8 @@ export default function App() {
             <button
               key={tool.id}
               onClick={() => handleToolSelect(tool.id as Tool)}
-              className={`flex items-center gap-3 w-full rounded-full transition-colors group ${
-                activeTool === tool.id ? 'bg-[var(--accent-color)] text-white' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'
-              } ${isSidebarOpen ? 'px-4 py-2' : 'justify-center h-10'}`}
+              className={`flex items-center gap-3 w-full rounded-full transition-colors group ${activeTool === tool.id ? 'bg-[var(--accent-color)] text-white' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'
+                } ${isSidebarOpen ? 'px-4 py-2' : 'justify-center h-10'}`}
               title={!isSidebarOpen ? tool.name : undefined}
             >
               <tool.icon className={`w-5 h-5 shrink-0 ${activeTool === tool.id ? 'text-white' : 'text-[var(--text-secondary)]'}`} />
@@ -150,24 +152,28 @@ export default function App() {
             <Settings className="w-5 h-5 text-[var(--text-secondary)]" />
             {isSidebarOpen && <span className="text-sm">设置</span>}
           </button>
-          
+
           <div className="pt-2">
             {user ? (
-              <button 
-                onClick={() => { setUser(null); setActiveTool('home'); }}
+              <button
+                onClick={async () => { await logout(); setActiveTool('home'); }}
                 className={`flex items-center gap-3 w-full h-12 rounded-full hover:bg-[var(--hover-color)] transition-colors ${isSidebarOpen ? 'px-4' : 'justify-center'}`}
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4285f4] to-[#9b72cb] flex items-center justify-center text-white text-xs font-bold border border-white/10 shrink-0">
-                  {user.charAt(0).toUpperCase()}
-                </div>
+                {user.avatar_url ? (
+                  <img src={user.avatar_url} alt="avatar" className="w-8 h-8 rounded-full border border-white/10 shrink-0" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4285f4] to-[#9b72cb] flex items-center justify-center text-white text-xs font-bold border border-white/10 shrink-0">
+                    {(user.name || user.username).charAt(0).toUpperCase()}
+                  </div>
+                )}
                 {isSidebarOpen && (
                   <div className="flex flex-col items-start overflow-hidden">
-                    <span className="text-sm font-medium truncate w-full">{user} (退出)</span>
+                    <span className="text-sm font-medium truncate w-full">{user.name || user.username} (退出)</span>
                   </div>
                 )}
               </button>
             ) : (
-              <button 
+              <button
                 onClick={() => setShowLogin(true)}
                 className={`flex items-center gap-3 w-full h-10 rounded-full hover:bg-[var(--hover-color)] transition-colors ${isSidebarOpen ? 'px-4' : 'justify-center'}`}
               >
@@ -184,7 +190,7 @@ export default function App() {
         {/* Top bar */}
         <div className="h-16 flex items-center px-6 justify-between border-b border-[var(--border-color)]">
           <div className="flex items-center gap-8 flex-1">
-            <div 
+            <div
               onClick={() => setActiveTool('home')}
               className="flex items-center gap-2 cursor-pointer hover:bg-[var(--hover-color)] px-3 py-1.5 rounded-lg transition-colors shrink-0"
             >
@@ -201,11 +207,11 @@ export default function App() {
                 <div className="absolute inset-y-0 left-3.5 flex items-center pointer-events-none">
                   <Search className="w-4 h-4 text-[var(--text-secondary)]" />
                 </div>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="搜索工具或输入命令" 
+                  placeholder="搜索工具或输入命令"
                   className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] rounded-full pl-10 pr-10 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-secondary)] focus:ring-2 focus:ring-[var(--accent-color)]/50 outline-none transition-all"
                 />
                 {searchQuery && (
@@ -277,17 +283,21 @@ export default function App() {
               </div>
             )}
             {user ? (
-              <button 
-                onClick={() => { setUser(null); setActiveTool('home'); }}
+              <button
+                onClick={async () => { await logout(); setActiveTool('home'); }}
                 className="flex items-center gap-2 p-1 hover:bg-[var(--hover-color)] rounded-full transition-colors"
-                title={`${user} (退出)`}
+                title={`${user.name || user.username} (退出)`}
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4285f4] to-[#9b72cb] flex items-center justify-center text-white text-xs font-bold border border-white/20">
-                  {user.charAt(0).toUpperCase()}
-                </div>
+                {user.avatar_url ? (
+                  <img src={user.avatar_url} alt="avatar" className="w-8 h-8 rounded-full border border-white/20" />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4285f4] to-[#9b72cb] flex items-center justify-center text-white text-xs font-bold border border-white/20">
+                    {(user.name || user.username).charAt(0).toUpperCase()}
+                  </div>
+                )}
               </button>
             ) : (
-              <button 
+              <button
                 onClick={() => setShowLogin(true)}
                 className="p-2 hover:bg-[var(--hover-color)] rounded-full transition-colors text-[var(--text-secondary)]"
                 title="登录"
@@ -302,8 +312,8 @@ export default function App() {
           <div className="max-w-[840px] mx-auto w-full h-full flex flex-col">
             {activeTool === 'home' ? (
               <div className="flex-1 flex flex-col pt-8 pb-20">
-                <Home 
-                  onSelectTool={(id) => handleToolSelect(id as Tool)} 
+                <Home
+                  onSelectTool={(id) => handleToolSelect(id as Tool)}
                   isLoggedIn={!!user}
                   onOpenLogin={() => setShowLogin(true)}
                 />
