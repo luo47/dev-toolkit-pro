@@ -21,6 +21,7 @@ import {
   X
 } from 'lucide-react';
 import { JSONPath } from 'jsonpath-plus';
+import { useAuth } from '../hooks/useAuth';
 
 type StepType =
   | 'jsonpath'
@@ -189,6 +190,8 @@ export default function ChainProcessor() {
 
   const [isDragging, setIsDragging] = useState(false);
 
+  const { user } = useAuth();
+
   const handleFileUpload = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -232,22 +235,23 @@ export default function ChainProcessor() {
     URL.revokeObjectURL(url);
   };
 
-  // Load saved chains from localStorage
+  // Load saved chains from backend (or fallback to defaults)
   useEffect(() => {
-    const saved = localStorage.getItem('chain_processor_saved_chains');
-    let loadedChains: SavedChain[] = [];
-    if (saved) {
+    const fetchChains = async () => {
       try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          loadedChains = parsed;
+        const baseUrl = (import.meta as any).env.VITE_API_URL || '';
+        const res = await fetch(`${baseUrl}/api/chains`, { credentials: 'include' });
+        if (res.ok) {
+          const data: any = await res.json();
+          if (data.success && data.data && data.data.length > 0) {
+            setSavedChains(data.data);
+            return;
+          }
         }
       } catch (e) {
-        console.error('Failed to parse saved chains', e);
+        console.error('Failed to load chains:', e);
       }
-    }
 
-    if (loadedChains.length === 0) {
       const defaultChain: SavedChain = {
         id: 'default-proxy-converter',
         name: '代理列表转换 (Proxy Converter)',
@@ -270,39 +274,9 @@ export default function ChainProcessor() {
         steps: DEFAULT_PROXY_LINK_STEPS
       };
       setSavedChains([defaultChain, smbChain, proxyLinkChain]);
-    } else {
-      // Check if SMB chain exists, if not add it
-      if (!loadedChains.find(c => c.id === 'default-smb-converter')) {
-        const smbChain: SavedChain = {
-          id: 'default-smb-converter',
-          name: 'SMB 路径互转 (SMB Path Converter)',
-          isFavorite: true,
-          createdAt: Date.now(),
-          steps: DEFAULT_SMB_STEPS
-        };
-        loadedChains.push(smbChain);
-      }
-      // Check if Proxy Link chain exists, if not add it
-      if (!loadedChains.find(c => c.id === 'default-proxy-link-converter')) {
-        const proxyLinkChain: SavedChain = {
-          id: 'default-proxy-link-converter',
-          name: '代理链接转换 (Proxy Link Converter)',
-          isFavorite: true,
-          createdAt: Date.now() + 1,
-          steps: DEFAULT_PROXY_LINK_STEPS
-        };
-        loadedChains.push(proxyLinkChain);
-      }
-      setSavedChains([...loadedChains]);
-    }
-  }, []);
-
-  // Save chains to localStorage
-  useEffect(() => {
-    if (savedChains.length > 0) {
-      localStorage.setItem('chain_processor_saved_chains', JSON.stringify(savedChains));
-    }
-  }, [savedChains]);
+    };
+    fetchChains();
+  }, [user]);
 
   const processChain = useCallback(() => {
     setError(null);
@@ -844,18 +818,33 @@ export default function ChainProcessor() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSaveChain = () => {
+  const handleSaveChain = async () => {
     if (!newChainName.trim() || steps.length === 0) return;
+    if (!user) {
+      alert('请登录后保存云端处理链');
+      return;
+    }
 
-    const newChain: SavedChain = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: newChainName.trim(),
-      steps: JSON.parse(JSON.stringify(steps)), // Deep copy
-      isFavorite: false,
-      createdAt: Date.now()
-    };
+    try {
+      const baseUrl = (import.meta as any).env.VITE_API_URL || '';
+      const res = await fetch(`${baseUrl}/api/chains`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name: newChainName.trim(), steps })
+      });
+      const data: any = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || '保存失败');
 
-    setSavedChains([newChain, ...savedChains]);
+      const fetchRes = await fetch(`${baseUrl}/api/chains`, { credentials: 'include' });
+      if (fetchRes.ok) {
+        const fetchData: any = await fetchRes.json();
+        if (fetchData.success) setSavedChains(fetchData.data);
+      }
+    } catch (e: any) {
+      alert('保存失败: ' + e.message);
+    }
+
     setNewChainName('');
     setIsSaveModalOpen(false);
   };
@@ -864,14 +853,43 @@ export default function ChainProcessor() {
     setSteps(JSON.parse(JSON.stringify(chain.steps)));
   };
 
-  const deleteChain = (id: string) => {
-    setSavedChains(savedChains.filter(c => c.id !== id));
+  const deleteChain = async (id: string) => {
+    if (!user) return;
+    try {
+      const baseUrl = (import.meta as any).env.VITE_API_URL || '';
+      await fetch(`${baseUrl}/api/chains/${id}`, { method: 'DELETE', credentials: 'include' });
+      setSavedChains(savedChains.filter(c => c.id !== id));
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const toggleFavorite = (id: string) => {
+  const toggleFavorite = async (id: string) => {
+    if (!user) {
+      alert('请先登录即可收藏处理链');
+      return;
+    }
+    const chain = savedChains.find(c => c.id === id);
+    if (!chain) return;
+    const newFav = !chain.isFavorite;
+
     setSavedChains(savedChains.map(c =>
-      c.id === id ? { ...c, isFavorite: !c.isFavorite } : c
+      c.id === id ? { ...c, isFavorite: newFav } : c
     ));
+
+    try {
+      const baseUrl = (import.meta as any).env.VITE_API_URL || '';
+      await fetch(`${baseUrl}/api/chains/${id}/favorite`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ isFavorite: newFav })
+      });
+    } catch (e) {
+      setSavedChains(savedChains.map(c =>
+        c.id === id ? { ...c, isFavorite: !newFav } : c
+      ));
+    }
   };
 
   const exportChains = () => {
@@ -1172,8 +1190,8 @@ export default function ChainProcessor() {
                 onClick={handleCopy}
                 disabled={!output}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${copied
-                    ? 'bg-green-500/10 text-green-500'
-                    : 'bg-[var(--hover-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50'
+                  ? 'bg-green-500/10 text-green-500'
+                  : 'bg-[var(--hover-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50'
                   }`}
               >
                 {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}

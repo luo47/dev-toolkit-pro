@@ -169,6 +169,138 @@ app.post('/api/auth/logout', async (c) => {
 
 // --- End Auth Routes ---
 
+// --- Chain Routes ---
+const getUserFromSession = async (c: any) => {
+  const sessionId = getCookie(c, 'auth_session');
+  if (!sessionId) return null;
+  const result = await c.env.DB.prepare(
+    `SELECT users.id 
+     FROM users
+     JOIN sessions ON users.id = sessions.user_id
+     WHERE sessions.id = ? AND sessions.expires_at > ?`
+  ).bind(sessionId, Math.floor(Date.now() / 1000)).first();
+  return result ? (result.id as string) : null;
+};
+
+// 获取用户的处理链（包括系统级和用户级）
+app.get('/api/chains', async (c) => {
+  const userId = await getUserFromSession(c);
+
+  try {
+    let query = `
+      SELECT sc.id, sc.name, sc.is_favorite as isFavorite, sc.created_at as createdAt, cc.steps_json as steps
+      FROM saved_chains sc
+      JOIN chain_contents cc ON sc.content_md5 = cc.md5
+      WHERE sc.user_id = 'system'
+    `;
+    let params: any[] = [];
+
+    if (userId) {
+      query = `
+        SELECT sc.id, sc.name, sc.is_favorite as isFavorite, sc.created_at as createdAt, cc.steps_json as steps
+        FROM saved_chains sc
+        JOIN chain_contents cc ON sc.content_md5 = cc.md5
+        WHERE sc.user_id = 'system' OR sc.user_id = ?
+      `;
+      params.push(userId);
+    }
+
+    const result = await c.env.DB.prepare(query).bind(...params).all();
+
+    const chains = result.results.map((row: any) => ({
+      ...row,
+      isFavorite: !!row.isFavorite,
+      steps: JSON.parse(row.steps)
+    }));
+
+    // Sort logic to mirror frontend behavior if needed, but we can do it on frontend
+    return c.json({ success: true, data: chains });
+  } catch (e: any) {
+    console.error('Fetch chains err:', e);
+    return c.json({ success: false, error: 'Database error' }, 500);
+  }
+});
+
+// 保存处理链
+app.post('/api/chains', async (c) => {
+  const userId = await getUserFromSession(c);
+  if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+
+  try {
+    const body = await c.req.json();
+    const { name, steps } = body;
+    if (!name || !steps) return c.json({ error: 'Missing name or steps' }, 400);
+
+    const stepsJson = JSON.stringify(steps);
+
+    // Use SHA-256 for consistent representation as MD5 isn't fully supported in WebCrypto
+    const msgUint8 = new TextEncoder().encode(stepsJson);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const contentMd5 = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    // Upsert chain_contents
+    await c.env.DB.prepare(
+      `INSERT INTO chain_contents (md5, steps_json, created_at) VALUES (?, ?, ?) ON CONFLICT(md5) DO NOTHING`
+    ).bind(contentMd5, stepsJson, Date.now()).run();
+
+    let dbId: string = crypto.randomUUID();
+
+    const existResult = await c.env.DB.prepare(
+      `SELECT id FROM saved_chains WHERE user_id = ? AND content_md5 = ?`
+    ).bind(userId, contentMd5).first();
+
+    if (existResult) {
+      dbId = existResult.id as string;
+      await c.env.DB.prepare(
+        `UPDATE saved_chains SET name = ?, created_at = ? WHERE id = ?`
+      ).bind(name, Date.now(), dbId).run();
+    } else {
+      await c.env.DB.prepare(
+        `INSERT INTO saved_chains (id, user_id, name, content_md5, is_favorite, created_at) VALUES (?, ?, ?, ?, 0, ?)`
+      ).bind(dbId, userId, name, contentMd5, Date.now()).run();
+    }
+
+    return c.json({ success: true, id: dbId });
+  } catch (e: any) {
+    console.error('Save chain err:', e);
+    return c.json({ success: false, error: e.message }, 500);
+  }
+});
+
+// 删除处理链
+app.delete('/api/chains/:id', async (c) => {
+  const userId = await getUserFromSession(c);
+  if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+
+  const id = c.req.param('id');
+  try {
+    // Only delete their own chains
+    await c.env.DB.prepare(`DELETE FROM saved_chains WHERE id = ? AND user_id = ?`).bind(id, userId).run();
+    return c.json({ success: true });
+  } catch (e) {
+    return c.json({ success: false, error: 'Database error' }, 500);
+  }
+});
+
+// 收藏/取消收藏
+app.put('/api/chains/:id/favorite', async (c) => {
+  const userId = await getUserFromSession(c);
+  if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+
+  const id = c.req.param('id');
+  try {
+    const { isFavorite } = await c.req.json();
+    await c.env.DB.prepare(
+      `UPDATE saved_chains SET is_favorite = ? WHERE id = ? AND user_id = ?`
+    ).bind(isFavorite ? 1 : 0, id, userId).run();
+    return c.json({ success: true });
+  } catch (e) {
+    return c.json({ success: false, error: 'Database error' }, 500);
+  }
+});
+// --- End Chain Routes ---
+
 // 健康检查
 app.get('/api/health', (c) => {
   return c.json({
