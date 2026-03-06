@@ -26,7 +26,7 @@ export default function Home({ onSelectTool, isLoggedIn, onOpenLogin }: HomeProp
         <button
           key={tool.id}
           onClick={() => handleToolClick(tool)}
-          className="group relative flex flex-col h-[200px] p-6 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-[28px] hover:bg-[var(--hover-color)] hover:border-[var(--text-secondary)] transition-all duration-300 text-left overflow-hidden hover:shadow-2xl hover:shadow-black/10 hover:-translate-y-1"
+          className="group relative flex flex-col h-full min-h-[220px] p-6 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-[28px] hover:bg-[var(--hover-color)] hover:border-[var(--text-secondary)] transition-all duration-300 text-left overflow-hidden hover:shadow-2xl hover:shadow-black/10 hover:-translate-y-1"
         >
           {/* Background Glow Effect */}
           <div className="absolute -inset-px bg-gradient-to-br from-[var(--accent-color)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
