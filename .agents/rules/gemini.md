@@ -68,3 +68,7 @@ dev-toolkit-pro/
     `pnpm run db:migrate:local`
 *   **在线上生产环境中应用数据库迁移**:
     `pnpm run db:migrate`
+---
+## 完成标准
+- pnpm run deploy成功
+- `git push`成功
