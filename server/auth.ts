@@ -52,6 +52,14 @@ auth.get('/github/callback', async (c) => {
     if (!userRes.ok) return c.json({ error: 'Failed to get user info' }, 400);
     const githubUser = await userRes.json() as any;
 
+    // 检查注册时间是否大于 7 天
+    const createdAt = new Date(githubUser.created_at).getTime();
+    const now = Date.now();
+    const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+    if (now - createdAt < SEVEN_DAYS) {
+        return c.json({ error: 'GitHub 账号注册时间少于 7 天，由于风控原因禁止登录。' }, 403);
+    }
+
     const userId = `github_${githubUser.id}`;
 
     // 在 D1 中插入或更新用户记录

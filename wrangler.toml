@@ -1,5 +1,5 @@
 name = "dev-toolkit-pro"
-main = "src/server/index.ts"
+main = "server/index.ts"
 compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
 

@@ -1,20 +1,24 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Dev Toolkit Pro 开发者工具箱
 
-# Run and deploy your AI Studio app
+Dev Toolkit Pro 是一款专为开发者与工程师打造的一站式在线工具合集，旨在通过浏览器快速解决日常开发、调试与数据处理中频繁遇到的格式化、编解码和协议转换需求。这不仅是一个高效直观的工作台，也是全面提升生产力的得力助手。
 
-This contains everything you need to run your app locally.
+## 🌟 核心功能
 
-View your app in AI Studio: https://ai.studio/apps/e55bd147-006d-4706-ac8a-d17aca6aa2c5
+我们为您提供了开箱即用、无缝体验的优质开发工具集成：
 
-## Run Locally
+### 🛠️ 数据处理与编解码
+*   **JSON 格式化工具**：支持快速排版、压缩、验证 JSON 字符串，并以舒适的结构化视图展示及对比数据。
+*   **JSON ⇔ CSV 互转**：轻松在 JSON 结构化对象数组与标准电子表格 CSV 报表之间进行双向高效转换，便于数据提炼和二次分析。
+*   **Base64 编解码器**：提供专业级纯文本到 Base64 以及 Base64 回溯解析的双向安全转换，轻松处理令牌、加密盐值等各类编码资产。
 
-**Prerequisites:**  Node.js
+### 📡 网络协议与设备互联
+*   **代理链接转换 (Proxy Converter)**：将各类复杂冗长的代理协议文本 (如 SOCKS5 订阅或直连等链接) 快速进行标准结构解析与格式化转化，极大简化代理及分流配置流程。
+*   **二维码生成与解析器**：能够将各种服务 URL、配置节点或私密文本一键生成可辨识且可下载的专属二维码。同时提供图片解析功能，一键扫描并读取外部二维码的内嵌信息，连通移动端与桌面端的数据桥梁。
 
+## 🚀 平台专属服务
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Dev Toolkit Pro 不仅仅是对纯粹工具的简单罗列，为了给专业用户打造卓越的使用体验，平台亦整合了全套服务体系：
+
+*   **极简开发者登录**：摆脱繁琐表单，全面支持通过个人的 GitHub 账号安全免密授权，一键建立云端会话空间。
+*   **工具使用画像追踪**：系统会自动为您和全局匿名汇总各项工具的高频使用频次跟踪。我们依此精确掌握各项依赖的使用热度以做针对性增强和迭代。
+*   **无边界卓越交互**：引入了极致流畅的微动画与现代化直觉交互逻辑，在保障核心计算迅速的同时维持舒适极客质感的操作享受。
