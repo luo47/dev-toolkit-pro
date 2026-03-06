@@ -65,18 +65,18 @@ export default function App() {
   };
 
   const LogoutConfirmPopup = ({ source }: { source: 'sidebar' | 'topbar' }) => (
-    <div className={`absolute ${source === 'sidebar' ? 'left-full ml-2 bottom-0' : 'right-0 top-full mt-2'} w-48 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-200`}>
-      <p className="text-xs text-[var(--text-primary)] mb-3 font-medium">确定要退出登录吗？</p>
+    <div className={`absolute ${source === 'sidebar' ? 'bottom-full left-0 mb-2' : 'top-full right-0 mt-2'} ${source === 'sidebar' && !isSidebarOpen ? 'left-1/2 -translate-x-1/2 w-48' : 'w-full'} min-w-[180px] bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-200 origin-bottom`}>
+      <p className="text-xs text-[var(--text-primary)] mb-3 font-medium px-1">确定要退出登录吗？</p>
       <div className="flex gap-2">
         <button 
           onClick={handleLogout}
-          className="flex-1 py-1.5 bg-red-500 text-white text-[10px] font-bold rounded-lg hover:bg-red-600 transition-colors"
+          className="flex-1 py-2 bg-red-500 text-white text-[10px] font-bold rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20"
         >
           确定退出
         </button>
         <button 
           onClick={() => { setShowLogoutConfirm(false); setLogoutConfirmSource(null); }}
-          className="flex-1 py-1.5 bg-[var(--hover-color)] text-[var(--text-secondary)] text-[10px] font-bold rounded-lg hover:bg-[var(--border-color)] transition-colors"
+          className="flex-1 py-2 bg-[var(--hover-color)] text-[var(--text-secondary)] text-[10px] font-bold rounded-xl hover:bg-[var(--border-color)] transition-colors"
         >
           取消
         </button>
