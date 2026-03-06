@@ -8,11 +8,8 @@ interface HomeProps {
 
 export default function Home({ onSelectTool, isLoggedIn, onOpenLogin }: HomeProps) {
   const tools = [
-    { id: 'json-formatter', name: 'JSON 格式化 / 压缩', icon: Code, description: '格式化、校验并压缩 JSON 字符串，提供即时反馈。', isPremium: false },
-    { id: 'base64-encoder', name: 'Base64 编码/解码', icon: Hash, description: '安全地将文本编码为 Base64 格式或进行解码。', isPremium: false },
-    { id: 'proxy-converter', name: '代理链接转换', icon: Link2, description: '将各种 SOCKS5 代理链接格式转换为标准格式。', isPremium: false },
     { id: 'json-to-csv', name: 'JSON ↔ CSV 转换', icon: FileText, description: 'JSON 数组与 CSV 格式之间的双向转换。', isPremium: false },
-    { id: 'smb-converter', name: 'SMB 互转', icon: Server, description: 'Windows 路径与 SMB URI 格式之间的自动互转。', isPremium: false },
+    { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, description: '强大的链式文本处理引擎，支持 JS、JSONPath 等多种处理步骤。', isPremium: false },
     { id: 'qrcode', name: '二维码', icon: QrCode, description: '二维码生成与识别，支持实时生成及图片识别。', isPremium: true },
   ];
 

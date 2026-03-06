@@ -186,10 +186,18 @@ export default function JsonCsvConverter() {
         </button>
       </div>
 
-      <div className="space-y-2">
-        <label className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider px-1">
-          {mode === 'json-to-csv' ? '输入 JSON (对象或数组)' : '输入 CSV 数据'}
-        </label>
+      <div className="space-y-2 relative group">
+        <div className="flex items-center justify-between px-1">
+          <label className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
+            {mode === 'json-to-csv' ? '输入 JSON (对象或数组)' : '输入 CSV 数据'}
+          </label>
+          <button
+            onClick={() => setInput('')}
+            className="text-[10px] font-bold text-[var(--text-secondary)] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+          >
+            清空输入
+          </button>
+        </div>
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
