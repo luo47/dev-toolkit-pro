@@ -33,14 +33,19 @@ export default function Home({ onSelectTool, isLoggedIn, onOpenLogin }: HomeProp
 
           <div className="relative z-10 flex flex-col h-full justify-between">
             <div>
-              <div className="flex items-center justify-between mb-5">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${tool.isPremium && !isLoggedIn ? 'bg-[var(--bg-main)] text-[var(--text-secondary)]' : 'bg-[var(--bg-main)] text-[var(--accent-color)] group-hover:bg-[var(--bg-surface)]'
-                  }`}>
-                  <tool.icon className="w-6 h-6" />
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 shrink-0 ${tool.isPremium && !isLoggedIn ? 'bg-[var(--bg-main)] text-[var(--text-secondary)]' : 'bg-[var(--bg-main)] text-[var(--accent-color)] group-hover:bg-[var(--bg-surface)]'
+                    }`}>
+                    <tool.icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-medium text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors leading-tight">
+                    {tool.name}
+                  </h3>
                 </div>
 
                 {tool.isPremium && (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     {!isLoggedIn && <Lock className="w-3.5 h-3.5 text-[var(--text-secondary)]" />}
                     <div className="flex items-center gap-1 px-2.5 py-1 bg-[var(--accent-color)]/10 border border-[var(--accent-color)]/20 rounded-full">
                       <Sparkles className="w-3 h-3 text-[var(--accent-color)]" />
@@ -48,12 +53,6 @@ export default function Home({ onSelectTool, isLoggedIn, onOpenLogin }: HomeProp
                     </div>
                   </div>
                 )}
-              </div>
-
-              <div className="mb-2">
-                <h3 className="text-lg font-medium text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors leading-tight">
-                  {tool.name}
-                </h3>
               </div>
               <p className="text-[var(--text-secondary)] text-sm leading-relaxed line-clamp-2 group-hover:text-[var(--text-primary)] transition-colors">
                 {tool.description}
