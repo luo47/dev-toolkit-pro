@@ -8,7 +8,6 @@ interface HomeProps {
 
 export default function Home({ onSelectTool, isLoggedIn, onOpenLogin }: HomeProps) {
   const tools = [
-    { id: 'json-to-csv', name: 'JSON ↔ CSV 转换', icon: FileText, description: 'JSON 数组与 CSV 格式之间的双向转换。', isPremium: false },
     { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, description: '强大的链式文本处理引擎，支持 JS、JSONPath 等多种处理步骤。', isPremium: false },
     { id: 'qrcode', name: '二维码', icon: QrCode, description: '二维码生成与识别，支持实时生成及图片识别。', isPremium: true },
   ];
@@ -31,16 +30,15 @@ export default function Home({ onSelectTool, isLoggedIn, onOpenLogin }: HomeProp
         >
           {/* Background Glow Effect */}
           <div className="absolute -inset-px bg-gradient-to-br from-[var(--accent-color)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          
+
           <div className="relative z-10 flex flex-col h-full justify-between">
             <div>
               <div className="flex items-center justify-between mb-5">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${
-                  tool.isPremium && !isLoggedIn ? 'bg-[var(--bg-main)] text-[var(--text-secondary)]' : 'bg-[var(--bg-main)] text-[var(--accent-color)] group-hover:bg-[var(--bg-surface)]'
-                }`}>
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 ${tool.isPremium && !isLoggedIn ? 'bg-[var(--bg-main)] text-[var(--text-secondary)]' : 'bg-[var(--bg-main)] text-[var(--accent-color)] group-hover:bg-[var(--bg-surface)]'
+                  }`}>
                   <tool.icon className="w-6 h-6" />
                 </div>
-                
+
                 {tool.isPremium && (
                   <div className="flex items-center gap-1.5">
                     {!isLoggedIn && <Lock className="w-3.5 h-3.5 text-[var(--text-secondary)]" />}
@@ -51,7 +49,7 @@ export default function Home({ onSelectTool, isLoggedIn, onOpenLogin }: HomeProp
                   </div>
                 )}
               </div>
-              
+
               <div className="mb-2">
                 <h3 className="text-lg font-medium text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors leading-tight">
                   {tool.name}
@@ -61,7 +59,7 @@ export default function Home({ onSelectTool, isLoggedIn, onOpenLogin }: HomeProp
                 {tool.description}
               </p>
             </div>
-            
+
             <div className="flex items-center justify-between mt-4">
               <span className="text-[11px] font-medium text-[var(--text-secondary)] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0 duration-300">
                 {tool.isPremium && !isLoggedIn ? '立即解锁' : '打开工具'}

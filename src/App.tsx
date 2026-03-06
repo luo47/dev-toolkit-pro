@@ -4,10 +4,9 @@ import Home from './components/Home';
 import Login from './components/Login';
 import { useAuth } from './hooks/useAuth';
 import QRCodeTool from './components/QRCodeTool';
-import JsonCsvConverter from './components/JsonCsvConverter';
 import ChainProcessor from './components/ChainProcessor';
 
-type Tool = 'home' | 'qrcode' | 'json-to-csv' | 'chain-processor';
+type Tool = 'home' | 'qrcode' | 'chain-processor';
 
 export default function App() {
   const [activeTool, setActiveTool] = useState<Tool>('home');
@@ -31,7 +30,6 @@ export default function App() {
   }, [isDarkMode]);
 
   const tools = [
-    { id: 'json-to-csv', name: 'JSON ↔ CSV 转换', icon: FileText, isPremium: false },
     { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, isPremium: false },
     { id: 'qrcode', name: '二维码', icon: QrCode, isPremium: true },
   ];
@@ -373,7 +371,6 @@ export default function App() {
                   </h2>
                 </div>
                 <div className={activeTool === 'qrcode' ? '' : 'bg-[var(--bg-surface)] p-6 md:p-8 rounded-[28px] border border-[var(--border-color)] shadow-xl'}>
-                  {activeTool === 'json-to-csv' && <JsonCsvConverter />}
                   {activeTool === 'chain-processor' && <ChainProcessor />}
                   {activeTool === 'qrcode' && <QRCodeTool />}
                 </div>
