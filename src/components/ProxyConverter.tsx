@@ -59,40 +59,40 @@ export default function ProxyConverter() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <label className="text-xs font-medium text-[#c4c7c5] uppercase tracking-wider px-1">
-          Input Proxy Link
+        <label className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider px-1">
+          输入代理链接
         </label>
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          className="w-full h-32 p-5 bg-[#131314] border border-[#333537] rounded-[24px] font-mono text-sm text-[#e3e3e3] focus:ring-2 focus:ring-[#4285f4] focus:border-transparent outline-none transition-all resize-none"
-          placeholder="Paste socks5 link here..."
+          className="w-full h-32 p-5 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-[24px] font-mono text-sm text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent-color)] focus:border-transparent outline-none transition-all resize-none"
+          placeholder="在此粘贴 socks5 链接..."
         />
       </div>
 
       <div className="flex justify-end">
         <button
           onClick={convert}
-          className="px-6 py-2.5 bg-[#e3e3e3] text-[#131314] rounded-full text-sm font-medium hover:bg-white transition-colors flex items-center gap-2"
+          className="px-6 py-2.5 bg-[var(--text-primary)] text-[var(--bg-main)] rounded-full text-sm font-medium hover:opacity-90 transition-colors flex items-center gap-2"
         >
           <Link2 className="w-4 h-4" />
-          Convert Link
+          转换链接
         </button>
       </div>
 
       {output && (
         <div className="space-y-2">
-          <label className="text-xs font-medium text-[#c4c7c5] uppercase tracking-wider px-1">
-            Converted Result
+          <label className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider px-1">
+            转换结果
           </label>
           <div className="relative group">
-            <pre className="p-5 bg-[#131314] border border-[#333537] rounded-[24px] font-mono text-sm text-[#e3e3e3] overflow-x-auto custom-scrollbar pr-12">
+            <pre className="p-5 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-[24px] font-mono text-sm text-[var(--text-primary)] overflow-x-auto custom-scrollbar pr-12">
               {output}
             </pre>
             <button
               onClick={copyToClipboard}
-              className="absolute top-4 right-4 p-2 bg-[#1e1f20] border border-[#333537] rounded-full hover:bg-[#333537] transition-colors text-[#c4c7c5] hover:text-white"
-              title="Copy to clipboard"
+              className="absolute top-4 right-4 p-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-full hover:bg-[var(--hover-color)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              title="复制到剪贴板"
             >
               {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
             </button>

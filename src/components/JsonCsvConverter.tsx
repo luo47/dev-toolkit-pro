@@ -158,42 +158,42 @@ export default function JsonCsvConverter() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 p-1 bg-[#131314] rounded-full border border-[#333537]">
+        <div className="flex items-center gap-3 p-1 bg-[var(--bg-input)] rounded-full border border-[var(--border-color)]">
           <button
             onClick={() => { setMode('json-to-csv'); setInput(''); setOutput(''); }}
             className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-              mode === 'json-to-csv' ? 'bg-[#333537] text-white' : 'text-[#c4c7c5] hover:text-white'
+              mode === 'json-to-csv' ? 'bg-[var(--accent-color)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
-            JSON to CSV
+            JSON 转 CSV
           </button>
           <button
             onClick={() => { setMode('csv-to-json'); setInput(''); setOutput(''); }}
             className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-              mode === 'csv-to-json' ? 'bg-[#333537] text-white' : 'text-[#c4c7c5] hover:text-white'
+              mode === 'csv-to-json' ? 'bg-[var(--accent-color)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
-            CSV to JSON
+            CSV 转 JSON
           </button>
         </div>
         
         <button 
           onClick={toggleMode}
-          className="p-2 hover:bg-[#333537] rounded-full text-[#c4c7c5] transition-colors"
-          title="Switch Mode"
+          className="p-2 hover:bg-[var(--hover-color)] rounded-full text-[var(--text-secondary)] transition-colors"
+          title="切换模式"
         >
           <ArrowLeftRight className="w-4 h-4" />
         </button>
       </div>
 
       <div className="space-y-2">
-        <label className="text-xs font-medium text-[#c4c7c5] uppercase tracking-wider px-1">
-          {mode === 'json-to-csv' ? 'Input JSON (Object or Array)' : 'Input CSV Data'}
+        <label className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider px-1">
+          {mode === 'json-to-csv' ? '输入 JSON (对象或数组)' : '输入 CSV 数据'}
         </label>
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          className="w-full h-64 p-5 bg-[#131314] border border-[#333537] rounded-[24px] font-mono text-sm text-[#e3e3e3] focus:ring-2 focus:ring-[#4285f4] focus:border-transparent outline-none transition-all resize-none"
+          className="w-full h-64 p-5 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-[24px] font-mono text-sm text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent-color)] focus:border-transparent outline-none transition-all resize-none"
           placeholder={mode === 'json-to-csv' 
             ? '{"name": "John", "age": 30, "details": {"city": "NY"}}'
             : 'name,age\nJohn,30\nJane,25'
@@ -204,39 +204,39 @@ export default function JsonCsvConverter() {
       <div className="flex justify-end gap-3">
         <button
           onClick={handleConvert}
-          className="px-6 py-2.5 bg-[#e3e3e3] text-[#131314] rounded-full text-sm font-medium hover:bg-white transition-colors flex items-center gap-2"
+          className="px-6 py-2.5 bg-[var(--text-primary)] text-[var(--bg-main)] rounded-full text-sm font-medium hover:opacity-90 transition-colors flex items-center gap-2"
         >
           {mode === 'json-to-csv' ? <FileText className="w-4 h-4" /> : <Code className="w-4 h-4" />}
-          Convert to {mode === 'json-to-csv' ? 'CSV' : 'JSON'}
+          转换为 {mode === 'json-to-csv' ? 'CSV' : 'JSON'}
         </button>
       </div>
 
-      {error && <p className="text-[#d96570] text-sm px-2">{error}</p>}
+      {error && <p className="text-[#d96570] text-sm px-2">转换出错，请检查格式</p>}
 
       {output && (
         <div className="space-y-2">
           <div className="flex items-center justify-between px-1">
-            <label className="text-xs font-medium text-[#c4c7c5] uppercase tracking-wider">
-              {mode === 'json-to-csv' ? 'CSV Result' : 'JSON Result'}
+            <label className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
+              {mode === 'json-to-csv' ? 'CSV 结果' : 'JSON 结果'}
             </label>
             <div className="flex gap-2">
               <button
                 onClick={downloadResult}
-                className="p-2 bg-[#1e1f20] border border-[#333537] rounded-full hover:bg-[#333537] transition-colors text-[#c4c7c5] hover:text-white"
-                title={`Download ${mode === 'json-to-csv' ? 'CSV' : 'JSON'}`}
+                className="p-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-full hover:bg-[var(--hover-color)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                title={`下载 ${mode === 'json-to-csv' ? 'CSV' : 'JSON'}`}
               >
                 <Download className="w-4 h-4" />
               </button>
               <button
                 onClick={copyToClipboard}
-                className="p-2 bg-[#1e1f20] border border-[#333537] rounded-full hover:bg-[#333537] transition-colors text-[#c4c7c5] hover:text-white"
-                title="Copy to clipboard"
+                className="p-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-full hover:bg-[var(--hover-color)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                title="复制到剪贴板"
               >
                 {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
               </button>
             </div>
           </div>
-          <pre className="p-5 bg-[#131314] border border-[#333537] rounded-[24px] font-mono text-sm text-[#e3e3e3] overflow-x-auto custom-scrollbar">
+          <pre className="p-5 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-[24px] font-mono text-sm text-[var(--text-primary)] overflow-x-auto custom-scrollbar">
             {output}
           </pre>
         </div>

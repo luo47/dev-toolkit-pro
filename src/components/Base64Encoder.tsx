@@ -21,25 +21,25 @@ export default function Base64Encoder() {
       <textarea
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        className="w-full h-64 p-5 bg-[#131314] border border-[#333537] rounded-[24px] font-mono text-sm text-[#e3e3e3] focus:ring-2 focus:ring-[#4285f4] focus:border-transparent outline-none transition-all resize-none"
-        placeholder="Enter text or base64 here..."
+        className="w-full h-64 p-5 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-[24px] font-mono text-sm text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent-color)] focus:border-transparent outline-none transition-all resize-none"
+        placeholder="在此输入文本或 Base64 字符串..."
       />
       <div className="flex gap-3 justify-end">
         <button
           onClick={decode}
-          className="px-6 py-2.5 bg-[#333537] text-[#e3e3e3] rounded-full text-sm font-medium hover:bg-[#444648] transition-colors"
+          className="px-6 py-2.5 bg-[var(--hover-color)] text-[var(--text-primary)] rounded-full text-sm font-medium hover:opacity-80 transition-colors"
         >
-          Decode
+          解码
         </button>
         <button
           onClick={encode}
-          className="px-6 py-2.5 bg-[#e3e3e3] text-[#131314] rounded-full text-sm font-medium hover:bg-white transition-colors"
+          className="px-6 py-2.5 bg-[var(--text-primary)] text-[var(--bg-main)] rounded-full text-sm font-medium hover:opacity-90 transition-colors"
         >
-          Encode
+          编码
         </button>
       </div>
       {output && (
-        <pre className="p-5 bg-[#131314] border border-[#333537] rounded-[24px] font-mono text-sm text-[#e3e3e3] overflow-x-auto custom-scrollbar">
+        <pre className="p-5 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-[24px] font-mono text-sm text-[var(--text-primary)] overflow-x-auto custom-scrollbar">
           {output}
         </pre>
       )}
