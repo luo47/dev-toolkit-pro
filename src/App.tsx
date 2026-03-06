@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Code, Hash, Menu, Search, X, Plus, Github, Home as HomeIcon, LogIn, LogOut, FileSearch, Settings, HelpCircle, History, Link2, FileText, Sun, Moon, Cloud, QrCode } from 'lucide-react';
+import { Code, Hash, Menu, Search, X, Plus, Github, Home as HomeIcon, LogIn, LogOut, FileSearch, Settings, HelpCircle, History, Link2, FileText, Sun, Moon, Cloud, QrCode, Server } from 'lucide-react';
 import JsonFormatter from './components/JsonFormatter';
 import Base64Encoder from './components/Base64Encoder';
 import Home from './components/Home';
 import Login from './components/Login';
+import { useAuth } from './hooks/useAuth';
 import QRCodeTool from './components/QRCodeTool';
 import ProxyConverter from './components/ProxyConverter';
 import JsonToCsv from './components/JsonCsvConverter';
-import { useAuth } from './hooks/useAuth';
+import SmbConverter from './components/SmbConverter';
 
-type Tool = 'home' | 'json-formatter' | 'base64-encoder' | 'qrcode' | 'proxy-converter' | 'json-to-csv';
+type Tool = 'home' | 'json-formatter' | 'base64-encoder' | 'qrcode' | 'proxy-converter' | 'json-to-csv' | 'smb-converter';
 
 export default function App() {
-  const { user, loading, logout } = useAuth();
-  const [activeTool, setActiveTool] = useState<Tool>('home');
+  const [activeTool, setActiveTool] = useState<Tool>('qrcode');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,16 +33,19 @@ export default function App() {
   }, [isDarkMode]);
 
   const tools = [
-    { id: 'json-formatter', name: 'JSON 格式化', icon: Code, isPremium: false },
+    { id: 'json-formatter', name: 'JSON 格式化 / 压缩', icon: Code, isPremium: false },
     { id: 'base64-encoder', name: 'Base64 编码/解码', icon: Hash, isPremium: false },
     { id: 'proxy-converter', name: '代理链接转换', icon: Link2, isPremium: false },
     { id: 'json-to-csv', name: 'JSON ↔ CSV 转换', icon: FileText, isPremium: false },
+    { id: 'smb-converter', name: 'SMB 互转', icon: Server, isPremium: false },
     { id: 'qrcode', name: '二维码', icon: QrCode, isPremium: true },
   ];
 
   const filteredTools = tools.filter(tool =>
     tool.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const { user, loading, logout } = useAuth();
 
   const handleToolSelect = (id: Tool) => {
     const tool = tools.find(t => t.id === id);
@@ -52,6 +55,36 @@ export default function App() {
       setActiveTool(id);
     }
   };
+
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [logoutConfirmSource, setLogoutConfirmSource] = useState<'sidebar' | 'topbar' | null>(null);
+
+  const handleLogout = async () => {
+    await logout();
+    setActiveTool('home');
+    setShowLogoutConfirm(false);
+    setLogoutConfirmSource(null);
+  };
+
+  const LogoutConfirmPopup = ({ source }: { source: 'sidebar' | 'topbar' }) => (
+    <div className={`absolute ${source === 'sidebar' ? 'left-full ml-2 bottom-0' : 'right-0 top-full mt-2'} w - 48 bg - [var(--bg - surface)] border border - [var(--border - color)]rounded - 2xl p - 3 shadow - 2xl z - 50 animate -in fade -in zoom -in -95 duration - 200`}>
+      <p className="text-xs text-[var(--text-primary)] mb-3 font-medium">确定要退出登录吗？</p>
+      <div className="flex gap-2">
+        <button
+          onClick={handleLogout}
+          className="flex-1 py-1.5 bg-red-500 text-white text-[10px] font-bold rounded-lg hover:bg-red-600 transition-colors"
+        >
+          确定退出
+        </button>
+        <button
+          onClick={() => { setShowLogoutConfirm(false); setLogoutConfirmSource(null); }}
+          className="flex-1 py-1.5 bg-[var(--hover-color)] text-[var(--text-secondary)] text-[10px] font-bold rounded-lg hover:bg-[var(--border-color)] transition-colors"
+        >
+          取消
+        </button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[var(--bg-main)] text-[var(--text-primary)] flex font-sans transition-colors duration-300">
@@ -66,8 +99,8 @@ export default function App() {
       )}
 
       {/* Sidebar */}
-      <aside className={`${isSidebarOpen ? 'w-[280px]' : 'w-[68px]'} bg-[var(--bg-surface)] transition-all duration-300 flex flex-col h-screen sticky top-0 z-40 border-r border-[var(--border-color)]`}>
-        <div className={`p-4 flex items-center ${isSidebarOpen ? 'justify-end' : 'justify-center'}`}>
+      <aside className={`${isSidebarOpen ? 'w-[280px]' : 'w-[68px]'} bg - [var(--bg - surface)]transition - all duration - 300 flex flex - col h - screen sticky top - 0 z - 40 border - r border - [var(--border - color)]`}>
+        <div className={`p - 4 flex items - center ${isSidebarOpen ? 'justify-end' : 'justify-center'} `}>
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-2 hover:bg-[var(--hover-color)] rounded-full transition-colors"
@@ -111,11 +144,11 @@ export default function App() {
         <div className="flex-1 overflow-y-auto px-3 space-y-1 custom-scrollbar">
           <button
             onClick={() => setActiveTool('home')}
-            className={`flex items-center gap-3 w-full h-10 rounded-full transition-colors group ${activeTool === 'home' ? 'bg-[var(--accent-color)] text-white' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'
-              } ${isSidebarOpen ? 'px-4' : 'justify-center'}`}
+            className={`flex items - center gap - 3 w - full h - 10 rounded - full transition - colors group ${activeTool === 'home' ? 'bg-[var(--accent-color)] text-white' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'
+              } ${isSidebarOpen ? 'px-4' : 'justify-center'} `}
             title={!isSidebarOpen ? '首页' : undefined}
           >
-            <HomeIcon className={`w-5 h-5 shrink-0 ${activeTool === 'home' ? 'text-white' : 'text-[var(--text-secondary)]'}`} />
+            <HomeIcon className={`w - 5 h - 5 shrink - 0 ${activeTool === 'home' ? 'text-white' : 'text-[var(--text-secondary)]'} `} />
             {isSidebarOpen && <span className="text-sm truncate flex-1 text-left">首页</span>}
           </button>
 
@@ -123,18 +156,18 @@ export default function App() {
             <button
               key={tool.id}
               onClick={() => handleToolSelect(tool.id as Tool)}
-              className={`flex items-center gap-3 w-full rounded-full transition-colors group ${activeTool === tool.id ? 'bg-[var(--accent-color)] text-white' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'
-                } ${isSidebarOpen ? 'px-4 py-2' : 'justify-center h-10'}`}
+              className={`flex items - center gap - 3 w - full rounded - full transition - colors group ${activeTool === tool.id ? 'bg-[var(--accent-color)] text-white' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'
+                } ${isSidebarOpen ? 'px-4 py-2' : 'justify-center h-10'} `}
               title={!isSidebarOpen ? tool.name : undefined}
             >
-              <tool.icon className={`w-5 h-5 shrink-0 ${activeTool === tool.id ? 'text-white' : 'text-[var(--text-secondary)]'}`} />
+              <tool.icon className={`w - 5 h - 5 shrink - 0 ${activeTool === tool.id ? 'text-white' : 'text-[var(--text-secondary)]'} `} />
               {isSidebarOpen && (
                 <div className="flex flex-col items-start overflow-hidden">
                   <span className="text-sm font-medium truncate w-full leading-tight">
                     {tool.name}
                   </span>
                   {'subName' in tool && tool.subName && (
-                    <span className={`text-[10px] opacity-70 leading-tight ${activeTool === tool.id ? 'text-white' : 'text-[var(--text-secondary)]'}`}>
+                    <span className={`text - [10px] opacity - 70 leading - tight ${activeTool === tool.id ? 'text-white' : 'text-[var(--text-secondary)]'} `}>
                       {tool.subName}
                     </span>
                   )}
@@ -148,34 +181,45 @@ export default function App() {
         </div>
 
         <div className="p-3 space-y-1 border-t border-[var(--border-color)]">
-          <button className={`flex items-center gap-3 w-full h-10 rounded-full hover:bg-[var(--hover-color)] transition-colors ${isSidebarOpen ? 'px-4' : 'justify-center'}`}>
+          <button className={`flex items - center gap - 3 w - full h - 10 rounded - full hover: bg - [var(--hover - color)]transition - colors ${isSidebarOpen ? 'px-4' : 'justify-center'} `}>
             <Settings className="w-5 h-5 text-[var(--text-secondary)]" />
             {isSidebarOpen && <span className="text-sm">设置</span>}
           </button>
 
-          <div className="pt-2">
+          <div className="pt-2 relative">
             {user ? (
-              <button
-                onClick={async () => { await logout(); setActiveTool('home'); }}
-                className={`flex items-center gap-3 w-full h-12 rounded-full hover:bg-[var(--hover-color)] transition-colors ${isSidebarOpen ? 'px-4' : 'justify-center'}`}
-              >
-                {user.avatar_url ? (
-                  <img src={user.avatar_url} alt="avatar" className="w-8 h-8 rounded-full border border-white/10 shrink-0" />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4285f4] to-[#9b72cb] flex items-center justify-center text-white text-xs font-bold border border-white/10 shrink-0">
-                    {(user.name || user.username).charAt(0).toUpperCase()}
-                  </div>
-                )}
-                {isSidebarOpen && (
-                  <div className="flex flex-col items-start overflow-hidden">
-                    <span className="text-sm font-medium truncate w-full">{user.name || user.username} (退出)</span>
-                  </div>
-                )}
-              </button>
+              <>
+                {showLogoutConfirm && logoutConfirmSource === 'sidebar' && <LogoutConfirmPopup source="sidebar" />}
+                <button
+                  onClick={() => {
+                    if (showLogoutConfirm && logoutConfirmSource === 'sidebar') {
+                      setShowLogoutConfirm(false);
+                      setLogoutConfirmSource(null);
+                    } else {
+                      setShowLogoutConfirm(true);
+                      setLogoutConfirmSource('sidebar');
+                    }
+                  }}
+                  className={`flex items - center gap - 3 w - full h - 12 rounded - full hover: bg - [var(--hover - color)]transition - colors ${isSidebarOpen ? 'px-4' : 'justify-center'} ${showLogoutConfirm && logoutConfirmSource === 'sidebar' ? 'bg-[var(--hover-color)]' : ''} `}
+                >
+                  {user.avatar_url ? (
+                    <img src={user.avatar_url} alt="avatar" className="w-8 h-8 rounded-full border border-white/10 shrink-0" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4285f4] to-[#9b72cb] flex items-center justify-center text-white text-xs font-bold border border-white/10 shrink-0">
+                      {(user.name || user.username).charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  {isSidebarOpen && (
+                    <div className="flex flex-col items-start overflow-hidden">
+                      <span className="text-sm font-medium truncate w-full">{user.name || user.username} (退出)</span>
+                    </div>
+                  )}
+                </button>
+              </>
             ) : (
               <button
                 onClick={() => setShowLogin(true)}
-                className={`flex items-center gap-3 w-full h-10 rounded-full hover:bg-[var(--hover-color)] transition-colors ${isSidebarOpen ? 'px-4' : 'justify-center'}`}
+                className={`flex items - center gap - 3 w - full h - 10 rounded - full hover: bg - [var(--hover - color)]transition - colors ${isSidebarOpen ? 'px-4' : 'justify-center'} `}
               >
                 <LogIn className="w-5 h-5 text-[var(--text-secondary)]" />
                 {isSidebarOpen && <span className="text-sm">登录</span>}
@@ -283,19 +327,30 @@ export default function App() {
               </div>
             )}
             {user ? (
-              <button
-                onClick={async () => { await logout(); setActiveTool('home'); }}
-                className="flex items-center gap-2 p-1 hover:bg-[var(--hover-color)] rounded-full transition-colors"
-                title={`${user.name || user.username} (退出)`}
-              >
-                {user.avatar_url ? (
-                  <img src={user.avatar_url} alt="avatar" className="w-8 h-8 rounded-full border border-white/20" />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4285f4] to-[#9b72cb] flex items-center justify-center text-white text-xs font-bold border border-white/20">
-                    {(user.name || user.username).charAt(0).toUpperCase()}
-                  </div>
-                )}
-              </button>
+              <div className="relative">
+                {showLogoutConfirm && logoutConfirmSource === 'topbar' && <LogoutConfirmPopup source="topbar" />}
+                <button
+                  onClick={() => {
+                    if (showLogoutConfirm && logoutConfirmSource === 'topbar') {
+                      setShowLogoutConfirm(false);
+                      setLogoutConfirmSource(null);
+                    } else {
+                      setShowLogoutConfirm(true);
+                      setLogoutConfirmSource('topbar');
+                    }
+                  }}
+                  className={`flex items - center gap - 2 p - 1 hover: bg - [var(--hover - color)]rounded - full transition - colors ${showLogoutConfirm && logoutConfirmSource === 'topbar' ? 'bg-[var(--hover-color)]' : ''} `}
+                  title={`${user.name || user.username} (退出)`}
+                >
+                  {user.avatar_url ? (
+                    <img src={user.avatar_url} alt="avatar" className="w-8 h-8 rounded-full border border-white/20" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4285f4] to-[#9b72cb] flex items-center justify-center text-white text-xs font-bold border border-white/20">
+                      {(user.name || user.username).charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </button>
+              </div>
             ) : (
               <button
                 onClick={() => setShowLogin(true)}
@@ -330,6 +385,7 @@ export default function App() {
                   {activeTool === 'base64-encoder' && <Base64Encoder />}
                   {activeTool === 'proxy-converter' && <ProxyConverter />}
                   {activeTool === 'json-to-csv' && <JsonToCsv />}
+                  {activeTool === 'smb-converter' && <SmbConverter />}
                   {activeTool === 'qrcode' && <QRCodeTool />}
                 </div>
               </div>
