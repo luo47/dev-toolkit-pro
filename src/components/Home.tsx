@@ -12,7 +12,7 @@ export default function Home({ onSelectTool, isLoggedIn, onOpenLogin }: HomeProp
     { id: 'base64-encoder', name: 'Base64 编码/解码', icon: Hash, description: '安全地将文本编码为 Base64 格式或进行解码。', isPremium: false },
     { id: 'proxy-converter', name: '代理链接转换', icon: Link2, description: '将各种 SOCKS5 代理链接格式转换为标准格式。', isPremium: false },
     { id: 'json-to-csv', name: 'JSON ↔ CSV 转换', icon: FileText, description: 'JSON 数组与 CSV 格式之间的双向转换。', isPremium: false },
-    { id: 'qrcode', name: '图片元数据提取', subName: '二维码', icon: QrCode, description: '二维码生成与识别，支持实时生成及图片识别。', isPremium: true },
+    { id: 'qrcode', name: '二维码', icon: QrCode, description: '二维码生成与识别，支持实时生成及图片识别。', isPremium: true },
   ];
 
   const handleToolClick = (tool: any) => {
@@ -58,9 +58,6 @@ export default function Home({ onSelectTool, isLoggedIn, onOpenLogin }: HomeProp
                 <h3 className="text-lg font-medium text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors leading-tight">
                   {tool.name}
                 </h3>
-                {tool.subName && (
-                  <p className="text-[10px] text-[var(--text-secondary)] font-medium">{tool.subName}</p>
-                )}
               </div>
               <p className="text-[var(--text-secondary)] text-sm leading-relaxed line-clamp-2 group-hover:text-[var(--text-primary)] transition-colors">
                 {tool.description}

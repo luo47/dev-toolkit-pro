@@ -94,11 +94,6 @@ export default function QRCodeTool() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 py-4" onPaste={onPaste}>
-      {/* Tool Header */}
-      <div className="border-2 border-dashed border-[var(--accent-color)]/30 p-4 rounded-2xl">
-        <h2 className="text-2xl font-bold text-[var(--text-primary)]">二维码</h2>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Generation Section */}
         <div className="bg-[var(--bg-surface)] p-6 rounded-3xl border border-[var(--border-color)] space-y-6">

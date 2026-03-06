@@ -37,7 +37,7 @@ export default function App() {
     { id: 'base64-encoder', name: 'Base64 编码/解码', icon: Hash, isPremium: false },
     { id: 'proxy-converter', name: '代理链接转换', icon: Link2, isPremium: false },
     { id: 'json-to-csv', name: 'JSON ↔ CSV 转换', icon: FileText, isPremium: false },
-    { id: 'qrcode', name: '图片元数据提取', subName: '二维码', icon: QrCode, isPremium: true },
+    { id: 'qrcode', name: '二维码', icon: QrCode, isPremium: true },
   ];
 
   const filteredTools = tools.filter(tool =>
@@ -131,9 +131,9 @@ export default function App() {
               {isSidebarOpen && (
                 <div className="flex flex-col items-start overflow-hidden">
                   <span className="text-sm font-medium truncate w-full leading-tight">
-                    {tool.id === 'qrcode' ? tool.subName : tool.name}
+                    {tool.name}
                   </span>
-                  {tool.id !== 'qrcode' && 'subName' in tool && tool.subName && (
+                  {'subName' in tool && tool.subName && (
                     <span className={`text-[10px] opacity-70 leading-tight ${activeTool === tool.id ? 'text-white' : 'text-[var(--text-secondary)]'}`}>
                       {tool.subName}
                     </span>
@@ -324,9 +324,6 @@ export default function App() {
                   <h2 className="text-2xl font-bold tracking-tight leading-tight">
                     {tools.find((t) => t.id === activeTool)?.name}
                   </h2>
-                  {activeTool === 'qrcode' && (
-                    <p className="text-sm text-[var(--text-secondary)] font-medium">二维码</p>
-                  )}
                 </div>
                 <div className={activeTool === 'qrcode' ? '' : 'bg-[var(--bg-surface)] p-6 md:p-8 rounded-[28px] border border-[var(--border-color)] shadow-xl'}>
                   {activeTool === 'json-formatter' && <JsonFormatter />}
