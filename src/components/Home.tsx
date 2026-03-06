@@ -8,8 +8,8 @@ interface HomeProps {
 
 export default function Home({ onSelectTool, isLoggedIn, onOpenLogin }: HomeProps) {
   const tools = [
-    { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, description: '强大的链式文本处理引擎，支持 JS、JSONPath 等多种处理步骤。', isPremium: false },
-    { id: 'qrcode', name: '二维码', icon: QrCode, description: '二维码生成与识别，支持实时生成及图片识别。', isPremium: true },
+    { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, description: '强大的链式文本处理引擎，支持 JS、JSONPath 等多种处理步骤。', isPremium: true },
+    { id: 'qrcode', name: '二维码', icon: QrCode, description: '二维码生成与识别，支持实时生成及图片识别。', isPremium: false },
   ];
 
   const handleToolClick = (tool: any) => {

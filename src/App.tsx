@@ -30,8 +30,8 @@ export default function App() {
   }, [isDarkMode]);
 
   const tools = [
-    { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, isPremium: false },
-    { id: 'qrcode', name: '二维码', icon: QrCode, isPremium: true },
+    { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, isPremium: true },
+    { id: 'qrcode', name: '二维码', icon: QrCode, isPremium: false },
   ];
 
   const filteredTools = tools.filter(tool =>
