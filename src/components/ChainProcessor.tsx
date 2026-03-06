@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  GripVertical, 
-  Play, 
-  Copy, 
-  Check, 
-  AlertCircle, 
-  ChevronDown, 
+import {
+  Plus,
+  Trash2,
+  GripVertical,
+  Play,
+  Copy,
+  Check,
+  AlertCircle,
+  ChevronDown,
   ChevronUp,
   Settings2,
   ArrowRight,
@@ -22,14 +22,14 @@ import {
 } from 'lucide-react';
 import { JSONPath } from 'jsonpath-plus';
 
-type StepType = 
-  | 'jsonpath' 
-  | 'xpath' 
-  | 'css' 
-  | 'js' 
-  | 'base64-encode' 
-  | 'base64-decode' 
-  | 'url-encode' 
+type StepType =
+  | 'jsonpath'
+  | 'xpath'
+  | 'css'
+  | 'js'
+  | 'base64-encode'
+  | 'base64-decode'
+  | 'url-encode'
   | 'url-decode'
   | 'trim'
   | 'lowercase'
@@ -246,7 +246,7 @@ export default function ChainProcessor() {
         console.error('Failed to parse saved chains', e);
       }
     }
-    
+
     if (loadedChains.length === 0) {
       const defaultChain: SavedChain = {
         id: 'default-proxy-converter',
@@ -323,7 +323,7 @@ export default function ChainProcessor() {
               // Split by || to support fallback paths
               const paths = step.value.split('||').map(p => p.trim());
               let result: any = undefined;
-              
+
               for (const path of paths) {
                 const searchResult = JSONPath({ path, json, wrap: false });
                 if (searchResult !== undefined && searchResult !== null && (Array.isArray(searchResult) ? searchResult.length > 0 : true)) {
@@ -331,7 +331,7 @@ export default function ChainProcessor() {
                   break;
                 }
               }
-              
+
               if (result === undefined) {
                 current = 'undefined';
               } else {
@@ -343,7 +343,7 @@ export default function ChainProcessor() {
               const parser = new DOMParser();
               const doc = parser.parseFromString(current, 'text/html');
               const result = doc.evaluate(step.value, doc, null, XPathResult.ANY_TYPE, null);
-              
+
               if (result.resultType === XPathResult.STRING_TYPE) {
                 current = result.stringValue;
               } else if (result.resultType === XPathResult.NUMBER_TYPE) {
@@ -368,10 +368,10 @@ export default function ChainProcessor() {
               }
               const parser = new DOMParser();
               const doc = parser.parseFromString(current, 'text/html');
-              
+
               let selector = step.value;
               let attr: string | null = null;
-              
+
               // Support "selector @attr" syntax
               if (selector.includes(' @')) {
                 const parts = selector.split(' @');
@@ -417,7 +417,7 @@ export default function ChainProcessor() {
               } else if (current === 'undefined') {
                 inputData = undefined;
               }
-              
+
               const fn = new Function('input', step.value);
               const result = fn(inputData);
               current = typeof result === 'object' && result !== null ? JSON.stringify(result, null, 2) : String(result);
@@ -454,7 +454,7 @@ export default function ChainProcessor() {
               const parser = new DOMParser();
               let xmlDoc: Document;
               let isHTML = false;
-              
+
               // Try XML first
               xmlDoc = parser.parseFromString(current, 'application/xml');
               if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
@@ -462,24 +462,24 @@ export default function ChainProcessor() {
                 xmlDoc = parser.parseFromString(current, 'text/html');
                 isHTML = true;
               }
-              
+
               const formatNode = (node: Node, level: number = 0): string => {
                 const indent = '  '.repeat(level);
                 let result = '';
-                
+
                 if (node.nodeType === Node.ELEMENT_NODE) {
                   const element = node as Element;
                   const tagName = isHTML ? element.tagName.toLowerCase() : element.tagName;
                   result += `\n${indent}<${tagName}`;
-                  
+
                   for (let i = 0; i < element.attributes.length; i++) {
                     const attr = element.attributes[i];
                     result += ` ${attr.name}="${attr.value}"`;
                   }
-                  
+
                   // Handle void elements in HTML
                   const isVoid = isHTML && ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'].includes(tagName);
-                  
+
                   if (element.childNodes.length === 0) {
                     result += isVoid ? '>' : '/>';
                   } else {
@@ -491,11 +491,11 @@ export default function ChainProcessor() {
                         break;
                       }
                     }
-                    
+
                     for (let i = 0; i < element.childNodes.length; i++) {
                       result += formatNode(element.childNodes[i], level + 1);
                     }
-                    
+
                     if (hasChildElements) {
                       result += `\n${indent}</${tagName}>`;
                     } else {
@@ -508,16 +508,16 @@ export default function ChainProcessor() {
                 } else if (node.nodeType === Node.COMMENT_NODE) {
                   result += `\n${indent}<!--${node.textContent}-->`;
                 }
-                
+
                 return result;
               };
-              
+
               if (isHTML) {
                 // For HTML snippets, content might end up in head (like <link>, <meta>) or body.
                 let output = '';
                 const head = xmlDoc.head;
                 const body = xmlDoc.body;
-                
+
                 if (head) {
                   for (let i = 0; i < head.childNodes.length; i++) {
                     output += formatNode(head.childNodes[i], 0);
@@ -546,7 +546,7 @@ export default function ChainProcessor() {
                 xmlDoc = parser.parseFromString(current, 'text/html');
                 isHTML = true;
               }
-              
+
               const serialize = (node: Node): string => {
                 let result = '';
                 if (node.nodeType === Node.ELEMENT_NODE) {
@@ -557,9 +557,9 @@ export default function ChainProcessor() {
                     const attr = element.attributes[i];
                     result += ` ${attr.name}="${attr.value}"`;
                   }
-                  
+
                   const isVoid = isHTML && ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'].includes(tagName);
-                  
+
                   if (element.childNodes.length === 0) {
                     result += isVoid ? '>' : '/>';
                   } else {
@@ -574,12 +574,12 @@ export default function ChainProcessor() {
                 }
                 return result;
               };
-              
+
               if (isHTML) {
                 let output = '';
                 const head = xmlDoc.head;
                 const body = xmlDoc.body;
-                
+
                 if (head) {
                   for (let i = 0; i < head.childNodes.length; i++) {
                     output += serialize(head.childNodes[i]);
@@ -604,29 +604,29 @@ export default function ChainProcessor() {
               if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
                 throw new Error('无效的 XML 格式');
               }
-              
+
               const nodeToJson = (node: Node): any => {
                 if (node.nodeType === Node.TEXT_NODE) {
                   return node.textContent?.trim() || '';
                 }
-                
+
                 if (node.nodeType === Node.ELEMENT_NODE) {
                   const element = node as Element;
                   const obj: any = {};
-                  
+
                   // Attributes
                   for (let i = 0; i < element.attributes.length; i++) {
                     const attr = element.attributes[i];
                     obj[`@${attr.name}`] = attr.value;
                   }
-                  
+
                   // Children
                   for (let i = 0; i < element.childNodes.length; i++) {
                     const child = element.childNodes[i];
                     if (child.nodeType === Node.ELEMENT_NODE) {
                       const childName = (child as Element).tagName;
                       const childJson = nodeToJson(child);
-                      
+
                       if (obj[childName]) {
                         if (!Array.isArray(obj[childName])) {
                           obj[childName] = [obj[childName]];
@@ -649,7 +649,7 @@ export default function ChainProcessor() {
                 }
                 return null;
               };
-              
+
               const result = {};
               if (xmlDoc.documentElement) {
                 result[xmlDoc.documentElement.tagName] = nodeToJson(xmlDoc.documentElement);
@@ -661,7 +661,7 @@ export default function ChainProcessor() {
             }
             case 'json-to-xml': {
               const obj = JSON.parse(current);
-              
+
               let options = { root: 'root', noRoot: false, noHeader: false };
               try {
                 if (step.value.startsWith('{')) {
@@ -679,21 +679,21 @@ export default function ChainProcessor() {
 
               const rootName = options.noRoot ? null : (options.root.trim() || 'root');
               const xmlHeader = options.noHeader ? '' : '<?xml version="1.0" encoding="UTF-8"?>\n';
-              
+
               const jsonToXml = (name: string, val: any, level: number = 0): string => {
                 const indent = '  '.repeat(level);
                 if (typeof val !== 'object' || val === null) {
                   return `${indent}<${name}>${val}</${name}>`;
                 }
-                
+
                 if (Array.isArray(val)) {
                   return val.map(item => jsonToXml(name, item, level)).join('\n');
                 }
-                
+
                 let attrs = '';
                 let children = '';
                 let text = '';
-                
+
                 for (const key in val) {
                   if (key.startsWith('@')) {
                     attrs += ` ${key.substring(1)}="${val[key]}"`;
@@ -703,18 +703,18 @@ export default function ChainProcessor() {
                     children += '\n' + jsonToXml(key, val[key], level + 1);
                   }
                 }
-                
+
                 if (!children && !text) {
                   return `${indent}<${name}${attrs}/>`;
                 }
-                
+
                 return `${indent}<${name}${attrs}>${text}${children}${children ? '\n' + indent : ''}</${name}>`;
               };
-              
+
               if (!rootName) {
                 // No root node: iterate over top-level keys
                 if (typeof obj === 'object' && obj !== null && !Array.isArray(obj)) {
-                  current = xmlHeader + 
+                  current = xmlHeader +
                     Object.keys(obj).map(key => jsonToXml(key, obj[key])).join('\n').trim();
                 } else {
                   // Fallback for arrays or primitives if no root specified
@@ -736,7 +736,7 @@ export default function ChainProcessor() {
               const headers = Array.from(new Set(arrayData.flatMap(obj => Object.keys(obj))));
               const csvRows = [
                 headers.join(','),
-                ...arrayData.map(row => 
+                ...arrayData.map(row =>
                   headers.map(header => {
                     const val = row[header] ?? '';
                     const str = typeof val === 'object' ? JSON.stringify(val) : String(val);
@@ -846,7 +846,7 @@ export default function ChainProcessor() {
 
   const handleSaveChain = () => {
     if (!newChainName.trim() || steps.length === 0) return;
-    
+
     const newChain: SavedChain = {
       id: Math.random().toString(36).substr(2, 9),
       name: newChainName.trim(),
@@ -869,7 +869,7 @@ export default function ChainProcessor() {
   };
 
   const toggleFavorite = (id: string) => {
-    setSavedChains(savedChains.map(c => 
+    setSavedChains(savedChains.map(c =>
       c.id === id ? { ...c, isFavorite: !c.isFavorite } : c
     ));
   };
@@ -924,7 +924,7 @@ export default function ChainProcessor() {
               原始输入
             </label>
             <div className="flex items-center gap-2">
-              <button 
+              <button
                 onClick={() => setInput('')}
                 className="p-1.5 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)] hover:text-red-500 transition-all"
                 title="清空输入"
@@ -933,19 +933,19 @@ export default function ChainProcessor() {
               </button>
               <label className="p-1.5 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--accent-color)] transition-all cursor-pointer" title="上传文件">
                 <Upload className="w-4 h-4" />
-                <input 
-                  type="file" 
-                  className="hidden" 
+                <input
+                  type="file"
+                  className="hidden"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) handleFileUpload(file);
                     e.target.value = '';
-                  }} 
+                  }}
                 />
               </label>
             </div>
           </div>
-          <div 
+          <div
             className={`relative group h-[calc(100vh-280px)] min-h-[400px] rounded-2xl transition-all ${isDragging ? 'ring-2 ring-[var(--accent-color)] ring-offset-2 ring-offset-[var(--bg-main)]' : ''}`}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
@@ -976,7 +976,7 @@ export default function ChainProcessor() {
         </div>
 
         {/* Column 2: Steps */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
             <label className="text-sm font-medium text-[var(--text-secondary)] flex items-center gap-2">
               <ArrowRight className="w-4 h-4" />
@@ -1007,7 +1007,7 @@ export default function ChainProcessor() {
                 </div>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setIsSaveModalOpen(true)}
               disabled={steps.length === 0}
               className="p-1.5 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--accent-color)] transition-all disabled:opacity-30"
@@ -1025,20 +1025,20 @@ export default function ChainProcessor() {
               </div>
             ) : (
               steps.map((step, index) => (
-                <div 
+                <div
                   key={step.id}
                   className={`group relative bg-[var(--bg-surface)] border ${error?.stepId === step.id ? 'border-red-500/50' : 'border-[var(--border-color)]'} rounded-2xl p-4 transition-all hover:shadow-md`}
                 >
                   <div className="flex items-center gap-3 mb-3">
                     <div className="flex items-center gap-1">
-                      <button 
+                      <button
                         onClick={() => moveStep(index, 'up')}
                         disabled={index === 0}
                         className="p-1 hover:bg-[var(--hover-color)] rounded text-[var(--text-secondary)] disabled:opacity-30"
                       >
                         <ChevronUp className="w-3.5 h-3.5" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => moveStep(index, 'down')}
                         disabled={index === steps.length - 1}
                         className="p-1 hover:bg-[var(--hover-color)] rounded text-[var(--text-secondary)] disabled:opacity-30"
@@ -1053,13 +1053,13 @@ export default function ChainProcessor() {
                       <div className="text-xs font-bold text-[var(--text-primary)]">{STEP_CONFIG[step.type].label}</div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <input 
+                      <input
                         type="checkbox"
                         checked={step.active}
                         onChange={(e) => updateStep(step.id, { active: e.target.checked })}
                         className="w-4 h-4 rounded border-[var(--border-color)] text-[var(--accent-color)] focus:ring-[var(--accent-color)]"
                       />
-                      <button 
+                      <button
                         onClick={() => removeStep(step.id)}
                         className="p-1.5 hover:bg-red-500/10 text-[var(--text-secondary)] hover:text-red-500 rounded-lg transition-colors"
                       >
@@ -1091,7 +1091,7 @@ export default function ChainProcessor() {
                       } else if (step.value.trim()) {
                         options.root = step.value.trim();
                       }
-                    } catch (e) {}
+                    } catch (e) { }
 
                     const updateOptions = (updates: any) => {
                       updateStep(step.id, { value: JSON.stringify({ ...options, ...updates }) });
@@ -1112,7 +1112,7 @@ export default function ChainProcessor() {
                         <div className="flex flex-col gap-2.5">
                           <label className="flex items-center gap-2 cursor-pointer select-none group/label">
                             <div className="relative flex items-center justify-center">
-                              <input 
+                              <input
                                 type="checkbox"
                                 checked={options.noRoot}
                                 onChange={(e) => updateOptions({ noRoot: e.target.checked })}
@@ -1124,7 +1124,7 @@ export default function ChainProcessor() {
                           </label>
                           <label className="flex items-center gap-2 cursor-pointer select-none group/label">
                             <div className="relative flex items-center justify-center">
-                              <input 
+                              <input
                                 type="checkbox"
                                 checked={options.noHeader}
                                 onChange={(e) => updateOptions({ noHeader: e.target.checked })}
@@ -1171,11 +1171,10 @@ export default function ChainProcessor() {
               <button
                 onClick={handleCopy}
                 disabled={!output}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                  copied 
-                    ? 'bg-green-500/10 text-green-500' 
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${copied
+                    ? 'bg-green-500/10 text-green-500'
                     : 'bg-[var(--hover-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50'
-                }`}
+                  }`}
               >
                 {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 {copied ? '已复制' : '复制结果'}
@@ -1207,11 +1206,11 @@ export default function ChainProcessor() {
               {savedChains.length}
             </span>
           </div>
-          
+
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-secondary)]" />
-              <input 
+              <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -1220,7 +1219,7 @@ export default function ChainProcessor() {
               />
             </div>
             <div className="h-4 w-px bg-[var(--border-color)]" />
-            <button 
+            <button
               onClick={exportChains}
               className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-[var(--hover-color)] rounded-lg text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all"
             >
@@ -1244,7 +1243,7 @@ export default function ChainProcessor() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filteredChains.map(chain => (
-              <div 
+              <div
                 key={chain.id}
                 className="group relative bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-4 hover:shadow-lg hover:border-[var(--accent-color)]/30 transition-all"
               >
@@ -1258,13 +1257,13 @@ export default function ChainProcessor() {
                     </p>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button 
+                    <button
                       onClick={() => toggleFavorite(chain.id)}
                       className={`p-1.5 rounded-lg transition-colors ${chain.isFavorite ? 'text-yellow-400 hover:bg-yellow-400/10' : 'text-[var(--text-secondary)] hover:bg-[var(--hover-color)] opacity-0 group-hover:opacity-100'}`}
                     >
                       <Star className={`w-3.5 h-3.5 ${chain.isFavorite ? 'fill-current' : ''}`} />
                     </button>
-                    <button 
+                    <button
                       onClick={() => deleteChain(chain.id)}
                       className="p-1.5 text-[var(--text-secondary)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                     >
@@ -1286,7 +1285,7 @@ export default function ChainProcessor() {
                   )}
                 </div>
 
-                <button 
+                <button
                   onClick={() => loadChain(chain)}
                   className="w-full py-2 bg-[var(--bg-main)] hover:bg-[var(--accent-color)] hover:text-white border border-[var(--border-color)] hover:border-[var(--accent-color)] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2"
                 >
@@ -1310,10 +1309,10 @@ export default function ChainProcessor() {
                   <X className="w-5 h-5 text-[var(--text-secondary)]" />
                 </button>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="text-xs font-medium text-[var(--text-secondary)]">名称</label>
-                <input 
+                <input
                   autoFocus
                   type="text"
                   value={newChainName}
@@ -1325,13 +1324,13 @@ export default function ChainProcessor() {
               </div>
 
               <div className="pt-2 flex gap-3">
-                <button 
+                <button
                   onClick={() => setIsSaveModalOpen(false)}
                   className="flex-1 py-3 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-2xl text-sm font-bold text-[var(--text-secondary)] hover:bg-[var(--hover-color)] transition-all"
                 >
                   取消
                 </button>
-                <button 
+                <button
                   onClick={handleSaveChain}
                   disabled={!newChainName.trim()}
                   className="flex-1 py-3 bg-[var(--accent-color)] text-white rounded-2xl text-sm font-bold hover:opacity-90 disabled:opacity-50 transition-all shadow-lg shadow-[var(--accent-color)]/20"
