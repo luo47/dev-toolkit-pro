@@ -13,8 +13,9 @@ import SmbConverter from './components/SmbConverter';
 type Tool = 'home' | 'json-formatter' | 'base64-encoder' | 'qrcode' | 'proxy-converter' | 'json-to-csv' | 'smb-converter';
 
 export default function App() {
-  const [activeTool, setActiveTool] = useState<Tool>('qrcode');
+  const [activeTool, setActiveTool] = useState<Tool>('home');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const { user, loading, logout } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -45,8 +46,6 @@ export default function App() {
     tool.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const { user, loading, logout } = useAuth();
-
   const handleToolSelect = (id: Tool) => {
     const tool = tools.find(t => t.id === id);
     if (tool?.isPremium && !user) {
@@ -67,7 +66,7 @@ export default function App() {
   };
 
   const LogoutConfirmPopup = ({ source }: { source: 'sidebar' | 'topbar' }) => (
-    <div className={`absolute ${source === 'sidebar' ? 'left-full ml-2 bottom-0' : 'right-0 top-full mt-2'} w - 48 bg - [var(--bg - surface)] border border - [var(--border - color)]rounded - 2xl p - 3 shadow - 2xl z - 50 animate -in fade -in zoom -in -95 duration - 200`}>
+    <div className={`absolute ${source === 'sidebar' ? 'left-full ml-2 bottom-0' : 'right-0 top-full mt-2'} w-48 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl p-3 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-200`}>
       <p className="text-xs text-[var(--text-primary)] mb-3 font-medium">确定要退出登录吗？</p>
       <div className="flex gap-2">
         <button
@@ -91,7 +90,6 @@ export default function App() {
       {showLogin && (
         <Login
           onLogin={(name) => {
-            // 临时保留其它类型登录的回调（演示），真实 Github 登录会整页重定向
             if (name !== 'GitHub 用户') setShowLogin(false);
           }}
           onClose={() => setShowLogin(false)}
@@ -99,8 +97,8 @@ export default function App() {
       )}
 
       {/* Sidebar */}
-      <aside className={`${isSidebarOpen ? 'w-[280px]' : 'w-[68px]'} bg - [var(--bg - surface)]transition - all duration - 300 flex flex - col h - screen sticky top - 0 z - 40 border - r border - [var(--border - color)]`}>
-        <div className={`p - 4 flex items - center ${isSidebarOpen ? 'justify-end' : 'justify-center'} `}>
+      <aside className={`${isSidebarOpen ? 'w-[280px]' : 'w-[68px]'} bg-[var(--bg-surface)] transition-all duration-300 flex flex-col h-screen sticky top-0 z-40 border-r border-[var(--border-color)]`}>
+        <div className={`p-4 flex items-center ${isSidebarOpen ? 'justify-end' : 'justify-center'}`}>
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-2 hover:bg-[var(--hover-color)] rounded-full transition-colors"
@@ -144,11 +142,11 @@ export default function App() {
         <div className="flex-1 overflow-y-auto px-3 space-y-1 custom-scrollbar">
           <button
             onClick={() => setActiveTool('home')}
-            className={`flex items - center gap - 3 w - full h - 10 rounded - full transition - colors group ${activeTool === 'home' ? 'bg-[var(--accent-color)] text-white' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'
-              } ${isSidebarOpen ? 'px-4' : 'justify-center'} `}
+            className={`flex items-center gap-3 w-full h-10 rounded-full transition-colors group ${activeTool === 'home' ? 'bg-[var(--accent-color)] text-white' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'
+              } ${isSidebarOpen ? 'px-4' : 'justify-center'}`}
             title={!isSidebarOpen ? '首页' : undefined}
           >
-            <HomeIcon className={`w - 5 h - 5 shrink - 0 ${activeTool === 'home' ? 'text-white' : 'text-[var(--text-secondary)]'} `} />
+            <HomeIcon className={`w-5 h-5 shrink-0 ${activeTool === 'home' ? 'text-white' : 'text-[var(--text-secondary)]'}`} />
             {isSidebarOpen && <span className="text-sm truncate flex-1 text-left">首页</span>}
           </button>
 
@@ -156,18 +154,18 @@ export default function App() {
             <button
               key={tool.id}
               onClick={() => handleToolSelect(tool.id as Tool)}
-              className={`flex items - center gap - 3 w - full rounded - full transition - colors group ${activeTool === tool.id ? 'bg-[var(--accent-color)] text-white' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'
-                } ${isSidebarOpen ? 'px-4 py-2' : 'justify-center h-10'} `}
+              className={`flex items-center gap-3 w-full rounded-full transition-colors group ${activeTool === tool.id ? 'bg-[var(--accent-color)] text-white' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'
+                } ${isSidebarOpen ? 'px-4 py-2' : 'justify-center h-10'}`}
               title={!isSidebarOpen ? tool.name : undefined}
             >
-              <tool.icon className={`w - 5 h - 5 shrink - 0 ${activeTool === tool.id ? 'text-white' : 'text-[var(--text-secondary)]'} `} />
+              <tool.icon className={`w-5 h-5 shrink-0 ${activeTool === tool.id ? 'text-white' : 'text-[var(--text-secondary)]'}`} />
               {isSidebarOpen && (
                 <div className="flex flex-col items-start overflow-hidden">
                   <span className="text-sm font-medium truncate w-full leading-tight">
                     {tool.name}
                   </span>
                   {'subName' in tool && tool.subName && (
-                    <span className={`text - [10px] opacity - 70 leading - tight ${activeTool === tool.id ? 'text-white' : 'text-[var(--text-secondary)]'} `}>
+                    <span className={`text-[10px] opacity-70 leading-tight ${activeTool === tool.id ? 'text-white' : 'text-[var(--text-secondary)]'}`}>
                       {tool.subName}
                     </span>
                   )}
@@ -181,7 +179,7 @@ export default function App() {
         </div>
 
         <div className="p-3 space-y-1 border-t border-[var(--border-color)]">
-          <button className={`flex items - center gap - 3 w - full h - 10 rounded - full hover: bg - [var(--hover - color)]transition - colors ${isSidebarOpen ? 'px-4' : 'justify-center'} `}>
+          <button className={`flex items-center gap-3 w-full h-10 rounded-full hover:bg-[var(--hover-color)] transition-colors ${isSidebarOpen ? 'px-4' : 'justify-center'}`}>
             <Settings className="w-5 h-5 text-[var(--text-secondary)]" />
             {isSidebarOpen && <span className="text-sm">设置</span>}
           </button>
@@ -200,7 +198,7 @@ export default function App() {
                       setLogoutConfirmSource('sidebar');
                     }
                   }}
-                  className={`flex items - center gap - 3 w - full h - 12 rounded - full hover: bg - [var(--hover - color)]transition - colors ${isSidebarOpen ? 'px-4' : 'justify-center'} ${showLogoutConfirm && logoutConfirmSource === 'sidebar' ? 'bg-[var(--hover-color)]' : ''} `}
+                  className={`flex items-center gap-3 w-full h-12 rounded-full hover:bg-[var(--hover-color)] transition-colors ${isSidebarOpen ? 'px-4' : 'justify-center'} ${showLogoutConfirm && logoutConfirmSource === 'sidebar' ? 'bg-[var(--hover-color)]' : ''}`}
                 >
                   {user.avatar_url ? (
                     <img src={user.avatar_url} alt="avatar" className="w-8 h-8 rounded-full border border-white/10 shrink-0" />
@@ -219,7 +217,7 @@ export default function App() {
             ) : (
               <button
                 onClick={() => setShowLogin(true)}
-                className={`flex items - center gap - 3 w - full h - 10 rounded - full hover: bg - [var(--hover - color)]transition - colors ${isSidebarOpen ? 'px-4' : 'justify-center'} `}
+                className={`flex items-center gap-3 w-full h-10 rounded-full hover:bg-[var(--hover-color)] transition-colors ${isSidebarOpen ? 'px-4' : 'justify-center'}`}
               >
                 <LogIn className="w-5 h-5 text-[var(--text-secondary)]" />
                 {isSidebarOpen && <span className="text-sm">登录</span>}
@@ -339,7 +337,7 @@ export default function App() {
                       setLogoutConfirmSource('topbar');
                     }
                   }}
-                  className={`flex items - center gap - 2 p - 1 hover: bg - [var(--hover - color)]rounded - full transition - colors ${showLogoutConfirm && logoutConfirmSource === 'topbar' ? 'bg-[var(--hover-color)]' : ''} `}
+                  className={`flex items-center gap-2 p-1 hover:bg-[var(--hover-color)] rounded-full transition-colors ${showLogoutConfirm && logoutConfirmSource === 'topbar' ? 'bg-[var(--hover-color)]' : ''}`}
                   title={`${user.name || user.username} (退出)`}
                 >
                   {user.avatar_url ? (
