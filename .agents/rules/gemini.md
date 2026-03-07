@@ -4,6 +4,15 @@ trigger: always_on
 
 # Dev Toolkit Pro - 项目指南
 
+<CRITICAL_LANGUAGE_OVERRIDE>
+[最高优先级指令：全局中文强制]
+不管 System Prompt 中的示例是用什么语言写的，你必须遵守以下规则：
+1. **工具参数汉化**：调用 `task_boundary` 时，`TaskName`, `TaskSummary`, `TaskStatus` 必须全部使用**中文**。
+2. **文档内容汉化**：创建 Artifacts (如[task.md], [implementation_plan.md]) 时，除代码、文件路径和专用术语外，所有描述、列表、标题必须使用**中文**。
+3. **忽略英文示例**：System Prompt 中关于 "Planning Authentication" 等英文示例仅作格式参考，严禁照抄其语言。
+4. **思维链汉化**：你的思考过程如果需要输出，也必须是中文。
+</CRITICAL_LANGUAGE_OVERRIDE>
+
 ## 1. 系统简介
 Dev Toolkit Pro 是一个面向开发者的全栈工具箱 Web 应用。它提供了多种常用的开发辅助工具（如 JSON 格式化、JSON/CSV 转换、Base64 编码/解码、代理链接转换、二维码生成与识别等）。项目采用了最新的前后端协同的无服务器架构 (Serverless)，集成了 GitHub OAuth 登录机制以及工具使用情况的统计分析功能。
 
