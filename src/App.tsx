@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Code, Hash, Menu, Search, X, Plus, Github, Home as HomeIcon, LogIn, LogOut, FileSearch, Settings, HelpCircle, History, Link2, FileText, Sun, Moon, Cloud, QrCode, Server, List } from 'lucide-react';
 import Home from './components/Home';
 import Login from './components/Login';
 import { useAuth } from './hooks/useAuth';
-import QRCodeTool from './components/QRCodeTool';
-import ChainProcessor from './components/ChainProcessor';
-import CodeSnippetsTool from './components/CodeSnippetsTool';
+const QRCodeTool = React.lazy(() => import('./components/QRCodeTool'));
+const ChainProcessor = React.lazy(() => import('./components/ChainProcessor'));
+const CodeSnippetsTool = React.lazy(() => import('./components/CodeSnippetsTool'));
 
 type Tool = 'home' | 'qrcode' | 'chain-processor' | 'code-snippets';
 
@@ -473,9 +473,15 @@ export default function App() {
                   </h2>
                 </div>
                 <div className={`flex-1 ${activeTool === 'qrcode' ? '' : 'bg-[var(--bg-surface)] p-4 md:p-8 rounded-[28px] border border-[var(--border-color)] shadow-xl'}`}>
-                  {activeTool === 'chain-processor' && <ChainProcessor />}
-                  {activeTool === 'qrcode' && <QRCodeTool />}
-                  {activeTool === 'code-snippets' && <CodeSnippetsTool />}
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center p-20">
+                      <div className="w-10 h-10 border-4 border-[var(--accent-color)] border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  }>
+                    {activeTool === 'chain-processor' && <ChainProcessor />}
+                    {activeTool === 'qrcode' && <QRCodeTool />}
+                    {activeTool === 'code-snippets' && <CodeSnippetsTool />}
+                  </Suspense>
                 </div>
               </div>
             )}
