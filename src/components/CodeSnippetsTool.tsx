@@ -16,7 +16,7 @@ import cpp from 'highlight.js/lib/languages/cpp';
 import java from 'highlight.js/lib/languages/java';
 import go from 'highlight.js/lib/languages/go';
 import rust from 'highlight.js/lib/languages/rust';
-import 'highlight.js/styles/github-dark.css';
+// import 'highlight.js/styles/github-dark.css'; // 移除固定的暗色样式，改为使用 CSS 变量控制
 
 // 注册常用语言
 hljs.registerLanguage('javascript', javascript);
@@ -363,7 +363,7 @@ export default function CodeSnippetsTool() {
                                     <Code2 className="w-3.5 h-3.5 text-[var(--accent-color)] shrink-0" />
                                     <div className="overflow-hidden">
                                         <div className="text-xs font-medium truncate leading-tight">
-                                            {snippet.title || <span className="text-[var(--text-secondary)] italic">无标题</span>}
+                                            {snippet.title || ""}
                                         </div>
                                         {snippet.language && (
                                             <div className="text-[9px] text-[var(--text-secondary)] uppercase tracking-wider leading-tight opacity-70">{snippet.language}</div>
@@ -386,8 +386,8 @@ export default function CodeSnippetsTool() {
                             </div>
 
                             {/* 代码区 */}
-                            <div className="relative bg-[#0d1117] flex-1">
-                                <pre className="text-xs p-2 overflow-auto max-h-32 font-mono text-gray-300 custom-scrollbar leading-tight">
+                            <div className="relative bg-[var(--code-bg)] flex-1 overflow-hidden min-h-[60px]">
+                                <pre className="text-xs p-2 overflow-auto max-h-32 font-mono text-[var(--code-text)] custom-scrollbar-thin leading-tight">
                                     <code ref={el => { codeRefs.current[snippet.id] = el; }} className={`language-${snippet.language || 'plaintext'}`}>
                                         {snippet.code}
                                     </code>
@@ -400,8 +400,8 @@ export default function CodeSnippetsTool() {
                             </div>
 
                             {/* 标签区 */}
-                            <div className="px-2.5 py-1 flex items-center gap-1 flex-wrap border-t border-[var(--border-color)]">
-                                {snippet.tags && snippet.tags.length > 0 ? (
+                            <div className={`px-2.5 py-1 flex items-center gap-1 flex-wrap border-t border-[var(--border-color)] ${!snippet.tags || snippet.tags.length === 0 ? 'h-0 py-0 border-none' : ''}`}>
+                                {snippet.tags && snippet.tags.length > 0 && 
                                     snippet.tags.slice(0, 4).map((tag: string, i: number) => (
                                         <button
                                             key={i}
@@ -414,9 +414,7 @@ export default function CodeSnippetsTool() {
                                             {tag}
                                         </button>
                                     ))
-                                ) : (
-                                    <span className="text-[9px] text-[var(--text-secondary)] opacity-40 italic">无标签</span>
-                                )}
+                                }
                             </div>
                         </div>
                     ))}

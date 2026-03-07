@@ -15,6 +15,16 @@
     --border-color: #c4c7c5;
     --accent-color: #0b57d0;
     --hover-color: #f1f3f4;
+    
+    /* Code block colors - Light */
+    --code-bg: #f6f8fa;
+    --code-text: #24292f;
+    --hljs-comment: #6e7781;
+    --hljs-keyword: #cf222e;
+    --hljs-string: #0a3069;
+    --hljs-title: #953800;
+    --hljs-variable: #953800;
+    --hljs-number: #0550ae;
   }
 
   .dark {
@@ -26,6 +36,16 @@
     --border-color: #333537;
     --accent-color: #4285f4;
     --hover-color: #333537;
+
+    /* Code block colors - Dark */
+    --code-bg: #0d1117;
+    --code-text: #c9d1d9;
+    --hljs-comment: #8b949e;
+    --hljs-keyword: #ff7b72;
+    --hljs-string: #a5d6ff;
+    --hljs-title: #d2a8ff;
+    --hljs-variable: #ffa657;
+    --hljs-number: #79c0ff;
   }
 
   body {
@@ -51,4 +71,40 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: var(--text-secondary);
   }
+
+  /* Thin scrollbar for code blocks */
+  .custom-scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  .custom-scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+    opacity: 0.5;
+  }
+
+  .custom-scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+  }
+
+  /* Highlight.js theme overrides */
+  pre code.hljs {
+    display: block;
+    overflow-x: auto;
+    padding: 1em;
+    background: transparent;
+    color: var(--code-text);
+  }
+
+  .hljs-comment, .hljs-quote { color: var(--hljs-comment); font-style: italic; }
+  .hljs-keyword, .hljs-selector-tag, .hljs-type { color: var(--hljs-keyword); }
+  .hljs-string, .hljs-subst, .hljs-symbol, .hljs-attr { color: var(--hljs-string); }
+  .hljs-section, .hljs-title, .hljs-name { color: var(--hljs-title); font-weight: bold; }
+  .hljs-variable, .hljs-template-variable { color: var(--hljs-variable); }
+  .hljs-number, .hljs-literal, .hljs-bullet { color: var(--hljs-number); }
 }
