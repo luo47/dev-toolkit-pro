@@ -11,7 +11,7 @@ type Tool = 'home' | 'qrcode' | 'chain-processor' | 'code-snippets';
 
 export default function App() {
   const [activeTool, setActiveTool] = useState<Tool>('home');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const { user, loading, logout } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,6 +46,9 @@ export default function App() {
       setShowLogin(true);
     } else {
       setActiveTool(id);
+      if (window.innerWidth < 1024) {
+        setIsSidebarOpen(false);
+      }
     }
   };
 
@@ -90,15 +93,47 @@ export default function App() {
         />
       )}
 
+      {/* Mobile Toggle Button - in Top Bar */}
+      <div className="lg:hidden absolute top-4 left-4 z-50">
+        {!isSidebarOpen && (
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl shadow-lg text-[var(--text-secondary)] hover:bg-[var(--hover-color)] transition-all"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+      {/* Sidebar Overlay for Mobile */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity animate-in fade-in"
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`${isSidebarOpen ? 'w-[280px]' : 'w-[68px]'} bg-[var(--bg-surface)] transition-all duration-300 flex flex-col h-screen sticky top-0 z-40 border-r border-[var(--border-color)]`}>
-        <div className={`p-4 flex items-center ${isSidebarOpen ? 'justify-end' : 'justify-center'}`}>
+      <aside className={`
+        ${isSidebarOpen ? 'w-[280px] translate-x-0' : 'w-0 lg:w-[68px] -translate-x-full lg:translate-x-0'} 
+        bg-[var(--bg-surface)] fixed lg:sticky top-0 h-screen z-50 lg:z-40 border-r border-[var(--border-color)] transition-all duration-300 flex flex-col overflow-hidden
+      `}>
+        <div className={`p-4 flex items-center ${isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
+          {isSidebarOpen && (
+            <div className="flex items-center gap-2 lg:hidden">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4285f4] to-[#9b72cb] flex items-center justify-center text-white shadow-lg shadow-blue-500/10">
+                <Cloud className="w-5 h-5" />
+              </div>
+              <span className="text-sm font-bold tracking-tight text-[var(--text-primary)]">浮云工具箱</span>
+            </div>
+          )}
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-2 hover:bg-[var(--hover-color)] rounded-full transition-colors"
             title={isSidebarOpen ? '收起菜单' : '展开菜单'}
           >
-            <Menu className="w-6 h-6 text-[var(--text-secondary)]" />
+            {isSidebarOpen ? <X className="w-6 h-6 text-[var(--text-secondary)] lg:hidden" /> : null}
+            <Menu className={`w-6 h-6 text-[var(--text-secondary)] ${isSidebarOpen ? 'hidden lg:block' : ''}`} />
           </button>
         </div>
 
@@ -135,7 +170,12 @@ export default function App() {
 
         <div className="flex-1 overflow-y-auto px-3 space-y-1 custom-scrollbar">
           <button
-            onClick={() => setActiveTool('home')}
+            onClick={() => {
+              setActiveTool('home');
+              if (window.innerWidth < 1024) {
+                setIsSidebarOpen(false);
+              }
+            }}
             className={`flex items-center gap-3 w-full h-10 rounded-full transition-colors group ${activeTool === 'home' ? 'bg-[var(--accent-color)] text-white' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'
               } ${isSidebarOpen ? 'px-4' : 'justify-center'}`}
             title={!isSidebarOpen ? '首页' : undefined}
@@ -224,17 +264,25 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
         {/* Top bar */}
-        <div className="h-16 flex items-center px-6 justify-between border-b border-[var(--border-color)]">
-          <div className="flex items-center gap-8 flex-1">
+        <div className="h-16 flex items-center px-4 lg:px-6 justify-between border-b border-[var(--border-color)]">
+          <div className="flex items-center gap-4 lg:gap-8 flex-1 overflow-hidden">
+            {/* Logo on mobile needs padding to clear the floating menu button if closed, or we just put it inside the flex */}
+            {!isSidebarOpen && <div className="w-10 lg:hidden shrink-0" />}
+
             <div
-              onClick={() => setActiveTool('home')}
-              className="flex items-center gap-2 cursor-pointer hover:bg-[var(--hover-color)] px-3 py-1.5 rounded-lg transition-colors shrink-0"
+              onClick={() => {
+                setActiveTool('home');
+                if (window.innerWidth < 1024) {
+                  setIsSidebarOpen(false);
+                }
+              }}
+              className="flex items-center gap-2 cursor-pointer hover:bg-[var(--hover-color)] px-2 lg:px-3 py-1.5 rounded-lg transition-colors shrink-0"
             >
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4285f4] to-[#9b72cb] flex items-center justify-center text-white shadow-lg shadow-blue-500/10">
+              <div className="hidden sm:flex w-8 h-8 rounded-lg bg-gradient-to-br from-[#4285f4] to-[#9b72cb] items-center justify-center text-white shadow-lg shadow-blue-500/10">
                 <Cloud className="w-5 h-5" />
               </div>
-              <span className="text-lg font-bold tracking-tight">浮云工具箱</span>
-              <span className="text-[var(--text-secondary)] text-sm font-normal">v1.0</span>
+              <span className="text-base lg:text-lg font-bold tracking-tight truncate">浮云工具箱</span>
+              <span className="hidden sm:inline text-[var(--text-secondary)] text-sm font-normal">v1.0</span>
             </div>
 
             {/* Header Search Bar */}
