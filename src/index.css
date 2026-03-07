@@ -95,8 +95,6 @@
   /* Highlight.js theme overrides */
   pre code.hljs {
     display: block;
-    overflow-x: auto;
-    padding: 1em;
     background: transparent;
     color: var(--code-text);
   }

@@ -66,6 +66,7 @@ export default function CodeSnippetsTool() {
     const [formData, setFormData] = useState({ title: '', code: '', language: 'plaintext', tags: '', description: '' });
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const codeRefs = useRef<{ [key: string]: HTMLElement | null }>({});
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // 获取合并后的语言列表
     const getCombinedLanguages = () => {
@@ -175,12 +176,14 @@ export default function CodeSnippetsTool() {
             description: snippet.description || '',
             tags: Array.isArray(snippet.tags) ? snippet.tags.join(', ') : ''
         });
+        setTimeout(() => textareaRef.current?.focus(), 100);
     };
 
     const startCreate = () => {
         setIsCreating(true);
         setEditingId(null);
         setFormData({ title: '', code: '', language: 'plaintext', description: '', tags: '' });
+        setTimeout(() => textareaRef.current?.focus(), 100);
     };
 
     const cancelEdit = () => { setEditingId(null); setIsCreating(false); };
@@ -311,9 +314,10 @@ export default function CodeSnippetsTool() {
                     <div className="mb-3">
                         <label className="block text-xs text-[var(--text-secondary)] mb-1">代码内容 <span className="text-red-400">*</span></label>
                         <textarea
+                            ref={textareaRef}
                             value={formData.code}
                             onChange={e => setFormData({ ...formData, code: e.target.value })}
-                            className="w-full h-36 font-mono text-sm bg-black/80 text-green-400 border border-[var(--border-color)] rounded-lg px-3 py-2 outline-none resize-vertical"
+                            className="w-full h-36 font-mono text-sm bg-[var(--code-bg)] text-[var(--code-text)] border border-[var(--border-color)] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--accent-color)]/20 transition-all resize-vertical custom-scrollbar-thin"
                             placeholder="粘贴您的代码..."
                         />
                     </div>
@@ -386,8 +390,8 @@ export default function CodeSnippetsTool() {
                             </div>
 
                             {/* 代码区 */}
-                            <div className="relative bg-[var(--code-bg)] flex-1 overflow-hidden min-h-[60px]">
-                                <pre className="text-xs p-2 overflow-auto max-h-32 font-mono text-[var(--code-text)] custom-scrollbar-thin leading-tight">
+                            <div className="relative bg-[var(--code-bg)] flex-1 overflow-hidden min-h-[60px] flex flex-col">
+                                <pre className="text-xs p-3 pb-5 overflow-auto max-h-32 font-mono text-[var(--code-text)] custom-scrollbar-thin leading-tight flex-1">
                                     <code ref={el => { codeRefs.current[snippet.id] = el; }} className={`language-${snippet.language || 'plaintext'}`}>
                                         {snippet.code}
                                     </code>
