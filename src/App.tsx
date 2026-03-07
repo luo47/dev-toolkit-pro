@@ -487,12 +487,6 @@ export default function App() {
             </div>
           </div>
         </div>
-
-        <div className="p-4 md:p-6 max-w-[840px] mx-auto w-full">
-          <p className="text-center text-[10px] text-[var(--text-secondary)] mt-3">
-            浮云工具箱可以提供有用的工具，但某些高级功能可能需要登录。
-          </p>
-        </div>
       </main>
     </div>
   );
