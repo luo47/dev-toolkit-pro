@@ -564,4 +564,27 @@ app.post('/api/tools/usage/:toolName', async (c) => {
   }
 });
 
+// SPA 路由支持：对于所有不匹配 API 或静态资源的请求，返回 index.html
+app.get('*', async (c) => {
+  const url = new URL(c.req.url);
+  // 排除 API 请求
+  if (url.pathname.startsWith('/api/')) {
+    return c.notFound();
+  }
+
+  // 尝试从 ASSETS 绑定中获取
+  try {
+    const res = await c.env.ASSETS.fetch(c.req.raw);
+    if (res.status === 404) {
+      // 如果 404，说明可能是 SPA 路由，返回 index.html
+      return c.env.ASSETS.fetch(new Request(`${url.origin}/index.html`, c.req.raw));
+    }
+    return res;
+  } catch (e) {
+    // 降级处理
+    console.error('Asset fetch error:', e);
+    return c.notFound();
+  }
+});
+
 export default app;

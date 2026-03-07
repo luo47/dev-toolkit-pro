@@ -36,6 +36,8 @@ export default function Login({ onLogin, onClose }: LoginProps) {
         const res = await fetch(`${baseUrl}/api/auth/github/login?t=${Date.now()}`);
         const data = await res.json() as { url?: string };
         if (data.url) {
+          // 在重定向到 GitHub 之前，记录当前路径以便登录后返回
+          localStorage.setItem('redirect_to', window.location.pathname);
           window.location.href = data.url;
         } else {
           console.error('Failed to get GitHub login URL:', data);

@@ -10,7 +10,10 @@ import CodeSnippetsTool from './components/CodeSnippetsTool';
 type Tool = 'home' | 'qrcode' | 'chain-processor' | 'code-snippets';
 
 export default function App() {
-  const [activeTool, setActiveTool] = useState<Tool>('home');
+  const [activeTool, setActiveTool] = useState<Tool>(() => {
+    const path = window.location.pathname.replace('/', '');
+    return (path === '' ? 'home' : path) as Tool;
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const { user, loading, logout } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
@@ -30,6 +33,33 @@ export default function App() {
     }
   }, [isDarkMode]);
 
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.replace('/', '');
+      setActiveTool((path === '' ? 'home' : path) as Tool);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Handle post-login redirection
+  useEffect(() => {
+    if (!loading && user) {
+      const redirectTo = localStorage.getItem('redirect_to');
+      if (redirectTo) {
+        localStorage.removeItem('redirect_to');
+        const toolId = redirectTo.replace('/', '') as Tool;
+        if (toolId && (toolId === 'home' || tools.some(t => t.id === toolId))) {
+          setActiveTool(toolId);
+          if (window.location.pathname !== redirectTo) {
+            window.history.replaceState(null, '', redirectTo);
+          }
+        }
+      }
+    }
+  }, [user, loading]);
+
   const tools = [
     { id: 'code-snippets', name: '代码片段', icon: Code, isPremium: true },
     { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, isPremium: true },
@@ -43,9 +73,15 @@ export default function App() {
   const handleToolSelect = (id: Tool) => {
     const tool = tools.find(t => t.id === id);
     if (tool?.isPremium && !user) {
+      // Save current intended tool path for redirection after login
+      localStorage.setItem('redirect_to', `/${id}`);
       setShowLogin(true);
     } else {
       setActiveTool(id);
+      const newPath = id === 'home' ? '/' : `/${id}`;
+      if (window.location.pathname !== newPath) {
+        window.history.pushState(null, '', newPath);
+      }
       if (window.innerWidth < 1024) {
         setIsSidebarOpen(false);
       }
