@@ -18,6 +18,7 @@
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
+    "highlight.js": "^11.11.1",
     "hono": "^4.12.5",
     "jsonpath-plus": "^10.4.0",
     "jsqr": "^1.4.0",
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260305.1",
+    "@types/highlight.js": "^10.1.0",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
     "tailwindcss": "^4.1.14",

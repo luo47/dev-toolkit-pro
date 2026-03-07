@@ -5,8 +5,9 @@ import Login from './components/Login';
 import { useAuth } from './hooks/useAuth';
 import QRCodeTool from './components/QRCodeTool';
 import ChainProcessor from './components/ChainProcessor';
+import CodeSnippetsTool from './components/CodeSnippetsTool';
 
-type Tool = 'home' | 'qrcode' | 'chain-processor';
+type Tool = 'home' | 'qrcode' | 'chain-processor' | 'code-snippets';
 
 export default function App() {
   const [activeTool, setActiveTool] = useState<Tool>('home');
@@ -30,6 +31,7 @@ export default function App() {
   }, [isDarkMode]);
 
   const tools = [
+    { id: 'code-snippets', name: '代码片段', icon: Code, isPremium: false },
     { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, isPremium: true },
     { id: 'qrcode', name: '二维码', icon: QrCode, isPremium: false },
   ];
@@ -373,6 +375,7 @@ export default function App() {
                 <div className={activeTool === 'qrcode' ? '' : 'bg-[var(--bg-surface)] p-6 md:p-8 rounded-[28px] border border-[var(--border-color)] shadow-xl'}>
                   {activeTool === 'chain-processor' && <ChainProcessor />}
                   {activeTool === 'qrcode' && <QRCodeTool />}
+                  {activeTool === 'code-snippets' && <CodeSnippetsTool />}
                 </div>
               </div>
             )}

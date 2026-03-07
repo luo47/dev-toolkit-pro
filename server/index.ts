@@ -301,7 +301,230 @@ app.put('/api/chains/:id/favorite', async (c) => {
 });
 // --- End Chain Routes ---
 
+// --- Code Snippets Routes ---
+app.get('/api/snippets', async (c) => {
+  const userId = await getUserFromSession(c);
+  const url = new URL(c.req.url);
+  const language = url.searchParams.get('language');
+  const tag = url.searchParams.get('tag');
+  const search = url.searchParams.get('search');
+  const sort = url.searchParams.get('sort') || 'updated_at';
+  const order = url.searchParams.get('order') || 'desc';
+  const limit = parseInt(url.searchParams.get('limit') || '50');
+  const offset = parseInt(url.searchParams.get('offset') || '0');
+
+  try {
+    let query = `SELECT * FROM code_snippets WHERE (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''})`;
+    const params: any[] = [];
+    if (userId) {
+      params.push(userId);
+    }
+
+    const conditions = [];
+
+    if (language) {
+      conditions.push('language = ?');
+      params.push(language);
+    }
+    if (tag) {
+      conditions.push('tags LIKE ?');
+      params.push(`%"${tag}"%`);
+    }
+    if (search) {
+      conditions.push('(title LIKE ? OR code LIKE ? OR description LIKE ?)');
+      const p = `%${search}%`;
+      params.push(p, p, p);
+    }
+
+    if (conditions.length > 0) {
+      query += ' AND ' + conditions.join(' AND ');
+    }
+
+    const validSorts = ['copy_count', 'updated_at', 'created_at', 'title'];
+    const sortColumn = validSorts.includes(sort) ? sort : 'updated_at';
+    const sortOrder = order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+    query += ` ORDER BY ${sortColumn} ${sortOrder} LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    const result = await c.env.DB.prepare(query).bind(...params).all();
+
+    let countQuery = `SELECT COUNT(*) as total FROM code_snippets WHERE (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''})`;
+    if (conditions.length > 0) {
+      countQuery += ' AND ' + conditions.join(' AND ');
+    }
+    const countResult = await c.env.DB.prepare(countQuery).bind(...params.slice(0, -2)).first();
+
+    const snippets = result.results.map((r: any) => ({
+      ...r,
+      tags: r.tags ? JSON.parse(r.tags) : []
+    }));
+
+    return c.json({
+      snippets,
+      total: countResult ? countResult.total : 0,
+      limit,
+      offset,
+    });
+  } catch (e: any) {
+    console.error('Fetch snippets err:', e);
+    return c.json({ success: false, error: 'Database error' }, 500);
+  }
+});
+
+app.get('/api/snippets/:id', async (c) => {
+  const userId = await getUserFromSession(c);
+  const id = c.req.param('id');
+  try {
+    const result = await c.env.DB.prepare(
+      `SELECT * FROM code_snippets WHERE id = ? AND (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''})`
+    ).bind(id, userId || 'system').first();
+
+    if (!result) return c.json({ error: 'Snippet not found' }, 404);
+
+    return c.json({
+      ...result,
+      tags: result.tags ? JSON.parse(result.tags as string) : []
+    });
+  } catch (e: any) {
+    return c.json({ success: false, error: 'Database error' }, 500);
+  }
+});
+
+app.post('/api/snippets', async (c) => {
+  const userId = await getUserFromSession(c);
+  if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+
+  try {
+    const body = await c.req.json();
+    const { title = '', code, language = '', description = '', tags = [] } = body;
+
+    if (!code) return c.json({ error: 'Code is required' }, 400);
+
+    const tagsJson = JSON.stringify(tags);
+    const result = await c.env.DB.prepare(
+      'INSERT INTO code_snippets (user_id, title, code, language, description, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
+    ).bind(userId, title, code, language, description, tagsJson).run();
+
+    const newSnippet = await c.env.DB.prepare('SELECT * FROM code_snippets WHERE id = ?')
+      .bind(result.meta.last_row_id).first();
+
+    return c.json({
+      ...newSnippet,
+      tags: newSnippet?.tags ? JSON.parse(newSnippet.tags as string) : []
+    }, 201);
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500);
+  }
+});
+
+app.put('/api/snippets/:id', async (c) => {
+  const userId = await getUserFromSession(c);
+  if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+
+  const id = c.req.param('id');
+  try {
+    const body = await c.req.json();
+    const { title, code, language, description, tags, copyCountsDelta } = body;
+
+    const existing = await c.env.DB.prepare('SELECT * FROM code_snippets WHERE id = ?').bind(id).first();
+    if (!existing) return c.json({ error: 'Snippet not found' }, 404);
+
+    // Allow user to edit their own snippets or system snippets if admin? We just allow user to edit their own.
+    if (existing.user_id !== userId && existing.user_id !== 'system') { // Actually, standard users shouldn't edit system snippets unless they are admin, but let's just check if it's theirs or if they are just incrementing copy count
+      if (!copyCountsDelta && title !== undefined) {
+         return c.json({ error: 'Forbidden' }, 403);
+      }
+    }
+
+    if (copyCountsDelta && copyCountsDelta[id]) {
+        await c.env.DB.prepare('UPDATE code_snippets SET copy_count = copy_count + ? WHERE id = ?').bind(copyCountsDelta[id], id).run();
+        // Return quickly if it's just a copy
+        if (title === undefined && code === undefined) return c.json({ success: true });
+    }
+
+    if (existing.user_id !== userId) return c.json({ error: 'Forbidden' }, 403);
+
+    const updates = [];
+    const params = [];
+
+    if (title !== undefined) { updates.push('title = ?'); params.push(title); }
+    if (code !== undefined) { updates.push('code = ?'); params.push(code); }
+    if (language !== undefined) { updates.push('language = ?'); params.push(language); }
+    if (description !== undefined) { updates.push('description = ?'); params.push(description); }
+    if (tags !== undefined) { updates.push('tags = ?'); params.push(JSON.stringify(tags)); }
+
+    if (updates.length > 0) {
+      updates.push('updated_at = datetime("now")');
+      params.push(id);
+      await c.env.DB.prepare(`UPDATE code_snippets SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`).bind(...params, userId).run();
+    }
+
+    const updated = await c.env.DB.prepare('SELECT * FROM code_snippets WHERE id = ?').bind(id).first();
+    return c.json({
+      ...updated,
+      tags: updated?.tags ? JSON.parse(updated.tags as string) : []
+    });
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500);
+  }
+});
+
+app.delete('/api/snippets/:id', async (c) => {
+  const userId = await getUserFromSession(c);
+  if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+
+  const id = c.req.param('id');
+  try {
+    const result = await c.env.DB.prepare('DELETE FROM code_snippets WHERE id = ? AND user_id = ?').bind(id, userId).run();
+    if (result.meta.changes === 0) {
+      return c.json({ error: 'Snippet not found or unauthorized' }, 404);
+    }
+    return c.json({ success: true });
+  } catch (e: any) {
+    return c.json({ success: false, error: 'Database error' }, 500);
+  }
+});
+
+app.get('/api/snippets/data/languages', async (c) => {
+  const userId = await getUserFromSession(c);
+  try {
+    const result = await c.env.DB.prepare(
+      `SELECT DISTINCT language, COUNT(*) as count FROM code_snippets WHERE (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''}) GROUP BY language ORDER BY count DESC`
+    ).bind(userId || 'system').all();
+    return c.json(result.results);
+  } catch (e: any) {
+    return c.json({ success: false, error: 'Database error' }, 500);
+  }
+});
+
+app.get('/api/snippets/data/tags', async (c) => {
+  const userId = await getUserFromSession(c);
+  try {
+    const result = await c.env.DB.prepare(
+      `SELECT tags FROM code_snippets WHERE (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''})`
+    ).bind(userId || 'system').all();
+    
+    const tagCounts: Record<string, number> = {};
+    result.results.forEach((row: any) => {
+      if (row.tags) {
+        const tags = JSON.parse(row.tags);
+        tags.forEach((tag: string) => {
+          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        });
+      }
+    });
+    const tags = Object.entries(tagCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+    return c.json(tags);
+  } catch (e: any) {
+    return c.json({ success: false, error: 'Database error' }, 500);
+  }
+});
+// --- End Code Snippets Routes ---
+
 // 健康检查
+
 app.get('/api/health', (c) => {
   return c.json({
     status: 'ok',
