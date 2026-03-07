@@ -403,7 +403,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="flex-1 overflow-y-auto p-0.5 md:p-8">
           <div className={`${activeTool === 'chain-processor' || activeTool === 'code-snippets' ? 'max-w-[1400px]' : 'max-w-[840px]'} mx-auto w-full h-full flex flex-col`}>
             {activeTool === 'home' ? (
               <div className="flex-1 flex flex-col pt-8 pb-20">
@@ -415,12 +415,12 @@ export default function App() {
               </div>
             ) : (
               <div className="flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold tracking-tight leading-tight">
+                <div className="mb-1 md:mb-8 px-1 md:px-0">
+                  <h2 className="text-lg md:text-2xl font-bold tracking-tight leading-tight">
                     {tools.find((t) => t.id === activeTool)?.name}
                   </h2>
                 </div>
-                <div className={activeTool === 'qrcode' ? '' : 'bg-[var(--bg-surface)] p-6 md:p-8 rounded-[28px] border border-[var(--border-color)] shadow-xl'}>
+                <div className={activeTool === 'qrcode' ? '' : 'bg-[var(--bg-surface)] p-1.5 md:p-8 rounded-lg md:rounded-[28px] border border-[var(--border-color)] shadow-xl'}>
                   {activeTool === 'chain-processor' && <ChainProcessor />}
                   {activeTool === 'qrcode' && <QRCodeTool />}
                   {activeTool === 'code-snippets' && <CodeSnippetsTool />}

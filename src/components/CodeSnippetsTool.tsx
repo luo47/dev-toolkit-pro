@@ -113,33 +113,33 @@ export default function CodeSnippetsTool() {
     };
 
     return (
-        <div className="flex flex-col h-full gap-3">
+        <div className="flex flex-col h-full gap-1.5">
 
             {/* ── 工具栏：紧凑单行，移动端无多余 padding ── */}
-            <div className="flex items-center gap-2 bg-[var(--bg-surface)] px-3 py-2 rounded-2xl border border-[var(--border-color)]">
+            <div className="flex items-center gap-1.5 bg-[var(--bg-surface)] px-1.5 py-1 rounded-xl border border-[var(--border-color)]">
                 <div className="relative flex-1 min-w-0">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)] pointer-events-none" />
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-4 text-[var(--text-secondary)] pointer-events-none" />
                     <input
                         type="text"
                         placeholder="搜索片段..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="w-full pl-8 pr-3 py-1.5 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg text-sm outline-none focus:ring-2 focus:ring-[var(--accent-color)]/50 transition-all"
+                        className="w-full pl-7 pr-2 py-1 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg text-sm outline-none focus:ring-2 focus:ring-[var(--accent-color)]/50 transition-all placeholder:text-xs"
                     />
                 </div>
                 <select
                     value={languageFilter}
                     onChange={e => setLanguageFilter(e.target.value)}
-                    className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-2 py-1.5 text-sm outline-none shrink-0 max-w-[110px]"
+                    className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-1.5 py-1 text-xs outline-none shrink-0 max-w-[80px]"
                 >
                     <option value="">全部</option>
                     {languages.map(l => <option key={l.language} value={l.language}>{l.language}</option>)}
                 </select>
                 <button
                     onClick={startCreate}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-color)] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium shrink-0"
+                    className="flex items-center gap-1 px-2.5 py-1 bg-[var(--accent-color)] text-white rounded-lg hover:opacity-90 transition-opacity text-xs font-medium shrink-0"
                 >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3.5 h-3.5" />
                     <span className="hidden sm:inline">新建片段</span>
                     <span className="sm:hidden">新建</span>
                 </button>
@@ -202,12 +202,12 @@ export default function CodeSnippetsTool() {
                 </div>
             ) : (
                 /* 移动端单列，≥sm 两列，≥xl 三列 */
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 overflow-y-auto custom-scrollbar pb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-1.5 overflow-y-auto custom-scrollbar pb-1">
                     {snippets.map(snippet => (
                         <div key={snippet.id} className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl flex flex-col overflow-hidden hover:border-[var(--text-secondary)] transition-colors group">
 
                             {/* 卡片头部 */}
-                            <div className="flex items-center justify-between px-3 py-2 bg-[var(--bg-main)] border-b border-[var(--border-color)]">
+                            <div className="flex items-center justify-between px-2.5 py-1.5 bg-[var(--bg-main)] border-b border-[var(--border-color)]">
                                 <div className="flex items-center gap-2 overflow-hidden min-w-0">
                                     <Code2 className="w-3.5 h-3.5 text-[var(--accent-color)] shrink-0" />
                                     <div className="overflow-hidden">
@@ -235,7 +235,7 @@ export default function CodeSnippetsTool() {
 
                             {/* 代码区 */}
                             <div className="relative bg-[#0d1117] flex-1">
-                                <pre className="text-xs p-3 overflow-auto max-h-36 font-mono text-gray-300 custom-scrollbar">
+                                <pre className="text-xs p-2 overflow-auto max-h-32 font-mono text-gray-300 custom-scrollbar leading-tight">
                                     <code ref={el => { codeRefs.current[snippet.id] = el; }} className={`language-${snippet.language || 'plaintext'}`}>
                                         {snippet.code}
                                     </code>
@@ -248,7 +248,7 @@ export default function CodeSnippetsTool() {
                             </div>
 
                             {/* 标签 & 复制数 */}
-                            <div className="px-3 py-1.5 flex items-center justify-between border-t border-[var(--border-color)]">
+                            <div className="px-2.5 py-1 flex items-center justify-between border-t border-[var(--border-color)]">
                                 <div className="flex gap-1 items-center flex-wrap min-w-0">
                                     {snippet.tags && snippet.tags.length > 0 ? (
                                         snippet.tags.slice(0, 3).map((tag: string, i: number) => (
