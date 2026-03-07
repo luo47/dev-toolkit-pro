@@ -60,6 +60,18 @@ export default function App() {
     }
   }, [user, loading]);
 
+  // Update document title
+  useEffect(() => {
+    if (activeTool === 'home') {
+      document.title = '浮云工具箱 - v1.0';
+    } else {
+      const tool = tools.find(t => t.id === activeTool);
+      if (tool) {
+        document.title = `浮云工具箱 - ${tool.name}`;
+      }
+    }
+  }, [activeTool]);
+
   const tools = [
     { id: 'code-snippets', name: '代码片段', icon: Code, isPremium: true },
     { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, isPremium: true },
