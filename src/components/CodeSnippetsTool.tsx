@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Copy, Check, Trash2, Edit2, Code2, Tag as TagIcon, ArrowRight, Save, X, Eye } from 'lucide-react';
+import { Search, Plus, Copy, Check, Trash2, Edit2, Code2, Save, X } from 'lucide-react';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github-dark.css';
 
@@ -9,12 +9,10 @@ export default function CodeSnippetsTool() {
     const [search, setSearch] = useState('');
     const [languageFilter, setLanguageFilter] = useState('');
     const [languages, setLanguages] = useState<any[]>([]);
-
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [formData, setFormData] = useState({ title: '', code: '', language: 'plaintext', tags: '', description: '' });
     const [copiedId, setCopiedId] = useState<string | null>(null);
-
     const codeRefs = useRef<{ [key: string]: HTMLElement | null }>({});
 
     useEffect(() => {
@@ -23,17 +21,15 @@ export default function CodeSnippetsTool() {
     }, [search, languageFilter]);
 
     useEffect(() => {
-        // highlight code blocks after render
         snippets.forEach(snippet => {
             const block = codeRefs.current[snippet.id];
             if (block) {
-                // hljs.highlightElement(block);
-                // We do it manually to avoid double highlight issues in react strict mode sometimes
                 try {
-                    const highlighted = hljs.highlightAuto(snippet.code, snippet.language && snippet.language !== 'plaintext' ? [snippet.language.toLowerCase()] : undefined);
+                    const lang = snippet.language && snippet.language !== 'plaintext' ? snippet.language.toLowerCase() : undefined;
+                    const highlighted = lang ? hljs.highlight(snippet.code, { language: lang, ignoreIllegals: true }) : hljs.highlightAuto(snippet.code);
                     block.innerHTML = highlighted.value;
-                } catch (e) {
-                    block.textContent = snippet.code;
+                } catch {
+                    if (block) block.textContent = snippet.code;
                 }
             }
         });
@@ -42,30 +38,22 @@ export default function CodeSnippetsTool() {
     const fetchLanguages = async () => {
         try {
             const res = await fetch('/api/snippets/data/languages');
-            if (res.ok) {
-                const data = await res.json();
-                setLanguages(data);
-            }
-        } catch (e) {
-            console.error(e);
-        }
+            if (res.ok) setLanguages(await res.json());
+        } catch { }
     };
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            let url = '/api/snippets?limit=50';
+            let url = '/api/snippets?limit=100';
             if (search) url += `&search=${encodeURIComponent(search)}`;
             if (languageFilter) url += `&language=${encodeURIComponent(languageFilter)}`;
-
             const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json() as { snippets: any[] };
                 setSnippets(data.snippets || []);
             }
-        } catch (e) {
-            console.error('Fetch snippets failed', e);
-        }
+        } catch { }
         setLoading(false);
     };
 
@@ -73,30 +61,19 @@ export default function CodeSnippetsTool() {
         await navigator.clipboard.writeText(code);
         setCopiedId(id);
         setTimeout(() => setCopiedId(null), 2000);
-
-        // notify backend of copy increment
         fetch(`/api/snippets/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ copyCountsDelta: { [id]: 1 } })
         });
-
         setSnippets(prev => prev.map(s => s.id === id ? { ...s, copy_count: (s.copy_count || 0) + 1 } : s));
     };
 
     const handleDelete = async (id: string) => {
         if (!confirm('确定删除此代码片段吗？')) return;
-
-        try {
-            const res = await fetch(`/api/snippets/${id}`, { method: 'DELETE' });
-            if (res.ok) {
-                setSnippets(prev => prev.filter(s => s.id !== id));
-            } else {
-                alert('无法删除（可能由于权限或网络问题）');
-            }
-        } catch (e) {
-            console.error(e);
-        }
+        const res = await fetch(`/api/snippets/${id}`, { method: 'DELETE' });
+        if (res.ok) setSnippets(prev => prev.filter(s => s.id !== id));
+        else alert('无法删除（可能由于权限问题）');
     };
 
     const startEdit = (snippet: any) => {
@@ -117,209 +94,172 @@ export default function CodeSnippetsTool() {
         setFormData({ title: '', code: '', language: 'plaintext', description: '', tags: '' });
     };
 
-    const cancelEdit = () => {
-        setEditingId(null);
-        setIsCreating(false);
-    };
+    const cancelEdit = () => { setEditingId(null); setIsCreating(false); };
 
     const saveSnippet = async () => {
-        if (!formData.title || !formData.code) {
-            alert('标题和代码不能为空');
-            return;
-        }
-
-        const payload = {
-            ...formData,
-            tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
-        };
-
+        if (!formData.code) { alert('代码不能为空'); return; }
+        const payload = { ...formData, tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean) };
         try {
             if (isCreating) {
-                const res = await fetch('/api/snippets', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                if (res.ok) {
-                    const newSnippet = await res.json();
-                    setSnippets([newSnippet, ...snippets]);
-                    setIsCreating(false);
-                } else {
-                    alert('保存失败');
-                }
+                const res = await fetch('/api/snippets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (res.ok) { setSnippets([await res.json(), ...snippets]); setIsCreating(false); }
+                else alert('保存失败');
             } else if (editingId) {
-                const res = await fetch(`/api/snippets/${editingId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                if (res.ok) {
-                    const updatedSnippet = await res.json();
-                    setSnippets(prev => prev.map(s => s.id === editingId ? updatedSnippet : s));
-                    setEditingId(null);
-                } else {
-                    alert('更新失败，您可能没有权限');
-                }
+                const res = await fetch(`/api/snippets/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (res.ok) { setSnippets(prev => prev.map(s => s.id === editingId ? { ...s, ...payload } : s)); setEditingId(null); }
+                else alert('更新失败，您可能没有权限');
             }
-        } catch (e) {
-            console.error(e);
-            alert('网络错误');
-        }
+        } catch { alert('网络错误'); }
     };
 
     return (
-        <div className="flex flex-col h-full space-y-4">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-[var(--bg-surface)] p-4 rounded-2xl border border-[var(--border-color)]">
-                <div className="flex items-center gap-2 flex-1 w-full max-w-lg relative">
-                    <Search className="absolute left-3 w-5 h-5 text-[var(--text-secondary)]" />
+        <div className="flex flex-col h-full gap-3">
+
+            {/* ── 工具栏：紧凑单行，移动端无多余 padding ── */}
+            <div className="flex items-center gap-2 bg-[var(--bg-surface)] px-3 py-2 rounded-2xl border border-[var(--border-color)]">
+                <div className="relative flex-1 min-w-0">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)] pointer-events-none" />
                     <input
                         type="text"
-                        placeholder="搜索代码片段标题、代码..."
+                        placeholder="搜索片段..."
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl text-sm outline-none focus:ring-2 focus:ring-[var(--accent-color)]/50 transition-all"
+                        onChange={e => setSearch(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg text-sm outline-none focus:ring-2 focus:ring-[var(--accent-color)]/50 transition-all"
                     />
                 </div>
-                <div className="flex gap-2 w-full md:w-auto">
-                    <select
-                        value={languageFilter}
-                        onChange={(e) => setLanguageFilter(e.target.value)}
-                        className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl px-4 py-2 text-sm outline-none w-full md:w-auto"
-                    >
-                        <option value="">全部语言</option>
-                        {languages.map(lang => (
-                            <option key={lang.language} value={lang.language}>{lang.language} ({lang.count})</option>
-                        ))}
-                    </select>
-                    <button
-                        onClick={startCreate}
-                        className="flex items-center gap-2 px-4 py-2 bg-[var(--accent-color)] text-white rounded-xl hover:opacity-90 transition-opacity whitespace-nowrap font-medium"
-                    >
-                        <Plus className="w-4 h-4" />
-                        新建片段
-                    </button>
-                </div>
+                <select
+                    value={languageFilter}
+                    onChange={e => setLanguageFilter(e.target.value)}
+                    className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-2 py-1.5 text-sm outline-none shrink-0 max-w-[110px]"
+                >
+                    <option value="">全部</option>
+                    {languages.map(l => <option key={l.language} value={l.language}>{l.language}</option>)}
+                </select>
+                <button
+                    onClick={startCreate}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-color)] text-white rounded-lg hover:opacity-90 transition-opacity text-sm font-medium shrink-0"
+                >
+                    <Plus className="w-4 h-4" />
+                    <span className="hidden sm:inline">新建片段</span>
+                    <span className="sm:hidden">新建</span>
+                </button>
             </div>
 
+            {/* ── 编辑/新建表单 ── */}
             {(isCreating || editingId) && (
-                <div className="bg-[var(--bg-surface)] p-5 rounded-2xl border border-[var(--border-color)] animate-in fade-in slide-in-from-top-4 relative z-10 shadow-xl">
-                    <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold">{isCreating ? '新建代码片段' : '编辑代码片段'}</h3>
-                        <button onClick={cancelEdit} className="p-1 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)]">
-                            <X className="w-5 h-5" />
-                        </button>
+                <div className="bg-[var(--bg-surface)] p-4 rounded-2xl border border-[var(--border-color)] animate-in fade-in slide-in-from-top-4 z-10 shadow-xl">
+                    <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-base font-bold">{isCreating ? '新建代码片段' : '编辑代码片段'}</h3>
+                        <button onClick={cancelEdit} className="p-1 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)]"><X className="w-5 h-5" /></button>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-2 gap-3 mb-3">
                         <div>
                             <label className="block text-xs text-[var(--text-secondary)] mb-1">标题</label>
-                            <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl px-3 py-2 outline-none" placeholder="必填" />
+                            <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 text-sm outline-none" placeholder="片段标题" />
                         </div>
                         <div>
                             <label className="block text-xs text-[var(--text-secondary)] mb-1">语言</label>
-                            <input value={formData.language} onChange={e => setFormData({ ...formData, language: e.target.value })} className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl px-3 py-2 outline-none" placeholder="例如 javascript, sql, html..." />
+                            <input value={formData.language} onChange={e => setFormData({ ...formData, language: e.target.value })} className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 text-sm outline-none" placeholder="js, sql, yaml..." />
                         </div>
                     </div>
-
-                    <div className="mb-4">
-                        <label className="block text-xs text-[var(--text-secondary)] mb-1">代码内容</label>
+                    <div className="mb-3">
+                        <label className="block text-xs text-[var(--text-secondary)] mb-1">代码内容 <span className="text-red-400">*</span></label>
                         <textarea
                             value={formData.code}
                             onChange={e => setFormData({ ...formData, code: e.target.value })}
-                            className="w-full h-40 font-mono text-sm bg-black/80 text-green-400 border border-[var(--border-color)] rounded-xl px-3 py-3 outline-none whitespace-pre-wrap"
+                            className="w-full h-36 font-mono text-sm bg-black/80 text-green-400 border border-[var(--border-color)] rounded-lg px-3 py-2 outline-none resize-vertical"
                             placeholder="粘贴您的代码..."
                         />
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div className="grid grid-cols-2 gap-3 mb-4">
                         <div>
                             <label className="block text-xs text-[var(--text-secondary)] mb-1">标签 (逗号分隔)</label>
-                            <input value={formData.tags} onChange={e => setFormData({ ...formData, tags: e.target.value })} className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl px-3 py-2 outline-none" placeholder="react, hooks, util..." />
+                            <input value={formData.tags} onChange={e => setFormData({ ...formData, tags: e.target.value })} className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 text-sm outline-none" placeholder="react, hooks..." />
                         </div>
                         <div>
-                            <label className="block text-xs text-[var(--text-secondary)] mb-1">描述 (可选)</label>
-                            <input value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl px-3 py-2 outline-none" placeholder="简要说明" />
+                            <label className="block text-xs text-[var(--text-secondary)] mb-1">描述</label>
+                            <input value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 text-sm outline-none" placeholder="可选" />
                         </div>
                     </div>
-
-                    <div className="flex justify-end gap-3 mt-6">
-                        <button onClick={cancelEdit} className="px-5 py-2 hover:bg-[var(--hover-color)] border border-[var(--border-color)] rounded-xl text-sm font-medium">取消</button>
-                        <button onClick={saveSnippet} className="px-5 py-2 flex items-center gap-2 bg-[var(--accent-color)] text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity">
-                            <Save className="w-4 h-4" />
-                            保存
+                    <div className="flex justify-end gap-2">
+                        <button onClick={cancelEdit} className="px-4 py-1.5 border border-[var(--border-color)] rounded-lg text-sm hover:bg-[var(--hover-color)]">取消</button>
+                        <button onClick={saveSnippet} className="px-4 py-1.5 flex items-center gap-1.5 bg-[var(--accent-color)] text-white rounded-lg text-sm font-medium hover:opacity-90">
+                            <Save className="w-4 h-4" />保存
                         </button>
                     </div>
                 </div>
             )}
 
+            {/* ── 列表 ── */}
             {loading ? (
                 <div className="flex-1 flex items-center justify-center">
-                    <div className="w-8 h-8 rounded-full border-4 border-[var(--border-color)] border-t-[var(--accent-color)] animate-spin"></div>
+                    <div className="w-8 h-8 rounded-full border-4 border-[var(--border-color)] border-t-[var(--accent-color)] animate-spin" />
                 </div>
             ) : snippets.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-[var(--text-secondary)] mt-10 p-8 border border-dashed border-[var(--border-color)] rounded-3xl bg-[var(--bg-surface)]">
-                    <Code2 className="w-12 h-12 mb-3 opacity-20" />
-                    <p>没有找到匹配的代码片段</p>
+                <div className="flex-1 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] p-8 border border-dashed border-[var(--border-color)] rounded-3xl bg-[var(--bg-surface)]">
+                    <Code2 className="w-12 h-12 opacity-20" />
+                    <p className="text-sm">没有找到匹配的代码片段</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 overflow-y-auto pr-2 custom-scrollbar">
+                /* 移动端单列，≥sm 两列，≥xl 三列 */
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 overflow-y-auto custom-scrollbar pb-4">
                     {snippets.map(snippet => (
-                        <div key={snippet.id} className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl flex flex-col overflow-hidden group hover:border-[var(--text-secondary)] transition-colors">
-                            <div className="flex justify-between items-center px-4 py-3 bg-[var(--bg-main)] border-b border-[var(--border-color)]">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                    <div className="w-8 h-8 rounded-lg bg-[var(--bg-surface)] border border-[var(--border-color)] flex items-center justify-center shrink-0">
-                                        <Code2 className="w-4 h-4 text-[var(--accent-color)]" />
-                                    </div>
-                                    <div className="flex flex-col overflow-hidden">
-                                        <h4 className="font-semibold text-sm truncate">{snippet.title}</h4>
-                                        <span className="text-[10px] text-[var(--text-secondary)] uppercase tracking-wider">{snippet.language}</span>
+                        <div key={snippet.id} className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl flex flex-col overflow-hidden hover:border-[var(--text-secondary)] transition-colors group">
+
+                            {/* 卡片头部 */}
+                            <div className="flex items-center justify-between px-3 py-2 bg-[var(--bg-main)] border-b border-[var(--border-color)]">
+                                <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                                    <Code2 className="w-3.5 h-3.5 text-[var(--accent-color)] shrink-0" />
+                                    <div className="overflow-hidden">
+                                        <div className="text-xs font-medium truncate leading-tight">
+                                            {snippet.title || <span className="text-[var(--text-secondary)] italic">无标题</span>}
+                                        </div>
+                                        {snippet.language && (
+                                            <div className="text-[9px] text-[var(--text-secondary)] uppercase tracking-wider leading-tight opacity-70">{snippet.language}</div>
+                                        )}
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => handleCopy(snippet.id, snippet.code)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)] hover:text-white" title="复制代码">
-                                        {copiedId === snippet.id ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
+                                {/* 操作按钮：始终可见 */}
+                                <div className="flex items-center gap-0.5 shrink-0">
+                                    <button onClick={() => handleCopy(snippet.id, snippet.code)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]" title="复制">
+                                        {copiedId === snippet.id ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
                                     </button>
-                                    <button onClick={() => startEdit(snippet)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--accent-color)]" title="编辑">
-                                        <Edit2 className="w-4 h-4" />
+                                    <button onClick={() => startEdit(snippet)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]" title="编辑">
+                                        <Edit2 className="w-3.5 h-3.5" />
                                     </button>
-                                    <button onClick={() => handleDelete(snippet.id)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)] hover:text-red-400" title="删除">
-                                        <Trash2 className="w-4 h-4" />
+                                    <button onClick={() => handleDelete(snippet.id)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)] hover:text-red-400" title="删除">
+                                        <Trash2 className="w-3.5 h-3.5" />
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="relative overflow-hidden bg-[#0d1117]">
-                                <pre className="text-xs p-4 overflow-auto max-h-60 font-mono text-gray-300 custom-scrollbar">
-                                    <code
-                                        ref={el => codeRefs.current[snippet.id] = el}
-                                        className={`language-${snippet.language || 'plaintext'}`}
-                                    >
+                            {/* 代码区 */}
+                            <div className="relative bg-[#0d1117] flex-1">
+                                <pre className="text-xs p-3 overflow-auto max-h-36 font-mono text-gray-300 custom-scrollbar">
+                                    <code ref={el => { codeRefs.current[snippet.id] = el; }} className={`language-${snippet.language || 'plaintext'}`}>
                                         {snippet.code}
                                     </code>
                                 </pre>
                                 {copiedId === snippet.id && (
-                                    <div className="absolute top-2 right-2 bg-green-500/20 text-green-400 border border-green-500/50 text-[10px] px-2 py-1 rounded backdrop-blur-md hidden md:flex items-center gap-1 animate-in fade-in">
-                                        <Check className="w-3 h-3" /> 已复制
+                                    <div className="absolute top-1.5 right-1.5 bg-green-500/20 text-green-400 border border-green-500/50 text-[9px] px-1.5 py-0.5 rounded flex items-center gap-1 animate-in fade-in">
+                                        <Check className="w-2.5 h-2.5" /> 已复制
                                     </div>
                                 )}
                             </div>
 
-                            <div className="px-4 py-3 flex items-center justify-between border-t border-[var(--border-color)] mt-auto">
-                                <div className="flex gap-2 items-center flex-wrap">
+                            {/* 标签 & 复制数 */}
+                            <div className="px-3 py-1.5 flex items-center justify-between border-t border-[var(--border-color)]">
+                                <div className="flex gap-1 items-center flex-wrap min-w-0">
                                     {snippet.tags && snippet.tags.length > 0 ? (
-                                        snippet.tags.map((tag: string, i: number) => (
-                                            <span key={i} className="flex items-center gap-1 text-[10px] px-2 py-1 bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]">
-                                                <TagIcon className="w-3 h-3" />
-                                                {tag}
-                                            </span>
+                                        snippet.tags.slice(0, 3).map((tag: string, i: number) => (
+                                            <span key={i} className="text-[9px] px-1.5 py-0.5 bg-[var(--hover-color)] rounded text-[var(--text-secondary)]">{tag}</span>
                                         ))
                                     ) : (
-                                        <span className="text-[10px] text-[var(--text-secondary)] opacity-50 italic">无标签</span>
+                                        <span className="text-[9px] text-[var(--text-secondary)] opacity-40 italic">无标签</span>
                                     )}
                                 </div>
-                                <div className="text-[10px] text-[var(--text-secondary)] shrink-0 flex items-center gap-1">
-                                    <Copy className="w-3 h-3" />
-                                    {snippet.copy_count || 0}
+                                <div className="text-[9px] text-[var(--text-secondary)] shrink-0 flex items-center gap-1 ml-2">
+                                    <Copy className="w-2.5 h-2.5" />{snippet.copy_count || 0}
                                 </div>
                             </div>
                         </div>

@@ -356,7 +356,7 @@ export default function App() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
-          <div className={`${activeTool === 'chain-processor' ? 'max-w-[1400px]' : 'max-w-[840px]'} mx-auto w-full h-full flex flex-col`}>
+          <div className={`${activeTool === 'chain-processor' || activeTool === 'code-snippets' ? 'max-w-[1400px]' : 'max-w-[840px]'} mx-auto w-full h-full flex flex-col`}>
             {activeTool === 'home' ? (
               <div className="flex-1 flex flex-col pt-8 pb-20">
                 <Home
