@@ -375,9 +375,9 @@ app.get('/api/snippets/:id', async (c) => {
   const userId = await getUserFromSession(c);
   const id = c.req.param('id');
   try {
-    const result = await c.env.DB.prepare(
-      `SELECT * FROM code_snippets WHERE id = ? AND (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''})`
-    ).bind(id, userId || 'system').first();
+    const sql = `SELECT * FROM code_snippets WHERE id = ? AND (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''})`;
+    const stmt = userId ? c.env.DB.prepare(sql).bind(id, userId) : c.env.DB.prepare(sql).bind(id);
+    const result = await stmt.first();
 
     if (!result) return c.json({ error: 'Snippet not found' }, 404);
 
@@ -432,14 +432,14 @@ app.put('/api/snippets/:id', async (c) => {
     // Allow user to edit their own snippets or system snippets if admin? We just allow user to edit their own.
     if (existing.user_id !== userId && existing.user_id !== 'system') { // Actually, standard users shouldn't edit system snippets unless they are admin, but let's just check if it's theirs or if they are just incrementing copy count
       if (!copyCountsDelta && title !== undefined) {
-         return c.json({ error: 'Forbidden' }, 403);
+        return c.json({ error: 'Forbidden' }, 403);
       }
     }
 
     if (copyCountsDelta && copyCountsDelta[id]) {
-        await c.env.DB.prepare('UPDATE code_snippets SET copy_count = copy_count + ? WHERE id = ?').bind(copyCountsDelta[id], id).run();
-        // Return quickly if it's just a copy
-        if (title === undefined && code === undefined) return c.json({ success: true });
+      await c.env.DB.prepare('UPDATE code_snippets SET copy_count = copy_count + ? WHERE id = ?').bind(copyCountsDelta[id], id).run();
+      // Return quickly if it's just a copy
+      if (title === undefined && code === undefined) return c.json({ success: true });
     }
 
     if (existing.user_id !== userId) return c.json({ error: 'Forbidden' }, 403);
@@ -488,22 +488,22 @@ app.delete('/api/snippets/:id', async (c) => {
 app.get('/api/snippets/data/languages', async (c) => {
   const userId = await getUserFromSession(c);
   try {
-    const result = await c.env.DB.prepare(
-      `SELECT DISTINCT language, COUNT(*) as count FROM code_snippets WHERE (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''}) GROUP BY language ORDER BY count DESC`
-    ).bind(userId || 'system').all();
+    const sql = `SELECT DISTINCT language, COUNT(*) as count FROM code_snippets WHERE (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''}) AND language IS NOT NULL GROUP BY language ORDER BY count DESC`;
+    const stmt = userId ? c.env.DB.prepare(sql).bind(userId) : c.env.DB.prepare(sql);
+    const result = await stmt.all();
     return c.json(result.results);
   } catch (e: any) {
-    return c.json({ success: false, error: 'Database error' }, 500);
+    return c.json({ success: false, error: e?.message || 'Database error' }, 500);
   }
 });
 
 app.get('/api/snippets/data/tags', async (c) => {
   const userId = await getUserFromSession(c);
   try {
-    const result = await c.env.DB.prepare(
-      `SELECT tags FROM code_snippets WHERE (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''})`
-    ).bind(userId || 'system').all();
-    
+    const sql = `SELECT tags FROM code_snippets WHERE (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''})`;
+    const stmt = userId ? c.env.DB.prepare(sql).bind(userId) : c.env.DB.prepare(sql);
+    const result = await stmt.all();
+
     const tagCounts: Record<string, number> = {};
     result.results.forEach((row: any) => {
       if (row.tags) {
