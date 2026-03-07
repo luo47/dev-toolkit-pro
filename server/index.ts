@@ -343,7 +343,12 @@ app.get('/api/snippets', async (c) => {
     const validSorts = ['copy_count', 'updated_at', 'created_at', 'title'];
     const sortColumn = validSorts.includes(sort) ? sort : 'updated_at';
     const sortOrder = order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
-    query += ` ORDER BY ${sortColumn} ${sortOrder} LIMIT ? OFFSET ?`;
+
+    if (sortColumn === 'title') {
+      query += ` ORDER BY (CASE WHEN title IS NULL OR title = '' THEN 1 ELSE 0 END) ASC, title ${sortOrder} LIMIT ? OFFSET ?`;
+    } else {
+      query += ` ORDER BY ${sortColumn} ${sortOrder} LIMIT ? OFFSET ?`;
+    }
     params.push(limit, offset);
 
     const result = await c.env.DB.prepare(query).bind(...params).all();
