@@ -16,6 +16,15 @@ import cpp from 'highlight.js/lib/languages/cpp';
 import java from 'highlight.js/lib/languages/java';
 import go from 'highlight.js/lib/languages/go';
 import rust from 'highlight.js/lib/languages/rust';
+import php from 'highlight.js/lib/languages/php';
+import csharp from 'highlight.js/lib/languages/csharp';
+import ruby from 'highlight.js/lib/languages/ruby';
+import shell from 'highlight.js/lib/languages/shell';
+import dockerfile from 'highlight.js/lib/languages/dockerfile';
+import makefile from 'highlight.js/lib/languages/makefile';
+import ini from 'highlight.js/lib/languages/ini';
+import properties from 'highlight.js/lib/languages/properties';
+import diff from 'highlight.js/lib/languages/diff';
 // import 'highlight.js/styles/github-dark.css'; // 移除固定的暗色样式，改为使用 CSS 变量控制
 
 // 注册常用语言
@@ -34,6 +43,15 @@ hljs.registerLanguage('cpp', cpp);
 hljs.registerLanguage('java', java);
 hljs.registerLanguage('go', go);
 hljs.registerLanguage('rust', rust);
+hljs.registerLanguage('php', php);
+hljs.registerLanguage('csharp', csharp);
+hljs.registerLanguage('ruby', ruby);
+hljs.registerLanguage('shell', shell);
+hljs.registerLanguage('dockerfile', dockerfile);
+hljs.registerLanguage('makefile', makefile);
+hljs.registerLanguage('ini', ini);
+hljs.registerLanguage('properties', properties);
+hljs.registerLanguage('diff', diff);
 hljs.registerLanguage('plaintext', () => ({ name: 'plaintext', contains: [] }));
 
 const SORT_OPTIONS = [
@@ -43,10 +61,55 @@ const SORT_OPTIONS = [
     { value: 'title:asc', label: '标题排序' },
 ];
 
-const PRESET_LANGUAGES = [
-    'plaintext', 'javascript', 'typescript', 'python', 'html', 'css',
-    'sql', 'json', 'yaml', 'markdown', 'bash', 'c', 'cpp', 'java', 'go', 'rust'
+const LANGUAGE_GROUPS = [
+    {
+        label: '网页前端',
+        options: [
+            { value: 'html', label: 'html (xml)' },
+            { value: 'css', label: 'css' },
+            { value: 'javascript', label: 'javascript (js)' },
+            { value: 'typescript', label: 'typescript (ts)' },
+            { value: 'json', label: 'json' },
+        ]
+    },
+    {
+        label: '后端/通用',
+        options: [
+            { value: 'java', label: 'java' },
+            { value: 'python', label: 'python (py)' },
+            { value: 'php', label: 'php' },
+            { value: 'c', label: 'c' },
+            { value: 'cpp', label: 'cpp (c++)' },
+            { value: 'csharp', label: 'csharp (cs)' },
+            { value: 'go', label: 'go' },
+            { value: 'rust', label: 'rust' },
+            { value: 'ruby', label: 'ruby' },
+        ]
+    },
+    {
+        label: '脚本/运维',
+        options: [
+            { value: 'bash', label: 'bash (sh)' },
+            { value: 'shell', label: 'shell' },
+            { value: 'yaml', label: 'yaml (yml)' },
+            { value: 'dockerfile', label: 'dockerfile' },
+            { value: 'makefile', label: 'makefile' },
+            { value: 'ini', label: 'ini' },
+            { value: 'properties', label: 'properties' },
+        ]
+    },
+    {
+        label: '数据/文档',
+        options: [
+            { value: 'sql', label: 'sql' },
+            { value: 'markdown', label: 'markdown (md)' },
+            { value: 'diff', label: 'diff' },
+            { value: 'plaintext', label: 'plaintext (text)' },
+        ]
+    }
 ];
+
+const PRESET_LANGUAGES = LANGUAGE_GROUPS.flatMap(g => g.options.map(o => o.value));
 
 // localStorage 键名
 const LS_SORT = 'cs_filter_sort';
@@ -228,8 +291,12 @@ export default function CodeSnippetsTool() {
                     className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-2 py-1 text-xs outline-none shrink-0 min-w-[90px] cursor-pointer hover:border-[var(--text-secondary)] transition-colors"
                 >
                     <option value="">所有语言</option>
-                    {getCombinedLanguages().map(lang => (
-                        <option key={lang} value={lang}>{lang}</option>
+                    {LANGUAGE_GROUPS.map(group => (
+                        <optgroup key={group.label} label={group.label}>
+                            {group.options.map(opt => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                        </optgroup>
                     ))}
                 </select>
 
@@ -305,8 +372,12 @@ export default function CodeSnippetsTool() {
                                 onChange={e => setFormData({ ...formData, language: e.target.value })}
                                 className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 text-sm outline-none cursor-pointer"
                             >
-                                {getCombinedLanguages().map(lang => (
-                                    <option key={lang} value={lang}>{lang}</option>
+                                {LANGUAGE_GROUPS.map(group => (
+                                    <optgroup key={group.label} label={group.label}>
+                                        {group.options.map(opt => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </optgroup>
                                 ))}
                             </select>
                         </div>
