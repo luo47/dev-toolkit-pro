@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, Plus, Copy, Check, Trash2, Edit2, Code2, Save, X } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, Plus, Copy, Check, Trash2, Edit2, Code2, Save, X, ArrowUpDown, Tag } from 'lucide-react';
 import hljs from 'highlight.js/lib/core';
 import javascript from 'highlight.js/lib/languages/javascript';
 import typescript from 'highlight.js/lib/languages/typescript';
@@ -36,11 +36,30 @@ hljs.registerLanguage('go', go);
 hljs.registerLanguage('rust', rust);
 hljs.registerLanguage('plaintext', () => ({ name: 'plaintext', contains: [] }));
 
+const SORT_OPTIONS = [
+    { value: 'updated_at:desc', label: '最新修改' },
+    { value: 'copy_count:desc', label: '复制次数' },
+    { value: 'created_at:desc', label: '最新创建' },
+    { value: 'title:asc', label: '标题排序' },
+];
+
+const PRESET_LANGUAGES = [
+    'plaintext', 'javascript', 'typescript', 'python', 'html', 'css',
+    'sql', 'json', 'yaml', 'markdown', 'bash', 'c', 'cpp', 'java', 'go', 'rust'
+];
+
+// localStorage 键名
+const LS_SORT = 'cs_filter_sort';
+const LS_LANG = 'cs_filter_language';
+
 export default function CodeSnippetsTool() {
     const [snippets, setSnippets] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [languageFilter, setLanguageFilter] = useState('');
+    const [languageFilter, setLanguageFilter] = useState(() => localStorage.getItem(LS_LANG) || '');
+    const [sortValue, setSortValue] = useState(() => localStorage.getItem(LS_SORT) || 'updated_at:desc');
+    const [activeTag, setActiveTag] = useState('');
+    const [allTags, setAllTags] = useState<{ name: string; count: number }[]>([]);
     const [languages, setLanguages] = useState<any[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
@@ -48,24 +67,56 @@ export default function CodeSnippetsTool() {
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const codeRefs = useRef<{ [key: string]: HTMLElement | null }>({});
 
-    // 常用语言预设
-    const PRESET_LANGUAGES = [
-        'plaintext', 'javascript', 'typescript', 'python', 'html', 'css',
-        'sql', 'json', 'yaml', 'markdown', 'bash', 'c', 'cpp', 'java', 'go', 'rust'
-    ];
-
-    // 获取合并后的语言列表（预设 + 数据库已有）
+    // 获取合并后的语言列表
     const getCombinedLanguages = () => {
         const dynamicLangs = languages.map(l => l.language).filter(Boolean);
         const combined = new Set([...PRESET_LANGUAGES, ...dynamicLangs]);
         return Array.from(combined).sort();
     };
 
+    // 构建查询参数并拉取数据
+    const fetchData = useCallback(async () => {
+        setLoading(true);
+        try {
+            const [sort, order] = sortValue.split(':');
+            let url = `/api/snippets?limit=100&sort=${sort}&order=${order}`;
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+            if (languageFilter) url += `&language=${encodeURIComponent(languageFilter)}`;
+            if (activeTag) url += `&tag=${encodeURIComponent(activeTag)}`;
+
+            const res = await fetch(url);
+            if (res.ok) {
+                const data = await res.json() as { snippets: any[] };
+                setSnippets(data.snippets || []);
+                // 从返回的数据中提取标签统计
+                const tagCounts: Record<string, number> = {};
+                (data.snippets || []).forEach((s: any) => {
+                    (s.tags || []).forEach((tag: string) => {
+                        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+                    });
+                });
+                const tags = Object.entries(tagCounts)
+                    .map(([name, count]) => ({ name, count }))
+                    .sort((a, b) => b.count - a.count);
+                setAllTags(tags);
+            }
+        } catch { }
+        setLoading(false);
+    }, [search, languageFilter, sortValue, activeTag]);
+
+    const fetchLanguages = async () => {
+        try {
+            const res = await fetch('/api/snippets/data/languages');
+            if (res.ok) setLanguages(await res.json());
+        } catch { }
+    };
+
     useEffect(() => {
         fetchData();
         fetchLanguages();
-    }, [search, languageFilter]);
+    }, [fetchData]);
 
+    // 高亮代码
     useEffect(() => {
         snippets.forEach(snippet => {
             const block = codeRefs.current[snippet.id];
@@ -81,26 +132,18 @@ export default function CodeSnippetsTool() {
         });
     }, [snippets, loading]);
 
-    const fetchLanguages = async () => {
-        try {
-            const res = await fetch('/api/snippets/data/languages');
-            if (res.ok) setLanguages(await res.json());
-        } catch { }
+    // 持久化排序和语言
+    const handleSortChange = (val: string) => {
+        setSortValue(val);
+        localStorage.setItem(LS_SORT, val);
+    };
+    const handleLanguageChange = (val: string) => {
+        setLanguageFilter(val);
+        localStorage.setItem(LS_LANG, val);
     };
 
-    const fetchData = async () => {
-        setLoading(true);
-        try {
-            let url = '/api/snippets?limit=100';
-            if (search) url += `&search=${encodeURIComponent(search)}`;
-            if (languageFilter) url += `&language=${encodeURIComponent(languageFilter)}`;
-            const res = await fetch(url);
-            if (res.ok) {
-                const data = await res.json() as { snippets: any[] };
-                setSnippets(data.snippets || []);
-            }
-        } catch { }
-        setLoading(false);
+    const handleTagClick = (tag: string) => {
+        setActiveTag(prev => prev === tag ? '' : tag);
     };
 
     const handleCopy = async (id: string, code: string) => {
@@ -161,8 +204,9 @@ export default function CodeSnippetsTool() {
     return (
         <div className="flex flex-col h-full gap-1.5">
 
-            {/* ── 工具栏：紧凑单行，移动端无多余 padding ── */}
+            {/* ── 工具栏 ── */}
             <div className="flex items-center gap-1.5 bg-[var(--bg-surface)] px-1.5 py-1 rounded-xl border border-[var(--border-color)]">
+                {/* 搜索框 */}
                 <div className="relative flex-1 min-w-0">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-4 text-[var(--text-secondary)] pointer-events-none" />
                     <input
@@ -173,16 +217,34 @@ export default function CodeSnippetsTool() {
                         className="w-full pl-7 pr-2 py-1 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg text-sm outline-none focus:ring-2 focus:ring-[var(--accent-color)]/50 transition-all placeholder:text-xs"
                     />
                 </div>
+
+                {/* 语言筛选 */}
                 <select
                     value={languageFilter}
-                    onChange={e => setLanguageFilter(e.target.value)}
-                    className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-2 py-1 text-xs outline-none shrink-0 min-w-[100px] cursor-pointer hover:border-[var(--text-secondary)] transition-colors"
+                    onChange={e => handleLanguageChange(e.target.value)}
+                    className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-2 py-1 text-xs outline-none shrink-0 min-w-[90px] cursor-pointer hover:border-[var(--text-secondary)] transition-colors"
                 >
                     <option value="">所有语言</option>
                     {getCombinedLanguages().map(lang => (
                         <option key={lang} value={lang}>{lang}</option>
                     ))}
                 </select>
+
+                {/* 排序 */}
+                <div className="relative shrink-0">
+                    <ArrowUpDown className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--text-secondary)] pointer-events-none" />
+                    <select
+                        value={sortValue}
+                        onChange={e => handleSortChange(e.target.value)}
+                        className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg pl-6 pr-2 py-1 text-xs outline-none cursor-pointer hover:border-[var(--text-secondary)] transition-colors min-w-[90px]"
+                    >
+                        {SORT_OPTIONS.map(o => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* 新建按钮 */}
                 <button
                     onClick={startCreate}
                     className="flex items-center gap-1 px-2.5 py-1 bg-[var(--accent-color)] text-white rounded-lg hover:opacity-90 transition-opacity text-xs font-medium shrink-0"
@@ -192,6 +254,34 @@ export default function CodeSnippetsTool() {
                     <span className="sm:hidden">新建</span>
                 </button>
             </div>
+
+            {/* ── 标签导航栏 ── */}
+            {allTags.length > 0 && (
+                <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 shrink-0">
+                    <Tag className="w-3 h-3 text-[var(--text-secondary)] shrink-0 ml-0.5" />
+                    {allTags.map(tag => (
+                        <button
+                            key={tag.name}
+                            onClick={() => handleTagClick(tag.name)}
+                            className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full border transition-all whitespace-nowrap ${activeTag === tag.name
+                                    ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium'
+                                    : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
+                                }`}
+                        >
+                            {tag.name}
+                            <span className="ml-1 opacity-60">{tag.count}</span>
+                        </button>
+                    ))}
+                    {activeTag && (
+                        <button
+                            onClick={() => setActiveTag('')}
+                            className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border border-dashed border-[var(--border-color)] text-[var(--text-secondary)] hover:border-red-400 hover:text-red-400 transition-all whitespace-nowrap flex items-center gap-0.5"
+                        >
+                            <X className="w-2.5 h-2.5" />清除
+                        </button>
+                    )}
+                </div>
+            )}
 
             {/* ── 编辑/新建表单 ── */}
             {(isCreating || editingId) && (
@@ -255,6 +345,11 @@ export default function CodeSnippetsTool() {
                 <div className="flex-1 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] p-8 border border-dashed border-[var(--border-color)] rounded-3xl bg-[var(--bg-surface)]">
                     <Code2 className="w-12 h-12 opacity-20" />
                     <p className="text-sm">没有找到匹配的代码片段</p>
+                    {activeTag && (
+                        <button onClick={() => setActiveTag('')} className="text-xs text-[var(--accent-color)] hover:underline">
+                            清除标签筛选「{activeTag}」
+                        </button>
+                    )}
                 </div>
             ) : (
                 /* 移动端单列，≥sm 两列，≥xl 三列 */
@@ -275,8 +370,9 @@ export default function CodeSnippetsTool() {
                                         )}
                                     </div>
                                 </div>
-                                {/* 操作按钮：始终可见 */}
+                                {/* 操作按钮：copy_count + 操作图标 */}
                                 <div className="flex items-center gap-0.5 shrink-0">
+                                    <span className="text-[9px] text-[var(--text-secondary)] mr-1">{snippet.copy_count || 0}</span>
                                     <button onClick={() => handleCopy(snippet.id, snippet.code)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]" title="复制">
                                         {copiedId === snippet.id ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
                                     </button>
@@ -303,20 +399,24 @@ export default function CodeSnippetsTool() {
                                 )}
                             </div>
 
-                            {/* 标签 & 复制数 */}
-                            <div className="px-2.5 py-1 flex items-center justify-between border-t border-[var(--border-color)]">
-                                <div className="flex gap-1 items-center flex-wrap min-w-0">
-                                    {snippet.tags && snippet.tags.length > 0 ? (
-                                        snippet.tags.slice(0, 3).map((tag: string, i: number) => (
-                                            <span key={i} className="text-[9px] px-1.5 py-0.5 bg-[var(--hover-color)] rounded text-[var(--text-secondary)]">{tag}</span>
-                                        ))
-                                    ) : (
-                                        <span className="text-[9px] text-[var(--text-secondary)] opacity-40 italic">无标签</span>
-                                    )}
-                                </div>
-                                <div className="text-[9px] text-[var(--text-secondary)] shrink-0 flex items-center gap-1 ml-2">
-                                    <Copy className="w-2.5 h-2.5" />{snippet.copy_count || 0}
-                                </div>
+                            {/* 标签区 */}
+                            <div className="px-2.5 py-1 flex items-center gap-1 flex-wrap border-t border-[var(--border-color)]">
+                                {snippet.tags && snippet.tags.length > 0 ? (
+                                    snippet.tags.slice(0, 4).map((tag: string, i: number) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => handleTagClick(tag)}
+                                            className={`text-[9px] px-1.5 py-0.5 rounded transition-colors cursor-pointer ${activeTag === tag
+                                                    ? 'bg-[var(--accent-color)]/20 text-[var(--accent-color)] border border-[var(--accent-color)]/40'
+                                                    : 'bg-[var(--hover-color)] text-[var(--text-secondary)] hover:text-[var(--accent-color)]'
+                                                }`}
+                                        >
+                                            {tag}
+                                        </button>
+                                    ))
+                                ) : (
+                                    <span className="text-[9px] text-[var(--text-secondary)] opacity-40 italic">无标签</span>
+                                )}
                             </div>
                         </div>
                     ))}
