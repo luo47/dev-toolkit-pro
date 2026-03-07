@@ -15,6 +15,19 @@ export default function CodeSnippetsTool() {
     const [copiedId, setCopiedId] = useState<string | null>(null);
     const codeRefs = useRef<{ [key: string]: HTMLElement | null }>({});
 
+    // 常用语言预设
+    const PRESET_LANGUAGES = [
+        'plaintext', 'javascript', 'typescript', 'python', 'html', 'css',
+        'sql', 'json', 'yaml', 'markdown', 'bash', 'c', 'cpp', 'java', 'go', 'rust'
+    ];
+
+    // 获取合并后的语言列表（预设 + 数据库已有）
+    const getCombinedLanguages = () => {
+        const dynamicLangs = languages.map(l => l.language).filter(Boolean);
+        const combined = new Set([...PRESET_LANGUAGES, ...dynamicLangs]);
+        return Array.from(combined).sort();
+    };
+
     useEffect(() => {
         fetchData();
         fetchLanguages();
@@ -130,10 +143,12 @@ export default function CodeSnippetsTool() {
                 <select
                     value={languageFilter}
                     onChange={e => setLanguageFilter(e.target.value)}
-                    className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-1.5 py-1 text-xs outline-none shrink-0 max-w-[80px]"
+                    className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-2 py-1 text-xs outline-none shrink-0 min-w-[100px] cursor-pointer hover:border-[var(--text-secondary)] transition-colors"
                 >
-                    <option value="">全部</option>
-                    {languages.map(l => <option key={l.language} value={l.language}>{l.language}</option>)}
+                    <option value="">所有语言</option>
+                    {getCombinedLanguages().map(lang => (
+                        <option key={lang} value={lang}>{lang}</option>
+                    ))}
                 </select>
                 <button
                     onClick={startCreate}
@@ -159,7 +174,15 @@ export default function CodeSnippetsTool() {
                         </div>
                         <div>
                             <label className="block text-xs text-[var(--text-secondary)] mb-1">语言</label>
-                            <input value={formData.language} onChange={e => setFormData({ ...formData, language: e.target.value })} className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 text-sm outline-none" placeholder="js, sql, yaml..." />
+                            <select
+                                value={formData.language}
+                                onChange={e => setFormData({ ...formData, language: e.target.value })}
+                                className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 text-sm outline-none cursor-pointer"
+                            >
+                                {getCombinedLanguages().map(lang => (
+                                    <option key={lang} value={lang}>{lang}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
                     <div className="mb-3">
