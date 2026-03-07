@@ -486,12 +486,14 @@ export default function App() {
               </div>
             )}
 
-            <div className="mt-auto py-8">
-              <p className="text-center text-[10px] text-[var(--text-secondary)]">
-                浮云工具箱可以提供有用的工具，但某些高级功能可能需要登录。
-              </p>
-            </div>
           </div>
+        </div>
+
+        {/* 固定页脚 */}
+        <div className="py-2 bg-[var(--bg-main)]/80 backdrop-blur-md border-t border-[var(--border-color)] z-20">
+          <p className="text-center text-[10px] text-[var(--text-secondary)]">
+            浮云工具箱可以提供有用的工具，但某些高级功能可能需要登录。
+          </p>
         </div>
       </main>
     </div>
