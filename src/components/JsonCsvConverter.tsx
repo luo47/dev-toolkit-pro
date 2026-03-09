@@ -193,7 +193,7 @@ export default function JsonCsvConverter() {
           </label>
           <button
             onClick={() => setInput('')}
-            className="text-[10px] font-bold text-[var(--text-secondary)] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+            className="text-[10px] font-bold text-[var(--text-secondary)] hover:text-red-500 transition-colors md:opacity-0 md:group-hover:opacity-100"
           >
             清空输入
           </button>

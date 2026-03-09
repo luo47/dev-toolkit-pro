@@ -1277,13 +1277,13 @@ export default function ChainProcessor() {
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => toggleFavorite(chain.id)}
-                      className={`p-1.5 rounded-lg transition-colors ${chain.isFavorite ? 'text-yellow-400 hover:bg-yellow-400/10' : 'text-[var(--text-secondary)] hover:bg-[var(--hover-color)] opacity-0 group-hover:opacity-100'}`}
+                      className={`p-1.5 rounded-lg transition-colors ${chain.isFavorite ? 'text-yellow-400 hover:bg-yellow-400/10' : 'text-[var(--text-secondary)] hover:bg-[var(--hover-color)] md:opacity-0 md:group-hover:opacity-100'}`}
                     >
                       <Star className={`w-3.5 h-3.5 ${chain.isFavorite ? 'fill-current' : ''}`} />
                     </button>
                     <button
                       onClick={() => deleteChain(chain.id)}
-                      className="p-1.5 text-[var(--text-secondary)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                      className="p-1.5 text-[var(--text-secondary)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors md:opacity-0 md:group-hover:opacity-100"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

@@ -116,7 +116,7 @@ export default function QRCodeTool() {
             {text && (
               <button
                 onClick={() => setText('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-[var(--hover-color)] rounded-full text-[var(--text-secondary)] hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-[var(--hover-color)] rounded-full text-[var(--text-secondary)] hover:text-red-500 transition-all md:opacity-0 md:group-hover:opacity-100"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>

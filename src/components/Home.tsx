@@ -4,16 +4,24 @@ interface HomeProps {
   onSelectTool: (toolId: string) => void;
   isLoggedIn: boolean;
   onOpenLogin: () => void;
+  searchQuery?: string;
 }
 
-export default function Home({ onSelectTool, isLoggedIn, onOpenLogin }: HomeProps) {
-  const tools = [
+export default function Home({ onSelectTool, isLoggedIn, onOpenLogin, searchQuery = '' }: HomeProps) {
+  const allTools = [
+    { id: 'cloud-share', name: '云分享', icon: Server, description: '极简且高效的云端资产同步工具，支持文本片段与多文件包分享。', isPremium: false },
     { id: 'code-snippets', name: '代码片段', icon: Code, description: '代码片段管理工具，带有标签过滤和一键复制功能。', isPremium: true },
     { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, description: '强大的链式文本处理引擎，支持 JS、JSONPath 等多种处理步骤。', isPremium: true },
     { id: 'qrcode', name: '二维码', icon: QrCode, description: '二维码生成与识别，支持实时生成及图片识别。', isPremium: false },
   ];
 
+  const tools = allTools.filter(t => 
+    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const handleToolClick = (tool: any) => {
+// ... 剩下的逻辑
     if (tool.isPremium && !isLoggedIn) {
       onOpenLogin();
     } else {
@@ -60,10 +68,7 @@ export default function Home({ onSelectTool, isLoggedIn, onOpenLogin }: HomeProp
               </p>
             </div>
 
-            <div className="flex items-center justify-between mt-4">
-              <span className="text-[11px] font-medium text-[var(--text-secondary)] uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all translate-x-[-10px] group-hover:translate-x-0 duration-300">
-                {tool.isPremium && !isLoggedIn ? '立即解锁' : '打开工具'}
-              </span>
+            <div className="flex items-center justify-end mt-4">
               <div className="w-9 h-9 rounded-full bg-[var(--bg-main)] flex items-center justify-center group-hover:bg-[var(--accent-color)] transition-all duration-300 group-hover:scale-110">
                 <ArrowRight className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-white" />
               </div>

@@ -77,7 +77,7 @@ export default function App() {
   }, [activeTool]);
 
   const tools = [
-    { id: 'cloud-share', name: '云分享', icon: Server, isPremium: false, subName: '文本 & 文件' },
+    { id: 'cloud-share', name: '云分享', icon: Server, isPremium: false },
     { id: 'code-snippets', name: '代码片段', icon: Code, isPremium: true },
     { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, isPremium: true },
     { id: 'qrcode', name: '二维码', icon: QrCode, isPremium: false },
@@ -469,6 +469,7 @@ export default function App() {
                   onSelectTool={(id) => handleToolSelect(id as Tool)}
                   isLoggedIn={!!user}
                   onOpenLogin={() => setShowLogin(true)}
+                  searchQuery={searchQuery}
                 />
               </div>
             ) : (

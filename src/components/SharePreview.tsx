@@ -211,7 +211,7 @@ const SharePreview: React.FC = () => {
               </div>
               <button 
                 onClick={() => downloadSingle(file.path)}
-                className="p-3 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl opacity-0 group-hover:opacity-100 hover:border-[var(--accent-color)]/50 hover:text-[var(--accent-color)] transition-all shadow-sm"
+                className="p-3 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl md:opacity-0 md:group-hover:opacity-100 hover:border-[var(--accent-color)]/50 hover:text-[var(--accent-color)] transition-all shadow-sm"
                 title="分流下载"
               >
                 <Download size={18} />

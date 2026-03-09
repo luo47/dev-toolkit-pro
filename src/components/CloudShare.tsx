@@ -113,29 +113,22 @@ const CloudShare: React.FC = () => {
   return (
     <div className="w-full max-w-[1400px] mx-auto min-h-[800px] pb-24 px-4 sm:px-6 lg:px-8 space-y-8">
       
-      {/* 顶部工具栏 - 高度集成增删查 */}
+      {/* 顶部工具栏 - 搜索与操作 */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6">
-        <div>
-          <h1 className="text-4xl font-black italic tracking-tighter text-white/90 flex items-center gap-4">
-            <span className="bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent">云分享控制台</span>
-          </h1>
-          <p className="text-white/30 text-xs mt-2 font-mono uppercase tracking-widest">在这里高效管理您的所有云端分享资产</p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4 w-full">
           {/* 搜索框 */}
-          <div className="relative group flex-1 sm:flex-none sm:min-w-[300px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-blue-500 transition-colors" size={18} />
+          <div className="relative group flex-1 md:max-w-md">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] group-focus-within:text-blue-500 transition-colors" size={18} />
             <input 
               type="text" 
               placeholder="快速检索分享内容 or ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-12 bg-white/5 border border-white/10 rounded-2xl pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all placeholder:text-white/10"
+              className="w-full h-12 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all placeholder:text-[var(--text-secondary)] shadow-sm"
             />
           </div>
 
-          <div className="h-8 w-px bg-white/5 hidden sm:block" />
+          <div className="h-8 w-px bg-[var(--border-color)] hidden sm:block" />
 
           {/* 新建按钮组 */}
           <button 
@@ -151,9 +144,9 @@ const CloudShare: React.FC = () => {
       {/* 主列表区域 */}
       <div className="space-y-4">
         {isLoading && shares.length === 0 ? (
-          <div className="bg-white/5 rounded-[32px] border border-white/5 p-32 text-center animate-pulse">
+          <div className="bg-[var(--bg-surface)] rounded-[32px] border border-[var(--border-color)] p-32 text-center animate-pulse">
             <Loader2 className="animate-spin mx-auto mb-4 text-blue-500" size={32} />
-            <p className="text-white/20 text-sm italic font-mono uppercase tracking-widest">正在同步数据...</p>
+            <p className="text-[var(--text-secondary)] text-sm italic font-mono uppercase tracking-widest">正在同步数据...</p>
           </div>
         ) : filteredShares.length === 0 ? (
           <div className="bg-white/5 rounded-[32px] border border-white/5 p-32 text-center">
@@ -168,7 +161,7 @@ const CloudShare: React.FC = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.03 }}
-              className="group bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 hover:border-blue-500/30 rounded-[28px] p-6 flex flex-col md:flex-row items-center gap-8 transition-all relative overflow-hidden"
+              className="group bg-[var(--bg-surface)] hover:bg-[var(--hover-color)] border border-[var(--border-color)] hover:border-blue-500/30 rounded-[28px] p-6 flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8 transition-all relative overflow-hidden shadow-sm hover:shadow-md"
             >
               <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${share.type === 'file' ? 'bg-emerald-500/50' : 'bg-blue-500/50'}`} />
 
@@ -183,13 +176,13 @@ const CloudShare: React.FC = () => {
                     <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${share.type === 'file' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}`}>
                       {share.type === 'file' ? (share.files?.length === 1 ? '单文件' : '多文件') : '纯文本'}
                     </span>
-                    <code className="text-[10px] font-mono text-white/20 tracking-widest uppercase">ID: {share.id}</code>
+                    <code className="text-[10px] font-mono text-[var(--text-secondary)] tracking-widest uppercase">ID: {share.id}</code>
                   </div>
-                  <h3 className="text-lg font-bold text-white/90 truncate group-hover:text-white">
+                  <h3 className="text-lg font-bold text-[var(--text-primary)] truncate group-hover:text-blue-500">
                     {share.type === 'file' ? (share.name || (share.files?.length === 1 ? '未命名文件' : '未命名资产包')) : (share.content?.slice(0, 40) || '文本片段')}
                   </h3>
                   <div className="flex items-center gap-4 mt-2">
-                    <span className="text-[11px] text-white/20 flex items-center gap-1.5">
+                    <span className="text-[11px] text-[var(--text-secondary)] flex items-center gap-1.5">
                       <History size={12} />
                       {new Date(share.createdAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </span>
@@ -203,18 +196,18 @@ const CloudShare: React.FC = () => {
                 </div>
               </div>
 
-              {/* 操作区 */}
-              <div className="flex items-center gap-2 p-1.5 bg-black/40 rounded-2xl border border-white/5 opacity-0 group-hover:opacity-100 transition-all scale-95 group-hover:scale-100">
+              {/* 操作区 - 移动端默认可见，桌面端悬停可见 */}
+              <div className="flex items-center gap-2 p-1.5 bg-[var(--bg-surface)] backdrop-blur rounded-2xl border border-[var(--border-color)] md:opacity-0 md:group-hover:opacity-100 transition-all md:scale-95 md:group-hover:scale-100 shadow-xl shadow-black/5">
                 <button 
                   onClick={() => window.open(`/s/${share.id}`, '_blank')}
-                  className="w-12 h-12 flex items-center justify-center hover:bg-emerald-500 hover:text-white rounded-xl transition-all text-white/20"
+                  className="w-12 h-12 flex items-center justify-center hover:bg-emerald-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
                   title="立即预览"
                 >
                   <Eye size={20} />
                 </button>
                 <button 
                   onClick={() => copyLink(share.id)}
-                  className="w-12 h-12 flex items-center justify-center hover:bg-white hover:text-black rounded-xl transition-all text-white/20"
+                  className="w-12 h-12 flex items-center justify-center hover:bg-blue-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
                   title="复制链接"
                 >
                   <Copy size={20} />
@@ -222,16 +215,16 @@ const CloudShare: React.FC = () => {
                 {share.type === 'text' && (
                   <button 
                     onClick={() => setEditingShare(share)}
-                    className="w-12 h-12 flex items-center justify-center hover:bg-blue-500 hover:text-white rounded-xl transition-all text-white/20"
+                    className="w-12 h-12 flex items-center justify-center hover:bg-blue-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
                     title="编辑"
                   >
                     <Edit3 size={20} />
                   </button>
                 )}
-                <div className="w-px h-6 bg-white/5 mx-1" />
+                <div className="w-px h-6 bg-[var(--border-color)] mx-1" />
                 <button 
                   onClick={() => deleteShare(share.id)}
-                  className="w-12 h-12 flex items-center justify-center hover:bg-red-500 hover:text-white rounded-xl transition-all text-white/20"
+                  className="w-12 h-12 flex items-center justify-center hover:bg-red-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
                   title="删除"
                 >
                   <Trash2 size={20} />
@@ -354,14 +347,14 @@ const UploadModal: React.FC<{ onClose: () => void, onSuccess: () => void }> = ({
               <Plus size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-bold">创建新分享</h2>
+              <h2 className="text-xl font-bold text-[var(--text-primary)]">创建新分享</h2>
               <div className="flex gap-4 mt-1">
-                <button onClick={() => setShareType('text')} className={`text-xs font-bold uppercase transition-colors ${shareType === 'text' ? 'text-blue-500' : 'text-white/20'}`}>纯文本</button>
-                <button onClick={() => setShareType('file')} className={`text-xs font-bold uppercase transition-colors ${shareType === 'file' ? 'text-emerald-500' : 'text-white/20'}`}>文件夹/文件</button>
+                <button onClick={() => setShareType('text')} className={`text-xs font-bold uppercase transition-colors ${shareType === 'text' ? 'text-blue-500' : 'text-[var(--text-secondary)]'}`}>纯文本</button>
+                <button onClick={() => setShareType('file')} className={`text-xs font-bold uppercase transition-colors ${shareType === 'file' ? 'text-emerald-500' : 'text-[var(--text-secondary)]'}`}>文件夹/文件</button>
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-full transition-colors text-white/20"><X size={24} /></button>
+          <button onClick={onClose} className="p-3 hover:bg-[var(--hover-color)] rounded-full transition-colors text-[var(--text-secondary)]"><X size={24} /></button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8">
@@ -371,7 +364,7 @@ const UploadModal: React.FC<{ onClose: () => void, onSuccess: () => void }> = ({
               value={textContent}
               onChange={(e) => setTextContent(e.target.value)}
               placeholder="粘贴您的文本或代码..."
-              className="w-full h-[300px] bg-black/40 border border-white/5 rounded-2xl p-6 text-sm font-mono focus:outline-none focus:border-blue-500/50 transition-all resize-none shadow-inner"
+              className="w-full h-[300px] bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl p-6 text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:border-blue-500/50 transition-all resize-none shadow-inner"
             />
           ) : (
             <div 
@@ -400,11 +393,11 @@ const UploadModal: React.FC<{ onClose: () => void, onSuccess: () => void }> = ({
                 </div>
               ) : (
                 <>
-                  <Upload className="text-white/10 mb-4" size={48} />
-                  <p className="text-white/20 text-sm mb-6">释放资产以进行云同步</p>
+                  <Upload className="text-[var(--text-secondary)] opacity-10 mb-4" size={48} />
+                  <p className="text-[var(--text-secondary)] text-sm mb-6">释放资产以进行云同步</p>
                   <div className="flex gap-4">
-                    <button onClick={() => fileInputRef.current?.click()} className="h-12 px-6 bg-white/5 border border-white/5 rounded-xl text-sm font-bold hover:bg-white/10 transition-all">选择文件</button>
-                    <button onClick={() => folderInputRef.current?.click()} className="h-12 px-6 bg-white/5 border border-white/5 rounded-xl text-sm font-bold hover:bg-white/10 transition-all">选择文件夹</button>
+                    <button onClick={() => fileInputRef.current?.click()} className="h-12 px-6 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl text-sm font-bold text-[var(--text-primary)] hover:bg-[var(--hover-color)] transition-all">选择文件</button>
+                    <button onClick={() => folderInputRef.current?.click()} className="h-12 px-6 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl text-sm font-bold text-[var(--text-primary)] hover:bg-[var(--hover-color)] transition-all">选择文件夹</button>
                   </div>
                 </>
               )}
@@ -427,12 +420,12 @@ const UploadModal: React.FC<{ onClose: () => void, onSuccess: () => void }> = ({
           </div>
         </div>
 
-        <div className="p-8 bg-white/[0.02] border-t border-white/5">
-          <button 
-            disabled={isUploading || (shareType === 'text' ? !textContent.trim() : selectedFiles.length === 0)}
-            onClick={createShare}
-            className={`w-full h-16 rounded-[22px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all relative overflow-hidden ${isUploading ? 'bg-white/10 text-white/40' : 'bg-white text-black hover:scale-[1.02] active:scale-95 shadow-xl'}`}
-          >
+          <div className="p-8 bg-[var(--bg-surface)] border-t border-[var(--border-color)]">
+            <button 
+              disabled={isUploading || (shareType === 'text' ? !textContent.trim() : selectedFiles.length === 0)}
+              onClick={createShare}
+              className={`w-full h-16 rounded-[22px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all relative overflow-hidden ${isUploading ? 'bg-[var(--border-color)] text-[var(--text-secondary)]' : 'bg-[var(--accent-color)] text-white hover:scale-[1.02] active:scale-95 shadow-xl shadow-blue-500/20'}`}
+            >
              {isUploading ? (
                <>
                  <div className="absolute inset-0 bg-blue-500/20 origin-left transition-all" style={{ width: `${uploadProgress}%` }} />

@@ -24,9 +24,8 @@ import dockerfile from 'highlight.js/lib/languages/dockerfile';
 import makefile from 'highlight.js/lib/languages/makefile';
 import ini from 'highlight.js/lib/languages/ini';
 import properties from 'highlight.js/lib/languages/properties';
-import toml from 'highlight.js/lib/languages/ini'; // highlight.js uses ini for toml often, or has a toml-specific one. Let's try importing it.
+import toml from 'highlight.js/lib/languages/ini'; 
 import diff from 'highlight.js/lib/languages/diff';
-// import 'highlight.js/styles/github-dark.css'; // 移除固定的暗色样式，改为使用 CSS 变量控制
 
 // 注册常用语言
 hljs.registerLanguage('javascript', javascript);
@@ -141,9 +140,7 @@ const PRESET_LANGUAGES: Record<string, string> = {
     'plaintext': 'txt'
 };
 
-// localStorage 键名
 const LS_SORT = 'cs_filter_sort';
-const LS_LANG = 'cs_filter_language';
 
 export default function CodeSnippetsTool() {
     const [allSnippets, setAllSnippets] = useState<any[]>([]);
@@ -154,7 +151,7 @@ export default function CodeSnippetsTool() {
     const [activeTag, setActiveTag] = useState('');
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
-    const [formData, setFormData] = useState({ title: '', code: '', language: 'plaintext', tags: '', description: '' });
+    const [formData, setFormData] = useState({ title: '', code: '', language: 'plaintext', tags: '' });
     const [langSearch, setLangSearch] = useState('');
     const [isLangOpen, setIsLangOpen] = useState(false);
     const langRef = useRef<HTMLDivElement>(null);
@@ -162,7 +159,6 @@ export default function CodeSnippetsTool() {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
-    // 点击外部关闭语言选择器
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (langRef.current && !langRef.current.contains(e.target as Node)) {
@@ -173,7 +169,6 @@ export default function CodeSnippetsTool() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // 过滤后的语言分组
     const filteredGroups = LANGUAGE_GROUPS.map(group => ({
         ...group,
         options: group.options.filter(opt => 
@@ -182,16 +177,13 @@ export default function CodeSnippetsTool() {
         )
     })).filter(group => group.options.length > 0);
 
-    // 获取当前已有的缩写
     const getLanguageLabel = (lang: string) => {
         return PRESET_LANGUAGES[lang] || lang;
     };
 
-    // 获取全量数据
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            // 获取较多数据以供本地筛选，这里增加 limit 到 1000 或更高
             const res = await fetch('/api/snippets?limit=2000');
             if (res.ok) {
                 const data = await res.json() as { snippets: any[] };
@@ -205,65 +197,47 @@ export default function CodeSnippetsTool() {
         fetchData();
     }, [fetchData]);
 
-    // 本地计算筛选和排序结果
     const snippets = React.useMemo(() => {
         let result = [...allSnippets];
-
-        // 搜索过滤
         if (search) {
             const s = search.toLowerCase();
             result = result.filter(item => 
                 (item.title || '').toLowerCase().includes(s) || 
-                (item.code || '').toLowerCase().includes(s) || 
-                (item.description || '').toLowerCase().includes(s)
+                (item.code || '').toLowerCase().includes(s)
             );
         }
-
-        // 语言过滤
         if (languageFilter) {
             result = result.filter(item => item.language === languageFilter);
         }
-
-        // 标签过滤
         if (activeTag) {
             result = result.filter(item => item.tags && item.tags.includes(activeTag));
         }
-
-        // 排序
         const [field, order] = sortValue.split(':');
         result.sort((a, b) => {
             let v1 = a[field];
             let v2 = b[field];
-
             if (field === 'title') {
                 v1 = v1 || '';
                 v2 = v2 || '';
             }
-
             if (order === 'desc') {
                 return v1 < v2 ? 1 : v1 > v2 ? -1 : 0;
             } else {
                 return v1 > v2 ? 1 : v1 < v2 ? -1 : 0;
             }
         });
-
         return result;
     }, [allSnippets, search, languageFilter, activeTag, sortValue]);
 
-    // 本地计算标签统计 (联动：受语言和搜索影响)
     const allTags = React.useMemo(() => {
         const counts: Record<string, number> = {};
         const sFilter = search.toLowerCase();
         allSnippets.forEach(s => {
-            // 语言联动
             if (languageFilter && s.language !== languageFilter) return;
-            // 搜索联动
             if (search && !(
                 (s.title || '').toLowerCase().includes(sFilter) || 
-                (s.code || '').toLowerCase().includes(sFilter) || 
-                (s.description || '').toLowerCase().includes(sFilter)
+                (s.code || '').toLowerCase().includes(sFilter)
             )) return;
-
             if (Array.isArray(s.tags)) {
                 s.tags.forEach(tag => {
                     counts[tag] = (counts[tag] || 0) + 1;
@@ -275,20 +249,15 @@ export default function CodeSnippetsTool() {
             .sort((a, b) => b.count - a.count);
     }, [allSnippets, languageFilter, search]);
 
-    // 本地计算语言统计 (联动：受标签和搜索影响)
     const languages = React.useMemo(() => {
         const counts: Record<string, number> = {};
         const sFilter = search.toLowerCase();
         allSnippets.forEach(s => {
-            // 标签联动
             if (activeTag && !(Array.isArray(s.tags) && s.tags.includes(activeTag))) return;
-            // 搜索联动
             if (search && !(
                 (s.title || '').toLowerCase().includes(sFilter) || 
-                (s.code || '').toLowerCase().includes(sFilter) || 
-                (s.description || '').toLowerCase().includes(sFilter)
+                (s.code || '').toLowerCase().includes(sFilter)
             )) return;
-
             if (s.language) {
                 counts[s.language] = (counts[s.language] || 0) + 1;
             }
@@ -298,7 +267,6 @@ export default function CodeSnippetsTool() {
             .sort((a, b) => b.count - a.count);
     }, [allSnippets, activeTag, search]);
 
-    // 高亮代码
     useEffect(() => {
         snippets.forEach(snippet => {
             const block = codeRefs.current[snippet.id];
@@ -314,7 +282,6 @@ export default function CodeSnippetsTool() {
         });
     }, [snippets]);
 
-    // 持久化排序和语言
     const handleSortChange = (val: string) => {
         setSortValue(val);
         localStorage.setItem(LS_SORT, val);
@@ -322,7 +289,6 @@ export default function CodeSnippetsTool() {
     const handleLanguageChange = (val: string) => {
         setLanguageFilter(prev => prev === val ? '' : val);
     };
-
     const handleTagClick = (tag: string) => {
         setActiveTag(prev => prev === tag ? '' : tag);
     };
@@ -344,7 +310,7 @@ export default function CodeSnippetsTool() {
         const res = await fetch(`/api/snippets/${id}`, { method: 'DELETE' });
         if (res.ok) {
             setAllSnippets(prev => prev.filter(s => s.id !== id));
-        } else alert('无法删除（可能由于权限问题）');
+        } else alert('无法删除');
     };
 
     const startEdit = (snippet: any) => {
@@ -354,7 +320,6 @@ export default function CodeSnippetsTool() {
             title: snippet.title,
             code: snippet.code,
             language: snippet.language || 'plaintext',
-            description: snippet.description || '',
             tags: Array.isArray(snippet.tags) ? snippet.tags.join(', ') : ''
         });
         setTimeout(() => textareaRef.current?.focus(), 100);
@@ -363,7 +328,7 @@ export default function CodeSnippetsTool() {
     const startCreate = () => {
         setIsCreating(true);
         setEditingId(null);
-        setFormData({ title: '', code: '', language: 'plaintext', description: '', tags: '' });
+        setFormData({ title: '', code: '', language: 'plaintext', tags: '' });
         setTimeout(() => textareaRef.current?.focus(), 100);
     };
 
@@ -387,17 +352,15 @@ export default function CodeSnippetsTool() {
                     setAllSnippets(prev => prev.map(s => s.id === editingId ? { ...s, ...payload } : s)); 
                     setEditingId(null); 
                 }
-                else alert('更新失败，您可能没有权限');
+                else alert('更新失败');
             }
         } catch { alert('网络错误'); }
     };
 
     return (
         <div className="flex flex-col h-full gap-1.5">
-
             {/* ── 工具栏 ── */}
             <div className="flex items-center gap-1.5 bg-[var(--bg-surface)] px-1.5 py-1 rounded-xl border border-[var(--border-color)]">
-                {/* 搜索框 */}
                 <div className="relative flex-1 min-w-0">
                     <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-4 text-[var(--text-secondary)] pointer-events-none" />
                     <input
@@ -408,8 +371,6 @@ export default function CodeSnippetsTool() {
                         className="w-full pl-7 pr-2 py-1 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg text-sm outline-none focus:ring-2 focus:ring-[var(--accent-color)]/50 transition-all placeholder:text-xs"
                     />
                 </div>
-
-                {/* 排序 */}
                 <div className="relative shrink-0">
                     <ArrowUpDown className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--text-secondary)] pointer-events-none" />
                     <select
@@ -422,259 +383,165 @@ export default function CodeSnippetsTool() {
                         ))}
                     </select>
                 </div>
-
-                {/* 新建按钮 */}
                 <button
                     onClick={startCreate}
                     className="flex items-center justify-center p-1.5 bg-[var(--accent-color)] text-white rounded-lg hover:opacity-90 transition-opacity shrink-0"
-                    title="新建片段"
                 >
                     <Plus className="w-4 h-4" />
                 </button>
             </div>
 
-            {/* ── 语言筛选标签栏 ── */}
-            <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 shrink-0 px-0.5 min-h-[26px]">
-                {languageFilter ? (
-                    <button
-                        onClick={() => handleLanguageChange('')}
-                        className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm transition-all whitespace-nowrap flex items-center gap-1"
-                    >
-                        <X className="w-2.5 h-2.5" />
-                        {getLanguageLabel(languageFilter)}
-                        <span className="ml-1 opacity-60">
-                            {languages.find(l => l.language === languageFilter)?.count || 0}
-                        </span>
-                    </button>
-                ) : (
-                    languages
-                        .filter(opt => opt.language !== '')
-                        .map(opt => (
-                            <button
-                                key={opt.language}
-                                onClick={() => handleLanguageChange(opt.language)}
-                                className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)] transition-all whitespace-nowrap"
-                            >
-                                {getLanguageLabel(opt.language)}
-                                <span className="ml-1 opacity-60">{opt.count}</span>
+            {/* ── 语言/标签导航 ── */}
+            <div className="flex flex-col gap-1 shrink-0">
+                <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 px-0.5 min-h-[26px]">
+                    {languageFilter ? (
+                        <button onClick={() => handleLanguageChange('')} className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm transition-all flex items-center gap-1">
+                            <X className="w-2.5 h-2.5" />{getLanguageLabel(languageFilter)}
+                        </button>
+                    ) : (
+                        languages.filter(opt => opt.language !== '').map(opt => (
+                            <button key={opt.language} onClick={() => handleLanguageChange(opt.language)} className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)] transition-all">
+                                {getLanguageLabel(opt.language)}<span className="ml-1 opacity-60">{opt.count}</span>
                             </button>
                         ))
+                    )}
+                </div>
+                {allTags.length > 0 && (
+                    <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 min-h-[26px]">
+                        <Tag className="w-3 h-3 text-[var(--text-secondary)] shrink-0 ml-0.5" />
+                        {activeTag ? (
+                            <button onClick={() => setActiveTag('')} className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm transition-all flex items-center gap-1">
+                                <X className="w-2.5 h-2.5" />{activeTag}
+                            </button>
+                        ) : (
+                            allTags.map(tag => (
+                                <button key={tag.name} onClick={() => handleTagClick(tag.name)} className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)] transition-all">
+                                    {tag.name}<span className="ml-1 opacity-60">{tag.count}</span>
+                                </button>
+                            ))
+                        )}
+                    </div>
                 )}
             </div>
 
-            {/* ── 标签导航栏 ── */}
-            {allTags.length > 0 && (
-                <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 shrink-0 min-h-[26px]">
-                    <Tag className="w-3 h-3 text-[var(--text-secondary)] shrink-0 ml-0.5" />
-                    {activeTag ? (
-                        <button
-                            onClick={() => setActiveTag('')}
-                            className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm transition-all whitespace-nowrap flex items-center gap-1"
-                        >
-                            <X className="w-2.5 h-2.5" />
-                            {activeTag}
-                            <span className="ml-1 opacity-60">
-                                {allTags.find(t => t.name === activeTag)?.count || 0}
-                            </span>
-                        </button>
-                    ) : (
-                        allTags.map(tag => (
-                            <button
-                                key={tag.name}
-                                onClick={() => handleTagClick(tag.name)}
-                                className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)] transition-all whitespace-nowrap"
-                            >
-                                {tag.name}
-                                <span className="ml-1 opacity-60">{tag.count}</span>
-                            </button>
-                        ))
-                    )}
-                </div>
-            )}
-
-            {/* ── 编辑/新建表单 ── */}
+            {/* ── 编辑/新建弹窗 (全量重构) ── */}
             {(isCreating || editingId) && (
-                <div className="bg-[var(--bg-surface)] p-4 rounded-2xl border border-[var(--border-color)] animate-in fade-in slide-in-from-top-4 z-10 shadow-xl">
-                    <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-base font-bold">{isCreating ? '新建代码片段' : '编辑代码片段'}</h3>
-                        <button onClick={cancelEdit} className="p-1 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)]"><X className="w-5 h-5" /></button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 mb-3">
-                        <div>
-                            <label className="block text-xs text-[var(--text-secondary)] mb-1">标题</label>
-                            <input value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 text-sm outline-none" placeholder="片段标题" />
+                <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 animate-in fade-in duration-300">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={cancelEdit} />
+                    <div className="relative w-full max-w-[800px] h-[95vh] md:h-auto max-h-[95vh] bg-[var(--bg-surface)] rounded-t-[32px] md:rounded-[28px] border border-[var(--border-color)] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 md:slide-in-from-bottom-4">
+                        <div className="flex justify-between items-center px-6 py-5 border-b border-[var(--border-color)] shrink-0">
+                            <h3 className="text-xl font-bold">{isCreating ? '新建代码片段' : '编辑代码片段'}</h3>
+                            <button onClick={cancelEdit} className="p-2 hover:bg-[var(--hover-color)] rounded-xl text-[var(--text-secondary)]"><X size={24} /></button>
                         </div>
-                        <div>
-                            <label className="block text-xs text-[var(--text-secondary)] mb-1">语言</label>
-                            <div className="relative" ref={langRef}>
-                                <div
-                                    onClick={() => setIsLangOpen(!isLangOpen)}
-                                    className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 text-sm outline-none cursor-pointer flex justify-between items-center hover:border-[var(--text-secondary)] transition-colors"
-                                >
-                                    <span className="truncate">{formData.language}</span>
-                                    <ArrowUpDown className="w-3 h-3 opacity-50" />
+                        <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1">片段标题</label>
+                                    <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full h-12 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl px-4 text-sm outline-none focus:ring-2 focus:ring-blue-500/30 transition-all" />
                                 </div>
-
-                                {isLangOpen && (
-                                    <div className="absolute top-full left-0 w-full mt-1 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl shadow-2xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                        <div className="p-2 border-b border-[var(--border-color)] bg-[var(--bg-main)]">
-                                            <div className="relative">
-                                                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 opacity-50" />
-                                                <input
-                                                    autoFocus
-                                                    type="text"
-                                                    placeholder="搜索语言..."
-                                                    value={langSearch}
-                                                    onChange={e => setLangSearch(e.target.value)}
-                                                    className="w-full pl-7 pr-2 py-1.5 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg text-xs outline-none focus:ring-1 focus:ring-[var(--accent-color)]"
-                                                />
-                                            </div>
+                                <div className="space-y-1 relative z-[60]">
+                                    <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1">语言</label>
+                                    <div className="relative" ref={langRef}>
+                                        <div onClick={() => setIsLangOpen(!isLangOpen)} className="w-full h-12 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl px-4 text-sm outline-none cursor-pointer flex justify-between items-center">
+                                            <span className="font-bold text-blue-500 uppercase">{formData.language}</span>
+                                            <ArrowUpDown className="w-4 h-4 opacity-50" />
                                         </div>
-                                        <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
-                                            {filteredGroups.length === 0 ? (
-                                                <div className="py-8 text-center text-xs text-[var(--text-secondary)]">未找到匹配项</div>
-                                            ) : (
-                                                filteredGroups.map(group => (
-                                                    <div key={group.label} className="mb-2 last:mb-0">
-                                                        <div className="px-2 py-1 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">{group.label}</div>
-                                                        {group.options.map(opt => (
-                                                            <div
-                                                                key={opt.value}
-                                                                onClick={() => {
-                                                                    setFormData({ ...formData, language: opt.value });
-                                                                    setIsLangOpen(false);
-                                                                    setLangSearch('');
-                                                                }}
-                                                                className={`px-2.5 py-1.5 text-xs rounded-lg cursor-pointer transition-colors ${formData.language === opt.value
-                                                                        ? 'bg-[var(--accent-color)] text-white'
-                                                                        : 'hover:bg-[var(--hover-color)]'
-                                                                    }`}
-                                                            >
-                                                                {opt.label}
+                                        {isLangOpen && (
+                                            <div className="absolute top-full left-0 w-full mt-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl shadow-2xl z-[150] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                                <div className="p-3 border-b border-[var(--border-color)] bg-[var(--bg-main)]/50">
+                                                    <input 
+                                                        autoFocus 
+                                                        placeholder="搜索语言..." 
+                                                        value={langSearch} 
+                                                        onChange={e => setLangSearch(e.target.value)} 
+                                                        className="w-full h-10 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-4 text-xs outline-none focus:ring-2 focus:ring-blue-500/30 transition-all" 
+                                                    />
+                                                </div>
+                                                <div className="max-h-[280px] overflow-y-auto custom-scrollbar p-1">
+                                                    {filteredGroups.length === 0 ? (
+                                                        <div className="py-10 text-center text-xs text-[var(--text-secondary)] italic">未找到匹配项</div>
+                                                    ) : (
+                                                        filteredGroups.map(group => (
+                                                            <div key={group.label} className="mb-2 last:mb-0">
+                                                                <div className="px-3 py-1 text-[9px] font-black opacity-30 uppercase tracking-widest">{group.label}</div>
+                                                                {group.options.map(opt => (
+                                                                    <div 
+                                                                        key={opt.value} 
+                                                                        onClick={() => { 
+                                                                            setFormData({...formData, language: opt.value}); 
+                                                                            setIsLangOpen(false); 
+                                                                            setLangSearch('');
+                                                                        }} 
+                                                                        className={`mx-1 px-3 py-2 text-xs rounded-xl cursor-pointer transition-all flex items-center justify-between group/lang ${formData.language === opt.value ? 'bg-blue-600 text-white font-bold shadow-lg shadow-blue-600/20' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'}`}
+                                                                    >
+                                                                        <span className="uppercase">{opt.label}</span>
+                                                                        {formData.language === opt.value && <Check size={12} />}
+                                                                    </div>
+                                                                ))}
                                                             </div>
-                                                        ))}
-                                                    </div>
-                                                ))
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    <div className="mb-3">
-                        <label className="block text-xs text-[var(--text-secondary)] mb-1">代码内容 <span className="text-red-400">*</span></label>
-                        <textarea
-                            ref={textareaRef}
-                            value={formData.code}
-                            onChange={e => setFormData({ ...formData, code: e.target.value })}
-                            className="w-full h-36 font-mono text-sm bg-[var(--code-bg)] text-[var(--code-text)] border border-[var(--border-color)] rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[var(--accent-color)]/20 transition-all resize-vertical custom-scrollbar-thin"
-                            placeholder="粘贴您的代码..."
-                        />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div>
-                            <label className="block text-xs text-[var(--text-secondary)] mb-1">标签 (逗号分隔)</label>
-                            <input value={formData.tags} onChange={e => setFormData({ ...formData, tags: e.target.value })} className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 text-sm outline-none" placeholder="react, hooks..." />
-                        </div>
-                        <div>
-                            <label className="block text-xs text-[var(--text-secondary)] mb-1">描述</label>
-                            <input value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 text-sm outline-none" placeholder="可选" />
-                        </div>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                        <button onClick={cancelEdit} className="px-4 py-1.5 border border-[var(--border-color)] rounded-lg text-sm hover:bg-[var(--hover-color)]">取消</button>
-                        <button onClick={saveSnippet} className="px-4 py-1.5 flex items-center gap-1.5 bg-[var(--accent-color)] text-white rounded-lg text-sm font-medium hover:opacity-90">
-                            <Save className="w-4 h-4" />保存
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* ── 列表 ── */}
-            {loading ? (
-                <div className="flex-1 flex items-center justify-center">
-                    <div className="w-8 h-8 rounded-full border-4 border-[var(--border-color)] border-t-[var(--accent-color)] animate-spin" />
-                </div>
-            ) : snippets.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] p-8 border border-dashed border-[var(--border-color)] rounded-3xl bg-[var(--bg-surface)]">
-                    <Code2 className="w-12 h-12 opacity-20" />
-                    <p className="text-sm">没有找到匹配的代码片段</p>
-                    {activeTag && (
-                        <button onClick={() => setActiveTag('')} className="text-xs text-[var(--accent-color)] hover:underline">
-                            清除标签筛选「{activeTag}」
-                        </button>
-                    )}
-                </div>
-            ) : (
-                /* 移动端单列，≥sm 两列，≥xl 三列 */
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-1.5 overflow-y-auto custom-scrollbar pb-1">
-                    {snippets.map(snippet => (
-                        <div key={snippet.id} className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl flex flex-col overflow-hidden hover:border-[var(--text-secondary)] transition-colors group">
-
-                            {/* 卡片头部 */}
-                            <div className="flex items-center justify-between px-2.5 py-1.5 bg-[var(--bg-main)] border-b border-[var(--border-color)]">
-                                <div className="flex items-center gap-2 overflow-hidden min-w-0">
-                                    <Code2 className="w-3.5 h-3.5 text-[var(--accent-color)] shrink-0" />
-                                    <div className="overflow-hidden">
-                                        <div className="text-xs font-medium truncate leading-tight">
-                                            {snippet.title || ""}
-                                        </div>
-                                        {snippet.language && (
-                                            <div className="flex items-center mt-0.5">
-                                                <span className="text-[9px] px-1.5 py-0 bg-[var(--accent-color)]/10 text-[var(--accent-color)] border border-[var(--accent-color)]/20 rounded-full font-medium uppercase tracking-wider leading-tight">
-                                                    {snippet.language}
-                                                </span>
+                                                        ))
+                                                    )}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
                                 </div>
-                                {/* 操作按钮：copy_count + 操作图标 */}
+                            </div>
+                            <div className="space-y-1 relative z-[10]">
+                                <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1">代码内容 *</label>
+                                <textarea ref={textareaRef} value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} className="w-full h-[40vh] md:h-64 font-mono text-sm bg-[var(--code-bg)] text-[var(--code-text)] border border-[var(--border-color)] rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none shadow-inner z-[10]" />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1">标签 (逗号分隔)</label>
+                                <input value={formData.tags} onChange={e => setFormData({...formData, tags: e.target.value})} className="w-full h-12 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl px-4 text-sm outline-none" />
+                            </div>
+                        </div>
+                        <div className="p-6 border-t border-[var(--border-color)] flex gap-3 shrink-0">
+                            <button onClick={cancelEdit} className="flex-1 h-14 bg-[var(--hover-color)] rounded-2xl text-sm font-bold text-[var(--text-secondary)]">取消</button>
+                            <button onClick={saveSnippet} className="flex-[2] h-14 bg-blue-600 text-white rounded-2xl text-sm font-black uppercase tracking-wider flex items-center justify-center gap-3 shadow-xl shadow-blue-600/20"><Save size={20} />保存变更</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── 列表区域 ── */}
+            {loading ? (
+                <div className="flex-1 flex items-center justify-center"><div className="w-8 h-8 border-4 border-[var(--border-color)] border-t-[var(--accent-color)] rounded-full animate-spin" /></div>
+            ) : snippets.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] p-8 border border-dashed border-[var(--border-color)] rounded-3xl bg-[var(--bg-surface)]">
+                    <Code2 className="w-12 h-12 opacity-20" /><p className="text-sm">没有找到匹配的代码片段</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-1.5 overflow-y-auto custom-scrollbar pb-1">
+                    {snippets.map(snippet => (
+                        <div key={snippet.id} className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl flex flex-col overflow-hidden hover:border-[var(--text-secondary)] transition-colors group">
+                            <div className="flex items-center justify-between px-2.5 py-1.5 bg-[var(--bg-main)] border-b border-[var(--border-color)]">
+                                <div className="flex items-center gap-2 overflow-hidden min-w-0">
+                                    <Code2 className="w-3.5 h-3.5 text-[var(--accent-color)] shrink-0" />
+                                    <div className="overflow-hidden">
+                                        <div className="text-xs font-medium truncate leading-tight">{snippet.title || ""}</div>
+                                        {snippet.language && <span className="text-[9px] px-1.5 py-0 bg-[var(--accent-color)]/10 text-[var(--accent-color)] border border-[var(--accent-color)]/20 rounded-full font-medium uppercase tracking-wider">{snippet.language}</span>}
+                                    </div>
+                                </div>
                                 <div className="flex items-center gap-0.5 shrink-0">
                                     <span className="text-[9px] text-[var(--text-secondary)] mr-1">{snippet.copy_count || 0}</span>
-                                    <button onClick={() => handleCopy(snippet.id, snippet.code)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]" title="复制">
-                                        {copiedId === snippet.id ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
-                                    </button>
-                                    <button onClick={() => startEdit(snippet)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]" title="编辑">
-                                        <Edit2 className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button onClick={() => handleDelete(snippet.id)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)] hover:text-red-400" title="删除">
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
+                                    <button onClick={() => handleCopy(snippet.id, snippet.code)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]">{copiedId === snippet.id ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}</button>
+                                    <button onClick={() => startEdit(snippet)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]"><Edit2 size={14} /></button>
+                                    <button onClick={() => handleDelete(snippet.id)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md hover:text-red-400 text-[var(--text-secondary)]"><Trash2 size={14} /></button>
                                 </div>
                             </div>
-
-                            {/* 代码区 */}
-                            <div className="relative bg-[var(--code-bg)] flex-1 overflow-hidden min-h-[60px] flex flex-col">
-                                <pre className="text-xs p-3 pb-5 overflow-auto max-h-32 font-mono text-[var(--code-text)] custom-scrollbar-thin leading-tight flex-1">
-                                    <code ref={el => { codeRefs.current[snippet.id] = el; }} className={`language-${snippet.language || 'plaintext'}`}>
-                                        {snippet.code}
-                                    </code>
+                            <div className="relative bg-[var(--code-bg)] flex-1 overflow-hidden min-h-[60px]">
+                                <pre className="text-xs p-3 overflow-auto max-h-32 font-mono text-[var(--code-text)] custom-scrollbar-thin">
+                                    <code ref={el => { codeRefs.current[snippet.id] = el; }} className={`language-${snippet.language || 'plaintext'}`}>{snippet.code}</code>
                                 </pre>
-                                {copiedId === snippet.id && (
-                                    <div className="absolute top-1.5 right-1.5 bg-green-500/20 text-green-400 border border-green-500/50 text-[9px] px-1.5 py-0.5 rounded flex items-center gap-1 animate-in fade-in">
-                                        <Check className="w-2.5 h-2.5" /> 已复制
-                                    </div>
-                                )}
                             </div>
-
-                            {/* 标签区 */}
-                            <div className={`px-2.5 py-1 flex items-center gap-1 flex-wrap border-t border-[var(--border-color)] ${!snippet.tags || snippet.tags.length === 0 ? 'h-0 py-0 border-none' : ''}`}>
-                                {snippet.tags && snippet.tags.length > 0 && 
-                                    snippet.tags.slice(0, 4).map((tag: string, i: number) => (
-                                        <button
-                                            key={i}
-                                            onClick={() => handleTagClick(tag)}
-                                            className={`text-[9px] px-1.5 py-0.5 rounded transition-colors cursor-pointer ${activeTag === tag
-                                                    ? 'bg-[var(--accent-color)]/20 text-[var(--accent-color)] border border-[var(--accent-color)]/40'
-                                                    : 'bg-[var(--hover-color)] text-[var(--text-secondary)] hover:text-[var(--accent-color)]'
-                                                }`}
-                                        >
-                                            {tag}
-                                        </button>
-                                    ))
-                                }
-                            </div>
+                            {snippet.tags && snippet.tags.length > 0 && (
+                                <div className="px-2.5 py-1 flex items-center gap-1 flex-wrap border-t border-[var(--border-color)]">
+                                    {snippet.tags.map((tag: any, i: number) => (
+                                        <button key={i} onClick={() => handleTagClick(tag)} className={`text-[9px] px-1.5 py-0.5 rounded ${activeTag === tag ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30' : 'bg-[var(--hover-color)] text-[var(--text-secondary)]'}`}>{tag}</button>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
