@@ -148,7 +148,7 @@ const SharePreview: React.FC = () => {
         className="bg-[var(--bg-main)] border border-white/10 rounded-2xl overflow-hidden"
       >
         <div className="grid grid-cols-1 divide-y divide-white/5">
-          {data.files.map((file, index) => (
+          {Array.isArray(data.files) && data.files.map((file, index) => (
             <div key={index} className="flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors group">
               <div className="flex items-center gap-4 min-w-0">
                 <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center text-white/40 group-hover:text-[var(--accent-color)] transition-colors">

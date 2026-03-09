@@ -73,7 +73,7 @@ const CloudShare: React.FC = () => {
       const res = await fetch('/api/share/list');
       if (res.ok) {
         const data = await res.json();
-        setShares(data);
+        setShares(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.error('获取分享列表失败:', err);
@@ -333,7 +333,7 @@ const CloudShare: React.FC = () => {
                       正在加载分享列表...
                     </td>
                   </tr>
-                ) : shares.length === 0 ? (
+                ) : !Array.isArray(shares) || shares.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-20 text-center text-white/30">
                       还没有任何分享记录
