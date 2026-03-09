@@ -146,14 +146,12 @@ const LS_SORT = 'cs_filter_sort';
 const LS_LANG = 'cs_filter_language';
 
 export default function CodeSnippetsTool() {
-    const [snippets, setSnippets] = useState<any[]>([]);
+    const [allSnippets, setAllSnippets] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [languageFilter, setLanguageFilter] = useState('');
     const [sortValue, setSortValue] = useState(() => localStorage.getItem(LS_SORT) || 'updated_at:desc');
     const [activeTag, setActiveTag] = useState('');
-    const [allTags, setAllTags] = useState<{ name: string; count: number }[]>([]);
-    const [languages, setLanguages] = useState<any[]>([]);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [formData, setFormData] = useState({ title: '', code: '', language: 'plaintext', tags: '', description: '' });
@@ -189,50 +187,116 @@ export default function CodeSnippetsTool() {
         return PRESET_LANGUAGES[lang] || lang;
     };
 
-    // 构建查询参数并拉取数据
+    // 获取全量数据
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [sort, order] = sortValue.split(':');
-            let url = `/api/snippets?limit=100&sort=${sort}&order=${order}`;
-            if (search) url += `&search=${encodeURIComponent(search)}`;
-            if (languageFilter) url += `&language=${encodeURIComponent(languageFilter)}`;
-            if (activeTag) url += `&tag=${encodeURIComponent(activeTag)}`;
-
-            const res = await fetch(url);
+            // 获取较多数据以供本地筛选，这里增加 limit 到 1000 或更高
+            const res = await fetch('/api/snippets?limit=2000');
             if (res.ok) {
                 const data = await res.json() as { snippets: any[] };
-                setSnippets(data.snippets || []);
-                // 从返回的数据中提取标签统计
-                const tagCounts: Record<string, number> = {};
-                (data.snippets || []).forEach((s: any) => {
-                    (s.tags || []).forEach((tag: string) => {
-                        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-                    });
-                });
-                const tags = Object.entries(tagCounts)
-                    .map(([name, count]) => ({ name, count }))
-                    .sort((a, b) => b.count - a.count);
-                setAllTags(tags);
+                setAllSnippets(data.snippets || []);
             }
         } catch { }
         setLoading(false);
-    }, [search, languageFilter, sortValue, activeTag]);
-
-    const fetchLanguages = async () => {
-        try {
-            const res = await fetch('/api/snippets/data/languages');
-            if (res.ok) {
-                const data = await res.json() as any[];
-                setLanguages(data);
-            }
-        } catch { }
-    };
+    }, []);
 
     useEffect(() => {
         fetchData();
-        fetchLanguages();
     }, [fetchData]);
+
+    // 本地计算筛选和排序结果
+    const snippets = React.useMemo(() => {
+        let result = [...allSnippets];
+
+        // 搜索过滤
+        if (search) {
+            const s = search.toLowerCase();
+            result = result.filter(item => 
+                (item.title || '').toLowerCase().includes(s) || 
+                (item.code || '').toLowerCase().includes(s) || 
+                (item.description || '').toLowerCase().includes(s)
+            );
+        }
+
+        // 语言过滤
+        if (languageFilter) {
+            result = result.filter(item => item.language === languageFilter);
+        }
+
+        // 标签过滤
+        if (activeTag) {
+            result = result.filter(item => item.tags && item.tags.includes(activeTag));
+        }
+
+        // 排序
+        const [field, order] = sortValue.split(':');
+        result.sort((a, b) => {
+            let v1 = a[field];
+            let v2 = b[field];
+
+            if (field === 'title') {
+                v1 = v1 || '';
+                v2 = v2 || '';
+            }
+
+            if (order === 'desc') {
+                return v1 < v2 ? 1 : v1 > v2 ? -1 : 0;
+            } else {
+                return v1 > v2 ? 1 : v1 < v2 ? -1 : 0;
+            }
+        });
+
+        return result;
+    }, [allSnippets, search, languageFilter, activeTag, sortValue]);
+
+    // 本地计算标签统计 (联动：受语言和搜索影响)
+    const allTags = React.useMemo(() => {
+        const counts: Record<string, number> = {};
+        const sFilter = search.toLowerCase();
+        allSnippets.forEach(s => {
+            // 语言联动
+            if (languageFilter && s.language !== languageFilter) return;
+            // 搜索联动
+            if (search && !(
+                (s.title || '').toLowerCase().includes(sFilter) || 
+                (s.code || '').toLowerCase().includes(sFilter) || 
+                (s.description || '').toLowerCase().includes(sFilter)
+            )) return;
+
+            if (Array.isArray(s.tags)) {
+                s.tags.forEach(tag => {
+                    counts[tag] = (counts[tag] || 0) + 1;
+                });
+            }
+        });
+        return Object.entries(counts)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count);
+    }, [allSnippets, languageFilter, search]);
+
+    // 本地计算语言统计 (联动：受标签和搜索影响)
+    const languages = React.useMemo(() => {
+        const counts: Record<string, number> = {};
+        const sFilter = search.toLowerCase();
+        allSnippets.forEach(s => {
+            // 标签联动
+            if (activeTag && !(Array.isArray(s.tags) && s.tags.includes(activeTag))) return;
+            // 搜索联动
+            if (search && !(
+                (s.title || '').toLowerCase().includes(sFilter) || 
+                (s.code || '').toLowerCase().includes(sFilter) || 
+                (s.description || '').toLowerCase().includes(sFilter)
+            )) return;
+
+            if (s.language) {
+                counts[s.language] = (counts[s.language] || 0) + 1;
+            }
+        });
+        return Object.entries(counts)
+            .map(([language, count]) => ({ language, count }))
+            .sort((a, b) => b.count - a.count);
+    }, [allSnippets, activeTag, search]);
 
     // 高亮代码
     useEffect(() => {
@@ -248,7 +312,7 @@ export default function CodeSnippetsTool() {
                 }
             }
         });
-    }, [snippets, loading]);
+    }, [snippets]);
 
     // 持久化排序和语言
     const handleSortChange = (val: string) => {
@@ -256,8 +320,7 @@ export default function CodeSnippetsTool() {
         localStorage.setItem(LS_SORT, val);
     };
     const handleLanguageChange = (val: string) => {
-        setLanguageFilter(val);
-        // 不再持久化语言过滤，满足“默认不选中”
+        setLanguageFilter(prev => prev === val ? '' : val);
     };
 
     const handleTagClick = (tag: string) => {
@@ -273,15 +336,14 @@ export default function CodeSnippetsTool() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ copyCountsDelta: { [id]: 1 } })
         });
-        setSnippets(prev => prev.map(s => s.id === id ? { ...s, copy_count: (s.copy_count || 0) + 1 } : s));
+        setAllSnippets(prev => prev.map(s => s.id === id ? { ...s, copy_count: (s.copy_count || 0) + 1 } : s));
     };
 
     const handleDelete = async (id: string) => {
         if (!confirm('确定删除此代码片段吗？')) return;
         const res = await fetch(`/api/snippets/${id}`, { method: 'DELETE' });
         if (res.ok) {
-            setSnippets(prev => prev.filter(s => s.id !== id));
-            fetchLanguages(); // 更新语言统计
+            setAllSnippets(prev => prev.filter(s => s.id !== id));
         } else alert('无法删除（可能由于权限问题）');
     };
 
@@ -314,17 +376,16 @@ export default function CodeSnippetsTool() {
             if (isCreating) {
                 const res = await fetch('/api/snippets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 if (res.ok) { 
-                    setSnippets([await res.json(), ...snippets]); 
+                    const newSnippet = await res.json();
+                    setAllSnippets([newSnippet, ...allSnippets]); 
                     setIsCreating(false); 
-                    fetchLanguages(); // 更新语言统计
                 }
                 else alert('保存失败');
             } else if (editingId) {
                 const res = await fetch(`/api/snippets/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 if (res.ok) { 
-                    setSnippets(prev => prev.map(s => s.id === editingId ? { ...s, ...payload } : s)); 
+                    setAllSnippets(prev => prev.map(s => s.id === editingId ? { ...s, ...payload } : s)); 
                     setEditingId(null); 
-                    fetchLanguages(); // 更新语言统计
                 }
                 else alert('更新失败，您可能没有权限');
             }
@@ -373,58 +434,60 @@ export default function CodeSnippetsTool() {
             </div>
 
             {/* ── 语言筛选标签栏 ── */}
-            <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 shrink-0 px-0.5">
-                {languages
-                    .filter(opt => opt.language !== '' && (!languageFilter || languageFilter === opt.language))
-                    .map(opt => (
-                        <button
-                            key={opt.language}
-                            onClick={() => handleLanguageChange(opt.language)}
-                            className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full border transition-all whitespace-nowrap ${languageFilter === opt.language
-                                    ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm'
-                                    : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
-                                }`}
-                        >
-                            {getLanguageLabel(opt.language)}
-                            <span className="ml-1 opacity-60">{opt.count}</span>
-                        </button>
-                    ))}
-                {languageFilter && (
+            <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 shrink-0 px-0.5 min-h-[26px]">
+                {languageFilter ? (
                     <button
                         onClick={() => handleLanguageChange('')}
-                        className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border border-dashed border-[var(--border-color)] text-[var(--text-secondary)] hover:border-red-400 hover:text-red-400 transition-all whitespace-nowrap flex items-center gap-0.5"
+                        className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm transition-all whitespace-nowrap flex items-center gap-1"
                     >
-                        <X className="w-2.5 h-2.5" />清除
+                        <X className="w-2.5 h-2.5" />
+                        {getLanguageLabel(languageFilter)}
+                        <span className="ml-1 opacity-60">
+                            {languages.find(l => l.language === languageFilter)?.count || 0}
+                        </span>
                     </button>
+                ) : (
+                    languages
+                        .filter(opt => opt.language !== '')
+                        .map(opt => (
+                            <button
+                                key={opt.language}
+                                onClick={() => handleLanguageChange(opt.language)}
+                                className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)] transition-all whitespace-nowrap"
+                            >
+                                {getLanguageLabel(opt.language)}
+                                <span className="ml-1 opacity-60">{opt.count}</span>
+                            </button>
+                        ))
                 )}
             </div>
 
             {/* ── 标签导航栏 ── */}
             {allTags.length > 0 && (
-                <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 shrink-0">
+                <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 shrink-0 min-h-[26px]">
                     <Tag className="w-3 h-3 text-[var(--text-secondary)] shrink-0 ml-0.5" />
-                    {allTags
-                        .filter(tag => !activeTag || activeTag === tag.name)
-                        .map(tag => (
+                    {activeTag ? (
+                        <button
+                            onClick={() => setActiveTag('')}
+                            className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm transition-all whitespace-nowrap flex items-center gap-1"
+                        >
+                            <X className="w-2.5 h-2.5" />
+                            {activeTag}
+                            <span className="ml-1 opacity-60">
+                                {allTags.find(t => t.name === activeTag)?.count || 0}
+                            </span>
+                        </button>
+                    ) : (
+                        allTags.map(tag => (
                             <button
                                 key={tag.name}
                                 onClick={() => handleTagClick(tag.name)}
-                                className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full border transition-all whitespace-nowrap ${activeTag === tag.name
-                                        ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium'
-                                        : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
-                                    }`}
+                                className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)] transition-all whitespace-nowrap"
                             >
                                 {tag.name}
                                 <span className="ml-1 opacity-60">{tag.count}</span>
                             </button>
-                        ))}
-                    {activeTag && (
-                        <button
-                            onClick={() => setActiveTag('')}
-                            className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border border-dashed border-[var(--border-color)] text-[var(--text-secondary)] hover:border-red-400 hover:text-red-400 transition-all whitespace-nowrap flex items-center gap-0.5"
-                        >
-                            <X className="w-2.5 h-2.5" />清除
-                        </button>
+                        ))
                     )}
                 </div>
             )}
