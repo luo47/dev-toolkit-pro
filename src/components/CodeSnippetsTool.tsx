@@ -345,30 +345,28 @@ export default function CodeSnippetsTool() {
 
             {/* ── 语言筛选标签栏 ── */}
             <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 shrink-0 px-0.5">
-                <button
-                    onClick={() => handleLanguageChange('')}
-                    className={`shrink-0 text-[10px] px-2.5 py-1 rounded-full border transition-all whitespace-nowrap ${!languageFilter
-                            ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm'
-                            : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
-                        }`}
-                >
-                    全部
-                </button>
+                <Code2 className="w-3 h-3 text-[var(--text-secondary)] shrink-0 ml-0.5" />
                 {languages.map(opt => (
                     <button
                         key={opt.language}
                         onClick={() => handleLanguageChange(opt.language)}
-                        className={`shrink-0 text-[10px] px-2.5 py-1 rounded-full border transition-all whitespace-nowrap flex items-center gap-1.5 ${languageFilter === opt.language
+                        className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full border transition-all whitespace-nowrap ${languageFilter === opt.language
                                 ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm'
                                 : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
                             }`}
                     >
-                        <span>{getLanguageLabel(opt.language)}</span>
-                        <span className={`opacity-60 text-[9px] ${languageFilter === opt.language ? 'text-white' : 'text-[var(--text-secondary)]'}`}>
-                            {opt.count}
-                        </span>
+                        {getLanguageLabel(opt.language)}
+                        <span className="ml-1 opacity-60">{opt.count}</span>
                     </button>
                 ))}
+                {languageFilter && (
+                    <button
+                        onClick={() => handleLanguageChange('')}
+                        className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border border-dashed border-[var(--border-color)] text-[var(--text-secondary)] hover:border-red-400 hover:text-red-400 transition-all whitespace-nowrap flex items-center gap-0.5"
+                    >
+                        <X className="w-2.5 h-2.5" />清除
+                    </button>
+                )}
             </div>
 
             {/* ── 标签导航栏 ── */}
