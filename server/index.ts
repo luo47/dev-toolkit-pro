@@ -35,31 +35,6 @@ type Bindings = {
 const app = new Hono<{ Bindings: Bindings }>();
 
 // --- 核心预览逻辑：必须具有绝对优先级 ---
-app.get('/s/:id', async (c) => {
-  const id = c.req.param('id');
-  const data = await c.env.SHARE_KV.get(`share:${id}`);
-  if (!data) return c.text('分享内容不存在或已过期', 404);
-
-  const item = JSON.parse(data) as ShareContent;
-  if (item.type === 'text') {
-    // 采用最原始的 Response 对象，绕过 Hono 的所有后续逻辑和中间件
-    return new Response(item.content || '', {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'X-Content-Type-Options': 'nosniff',
-        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-      },
-    });
-  }
-  
-  // 对于文件类型，重定向到前端预览页
-  const frontendUrl = c.env.FRONTEND_URL || 'https://www.928496.xyz';
-  return c.redirect(`${frontendUrl}/share-preview/${id}`, 302);
-});
-
-// 全局日志中间件
 app.use('*', async (c, next) => {
   console.log(`[${new Date().toISOString()}] Request: ${c.req.method} ${c.req.url}`);
   await next();
