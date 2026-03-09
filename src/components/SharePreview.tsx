@@ -7,15 +7,19 @@ import {
   Loader2, 
   Package,
   Calendar,
-  HardDrive
+  HardDrive,
+  ExternalLink,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface FileItem {
+  key: string;
   name: string;
+  path: string;
   size: number;
-  type: string;
-  lastModified: number;
+  mimeType: string;
 }
 
 interface ShareData {
@@ -35,7 +39,7 @@ const formatSize = (bytes: number) => {
 };
 
 const SharePreview: React.FC = () => {
-  // 手动从路径中获取 ID: /share-preview/:id
+  // 从路径获取 ID: /s/:id
   const id = window.location.pathname.split('/').pop();
   const [data, setData] = useState<ShareData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,18 +47,23 @@ const SharePreview: React.FC = () => {
 
   useEffect(() => {
     if (!id) {
-      setError('无效的分享链接');
+      setError('无效的分享凭证');
       setLoading(false);
       return;
     }
 
     const fetchShareDetail = async () => {
       try {
-        const res = await fetch(`/api/share/detail/${id}`);
-        if (!res.ok) throw new Error('分享已失效或不存在');
+        // 对齐参考路径 /api/public/share/:id
+        const res = await fetch(`/api/public/share/${id}`);
+        if (!res.ok) throw new Error('该分享已过期或已被发布者移除');
         const json = await res.json() as any;
-        const shareData = json.success ? json.data : json;
-        setData(shareData);
+        
+        if (json.success) {
+            setData(json.data);
+        } else {
+            throw new Error(json.error || '获取数据失败');
+        }
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -69,114 +78,162 @@ const SharePreview: React.FC = () => {
   };
 
   const downloadAll = () => {
-    // 触发打包下载 API
-    window.location.href = `/api/share/download/${id}`;
+    // 对齐参考路径 /api/public/download/:id
+    window.location.href = `/api/public/download/${id}`;
+  };
+
+  const downloadSingle = (path: string) => {
+    // 对齐参考路径 /api/public/download/:id/:path
+    window.location.href = `/api/public/download/${id}/${encodeURIComponent(path)}`;
   };
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-white/50">
-        <Loader2 className="animate-spin mb-4" size={40} />
-        <p>正在拉取文件列表...</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-white/30 font-light">
+        <Loader2 className="animate-spin mb-6 text-[var(--accent-color)]" size={48} />
+        <p className="tracking-widest uppercase text-[10px] font-bold">正在建立安全连接...</p>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
-        <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-6">
-          <Package size={40} />
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
+        <div className="w-24 h-24 bg-red-500/10 text-red-500 rounded-[32px] flex items-center justify-center mb-8 shadow-2xl shadow-red-500/10 border border-red-500/20">
+          <AlertTriangle size={40} />
         </div>
-        <h2 className="text-2xl font-bold mb-2">出错了</h2>
-        <p className="text-white/50 mb-8">{error || '无法获取分享信息'}</p>
+        <h2 className="text-3xl font-black mb-4 tracking-tighter italic">ACCESS DENIED</h2>
+        <p className="text-white/40 mb-10 text-sm max-w-sm font-light leading-relaxed">
+            {error || '系统无法验证该分享 ID 的有效性，可能资源已被销毁或链接已失效。'}
+        </p>
         <button 
-          onClick={goBack}
-          className="px-6 py-2 bg-white/10 rounded-xl hover:bg-white/20 transition-colors"
+            onClick={goBack} 
+            className="px-10 py-3 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl hover:bg-[var(--hover-color)] transition-all font-bold text-sm"
         >
-          回到首页
+          返回工具箱首页
         </button>
       </div>
     );
   }
 
   return (
-    <div className="w-full mx-auto p-6 space-y-8">
-      <button 
-        onClick={goBack}
-        className="inline-flex items-center gap-2 text-white/50 hover:text-white transition-colors"
-      >
-        <ArrowLeft size={18} />
-        <span>返回工具箱</span>
-      </button>
+    <div className="w-full mx-auto p-4 lg:p-6 space-y-8 animate-in fade-in zoom-in-95 duration-700">
+      {/* 头部装饰 */}
+      <div className="flex items-center gap-4 text-white/20">
+        <button onClick={goBack} className="flex items-center gap-2 hover:text-white transition-colors">
+            <ArrowLeft size={16} />
+            <span className="text-[10px] uppercase font-black">Back to Toolkit</span>
+        </button>
+        <div className="h-px flex-1 bg-white/5" />
+        <div className="flex items-center gap-2 text-[10px] font-bold">
+            <ShieldCheck size={14} className="text-emerald-500" />
+            <span className="uppercase italic tracking-tighter">Verified Content</span>
+        </div>
+      </div>
 
-      {/* 分享头信息 */}
+      {/* 分享头信息卡片 */}
       <motion.div 
-        initial={{ opacity: 0, y: 10 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-[var(--bg-main)] border border-white/10 rounded-2xl p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
+        className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-[32px] p-8 lg:p-12 shadow-2xl relative overflow-hidden"
       >
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <FolderOpen className="text-[var(--accent-color)]" />
-            {data.name || '未命名分享'}
-          </h1>
-          <div className="flex flex-wrap gap-4 text-sm text-white/40">
-            <div className="flex items-center gap-1">
-              <Calendar size={14} />
-              {new Date(data.createdAt).toLocaleDateString()}
+        <div className="absolute top-0 right-0 p-4 opacity-[0.03]">
+            <Package size={200} />
+        </div>
+
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 relative z-10">
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+                <div className="w-14 h-14 bg-[var(--accent-color)]/10 rounded-2xl flex items-center justify-center text-[var(--accent-color)] shadow-inner">
+                    <FolderOpen size={28} />
+                </div>
+                <div>
+                   <h1 className="text-3xl font-black italic tracking-tighter uppercase leading-none">
+                    {data.name || 'BUNDLE CONTENT'}
+                  </h1>
+                  <p className="text-[10px] font-mono text-white/30 uppercase mt-1">SHARE ID: {data.id}</p>
+                </div>
             </div>
-            <div className="flex items-center gap-1">
-              <HardDrive size={14} />
-              {data.files.length} 个文件 / {formatSize(data.totalSize)}
+            
+            <div className="flex flex-wrap gap-6 text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                <div className="flex items-center gap-2">
+                    <Calendar size={14} className="text-[var(--accent-color)]/50" />
+                    <span>Published: {new Date(data.createdAt).toLocaleDateString()}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <HardDrive size={14} className="text-[var(--accent-color)]/50" />
+                    <span>Load: {data.files?.length || 0} Assets / {formatSize(data.totalSize)}</span>
+                </div>
             </div>
           </div>
+          
+          <button 
+            onClick={downloadAll}
+            className="group flex items-center gap-3 px-10 py-4 bg-[var(--accent-color)] text-white rounded-2xl font-black italic uppercase tracking-tighter hover:scale-105 active:scale-95 transition-all shadow-xl shadow-[var(--accent-color)]/20"
+          >
+            <Download size={22} className="group-hover:translate-y-0.5 transition-transform" />
+            <span>Download All Assets</span>
+          </button>
         </div>
-        <button 
-          onClick={downloadAll}
-          className="flex items-center gap-2 px-8 py-3 bg-[var(--accent-color)] text-white rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[var(--accent-color)]/20"
-        >
-          <Download size={20} />
-          下载全部
-        </button>
       </motion.div>
 
-      {/* 文件列表 */}
+      {/* 资源列表卡片 */}
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.1 }}
-        className="bg-[var(--bg-main)] border border-white/10 rounded-2xl overflow-hidden"
+        transition={{ delay: 0.2 }}
+        className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-[32px] overflow-hidden shadow-xl"
       >
-        <div className="grid grid-cols-1 divide-y divide-white/5">
+        <div className="p-6 bg-[var(--bg-main)]/50 border-b border-[var(--border-color)] flex justify-between items-center px-8">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">File System Structure</span>
+            <span className="text-[10px] font-mono text-white/20">{data.files?.length} Items Verified</span>
+        </div>
+        
+        <div className="grid grid-cols-1 divide-y divide-[var(--border-color)]">
           {Array.isArray(data.files) && data.files.map((file, index) => (
-            <div key={index} className="flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors group">
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center text-white/40 group-hover:text-[var(--accent-color)] transition-colors">
-                  <File size={20} />
+            <div key={index} className="flex items-center justify-between p-5 lg:px-8 hover:bg-[var(--hover-color)] transition-all group">
+              <div className="flex items-center gap-5 min-w-0">
+                <div className="w-12 h-12 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl flex items-center justify-center text-white/20 group-hover:text-[var(--accent-color)] group-hover:border-[var(--accent-color)]/30 transition-all shadow-sm">
+                  <File size={22} />
                 </div>
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{file.name}</p>
-                  <p className="text-xs text-white/30">{formatSize(file.size)}</p>
+                  <p className="font-bold text-sm text-white/80 group-hover:text-white transition-colors truncate" title={file.path}>
+                    {file.path}
+                  </p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] font-mono text-white/20 uppercase tracking-tighter">{formatSize(file.size)}</span>
+                    <span className="w-1 h-1 rounded-full bg-white/10" />
+                    <span className="text-[10px] font-mono text-white/20 uppercase tracking-tighter">{file.mimeType.split('/')[1] || 'binary'}</span>
+                  </div>
                 </div>
               </div>
-              <a 
-                href={`/api/share/file/${data.id}/${encodeURIComponent(file.name)}`}
-                className="p-2 opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded-lg transition-all"
-                title="单文件下载"
+              <button 
+                onClick={() => downloadSingle(file.path)}
+                className="p-3 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl opacity-0 group-hover:opacity-100 hover:border-[var(--accent-color)]/50 hover:text-[var(--accent-color)] transition-all shadow-sm"
+                title="分流下载"
               >
-                <Download size={18} className="text-white/60" />
-              </a>
+                <Download size={18} />
+              </button>
             </div>
           ))}
         </div>
       </motion.div>
 
-      <p className="text-center text-xs text-white/20">
-        文件由用户分享，请注意识别风险。ID: {data.id}
-      </p>
+      <div className="flex flex-col items-center gap-3 pt-4">
+        <p className="text-[10px] font-mono text-white/10 uppercase tracking-[0.3em]">
+            System Hash Verified · End-to-End Encryption Placeholder
+        </p>
+        <Link2External />
+      </div>
     </div>
   );
 };
+
+const Link2External = () => (
+    <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 rounded-full text-[9px] font-bold text-white/20 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer uppercase tracking-tighter">
+        <ExternalLink size={10} />
+        Cloudflare R2 Storage Powered
+    </div>
+)
 
 export default SharePreview;

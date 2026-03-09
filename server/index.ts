@@ -618,10 +618,12 @@ app.post('/api/tools/usage/:toolName', async (c) => {
 
 // --- Cloud Share Routes ---
 
+// --- Cloud Share Routes ---
+
 const generateShareId = () => Math.random().toString(36).substring(2, 10);
 
-// 获取所有分享列表
-app.get('/api/share/list', async (c) => {
+// 获取所有分享内容列表
+app.get('/api/shares', async (c) => {
   try {
     const list = await c.env.SHARE_KV.list({ prefix: 'share:' });
     const items: ShareContent[] = [];
@@ -629,26 +631,27 @@ app.get('/api/share/list', async (c) => {
       const data = await c.env.SHARE_KV.get(key.name);
       if (data) items.push(JSON.parse(data));
     }
+    // 按创建时间倒序排列
     items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return c.json({ success: true, data: items });
   } catch (e: any) {
-    return c.json({ success: false, error: e.message }, 500);
+    return c.json({ success: false, error: e.message || 'Failed to list shares' }, 500);
   }
 });
 
-// 创建文本分享
-app.post('/api/share/text', async (c) => {
+// 创建新文本分享
+app.post('/api/shares', async (c) => {
   try {
-    const { content, name } = await c.req.json();
-    if (!content) return c.json({ error: '内容不能为空' }, 400);
+    const body = await c.req.json() as { content: string; name?: string };
+    if (!body.content) return c.json({ success: false, error: '内容不能为空' }, 400);
 
     const id = generateShareId();
     const now = new Date().toISOString();
     const item: ShareContent = {
       id,
       type: 'text',
-      content,
-      name: name || '未命名文本',
+      content: body.content,
+      name: body.name || '未命名文本分享',
       createdAt: now,
       updatedAt: now,
     };
@@ -659,20 +662,23 @@ app.post('/api/share/text', async (c) => {
   }
 });
 
-// 编辑分享内容
-app.put('/api/share/:id', async (c) => {
+// 更新、删除单个分享内容
+app.put('/api/shares/:id', async (c) => {
   const id = c.req.param('id');
+  const key = `share:${id}`;
   try {
-    const { content, name } = await c.req.json();
-    const key = `share:${id}`;
-    const data = await c.env.SHARE_KV.get(key);
-    if (!data) return c.json({ error: '分享不存在' }, 404);
+    const existing = await c.env.SHARE_KV.get(key);
+    if (!existing) return c.json({ success: false, error: '分享不存在' }, 404);
 
-    const item = JSON.parse(data) as ShareContent;
-    if (item.type === 'text') {
-      item.content = content !== undefined ? content : item.content;
+    const body = await c.req.json() as { content?: string; name?: string };
+    const item = JSON.parse(existing) as ShareContent;
+    
+    if (item.type === 'text' && body.content !== undefined) {
+      item.content = body.content;
     }
-    item.name = name !== undefined ? name : item.name;
+    if (body.name !== undefined) {
+      item.name = body.name;
+    }
     item.updatedAt = new Date().toISOString();
 
     await c.env.SHARE_KV.put(key, JSON.stringify(item));
@@ -682,64 +688,15 @@ app.put('/api/share/:id', async (c) => {
   }
 });
 
-// 上传文件分享
-app.post('/api/share/files', async (c) => {
-  try {
-    const formData = await c.req.formData();
-    const files = formData.getAll('files') as File[];
-    const shareName = formData.get('name') as string || '';
-
-    if (!files || files.length === 0) return c.json({ error: '没有文件' }, 400);
-
-    const id = generateShareId();
-    const now = new Date().toISOString();
-    const fileItems: FileItem[] = [];
-    let totalSize = 0;
-
-    for (const file of files) {
-      const relativePath = (file as any).webkitRelativePath || file.name;
-      const r2Key = `${id}/${relativePath}`;
-      
-      await c.env.SHARE_R2.put(r2Key, file.stream(), {
-        httpMetadata: { contentType: file.type || 'application/octet-stream' },
-        customMetadata: { shareId: id, fileName: file.name, filePath: relativePath }
-      });
-
-      fileItems.push({
-        key: r2Key,
-        name: file.name,
-        path: relativePath,
-        size: file.size,
-        mimeType: file.type || 'application/octet-stream',
-      });
-      totalSize += file.size;
-    }
-
-    const item: ShareContent = {
-      id,
-      type: 'file',
-      files: fileItems,
-      totalSize,
-      name: shareName || files[0].name,
-      createdAt: now,
-      updatedAt: now,
-    };
-    await c.env.SHARE_KV.put(`share:${id}`, JSON.stringify(item));
-    return c.json({ success: true, data: item });
-  } catch (e: any) {
-    return c.json({ success: false, error: e.message }, 500);
-  }
-});
-
-// 删除分享
-app.delete('/api/share/:id', async (c) => {
+app.delete('/api/shares/:id', async (c) => {
   const id = c.req.param('id');
+  const key = `share:${id}`;
   try {
-    const key = `share:${id}`;
-    const data = await c.env.SHARE_KV.get(key);
-    if (!data) return c.json({ error: '不存在' }, 404);
+    const existing = await c.env.SHARE_KV.get(key);
+    if (!existing) return c.json({ success: false, error: '分享不存在' }, 404);
 
-    const item = JSON.parse(data) as ShareContent;
+    const item = JSON.parse(existing) as ShareContent;
+    // 如果是文件类型，删除 R2 中所有相关文件
     if (item.type === 'file' && item.files) {
       for (const file of item.files) {
         await c.env.SHARE_R2.delete(file.key);
@@ -752,40 +709,116 @@ app.delete('/api/share/:id', async (c) => {
   }
 });
 
-// 公开获取分享信息
+// 文件上传 (POST /api/files)
+app.post('/api/files', async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const files = formData.getAll('files') as File[];
+    const shareName = formData.get('name') as string || '';
+    
+    if (!files || files.length === 0) {
+      return c.json({ success: false, error: '没有提供文件' }, 400);
+    }
+
+    const id = generateShareId();
+    const now = new Date().toISOString();
+    const fileItems: FileItem[] = [];
+    let totalSize = 0;
+
+    for (const file of files) {
+      // 在 Hono/Workers 环境中，webkitRelativePath 通过 formData 的文件名部分传递（如果在 append 时指定了）
+      const relativePath = file.name; 
+      const r2Key = `${id}/${relativePath}`;
+      
+      await c.env.SHARE_R2.put(r2Key, file.stream(), {
+        httpMetadata: {
+          contentType: file.type || 'application/octet-stream',
+        },
+        customMetadata: {
+          fileName: file.name,
+          filePath: relativePath,
+          shareId: id,
+        },
+      });
+
+      fileItems.push({
+        key: r2Key,
+        name: file.name.split('/').pop() || file.name,
+        path: relativePath,
+        size: file.size,
+        mimeType: file.type || 'application/octet-stream',
+      });
+      totalSize += file.size;
+    }
+
+    const item: ShareContent = {
+      id,
+      type: 'file',
+      files: fileItems,
+      totalSize,
+      name: shareName || fileItems[0].name,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await c.env.SHARE_KV.put(`share:${id}`, JSON.stringify(item));
+    
+    return c.json({ success: true, data: item });
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message || 'Upload failed' }, 500);
+  }
+});
+
+// --- 公开 API (无需认证，用于预览页) ---
+
+// 获取分享信息
 app.get('/api/public/share/:id', async (c) => {
   const id = c.req.param('id');
   const data = await c.env.SHARE_KV.get(`share:${id}`);
-  if (!data) return c.json({ error: '不存在' }, 404);
-  const item = JSON.parse(data);
-  return c.json({ success: true, data: item });
+  if (!data) return c.json({ success: false, error: '分享不存在' }, 404);
+  
+  const item = JSON.parse(data) as ShareContent;
+  return c.json({ 
+    success: true, 
+    data: {
+      id: item.id,
+      type: item.type,
+      name: item.name,
+      files: item.files,
+      totalSize: item.totalSize,
+      createdAt: item.createdAt,
+    }
+  });
 });
 
-// 公开下载文件
+// 下载单个文件
 app.get('/api/public/download/:id/:path{.+}', async (c) => {
   const id = c.req.param('id');
   const filePath = c.req.param('path');
   const r2Key = `${id}/${filePath}`;
 
   const object = await c.env.SHARE_R2.get(r2Key);
-  if (!object) return c.json({ error: '文件不存在' }, 404);
+  if (!object) return c.json({ success: false, error: '文件不存在' }, 404);
 
   const headers = new Headers();
   object.writeHttpMetadata(headers);
   headers.set('etag', object.httpEtag);
-  headers.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filePath.split('/').pop() || 'file')}`);
+  // 确保下载时有正确的文件名
+  const fileName = filePath.split('/').pop() || 'file';
+  headers.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
 
   return new Response(object.body, { headers });
 });
 
-// 公开打包下载
+// 打包下载所有文件 (ZIP)
 app.get('/api/public/download/:id', async (c) => {
   const id = c.req.param('id');
   const data = await c.env.SHARE_KV.get(`share:${id}`);
-  if (!data) return c.json({ error: '分享不存在' }, 404);
+  if (!data) return c.json({ success: false, error: '分享不存在' }, 404);
 
   const item = JSON.parse(data) as ShareContent;
-  if (!item.files || item.files.length === 0) return c.json({ error: '没有可下载的文件' }, 404);
+  if (!item.files || item.files.length === 0) {
+    return c.json({ success: false, error: '没有可下载的文件' }, 404);
+  }
 
   try {
     const zipData: { [path: string]: Uint8Array } = {};
@@ -798,16 +831,16 @@ app.get('/api/public/download/:id', async (c) => {
 
     const zipped = zipSync(zipData, { level: 6 });
     const zipName = `${item.name || id}.zip`;
-
+    
     return new Response(zipped as any, {
       headers: {
         'Content-Type': 'application/zip',
         'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(zipName)}`,
-        'Cache-Control': 'public, max-age=3600'
-      }
+        'Content-Length': zipped.length.toString(),
+      },
     });
   } catch (e: any) {
-    return c.json({ error: '打包失败: ' + e.message }, 500);
+    return c.json({ success: false, error: '打包失败: ' + e.message }, 500);
   }
 });
 
