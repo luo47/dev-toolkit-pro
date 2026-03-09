@@ -86,7 +86,7 @@ const CloudShare: React.FC = () => {
   const fetchShares = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/shares');
+      const res = await fetch(`/api/shares?_t=${Date.now()}`);
       const json = await res.json() as any;
       if (json.success) {
         setShares(json.data || []);
@@ -258,6 +258,7 @@ const CloudShare: React.FC = () => {
     setShareName('');
     setUploadProgress(0);
     setActiveTab('list');
+    fetchShares(); // 正确做法：重置后立即刷新列表
   };
 
   // --- 操作函数 ---
