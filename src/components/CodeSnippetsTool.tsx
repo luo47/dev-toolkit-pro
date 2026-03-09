@@ -109,7 +109,33 @@ const LANGUAGE_GROUPS = [
     }
 ];
 
-const PRESET_LANGUAGES = LANGUAGE_GROUPS.flatMap(g => g.options.map(o => o.value));
+const PRESET_LANGUAGES: Record<string, string> = {
+    'javascript': 'js',
+    'typescript': 'ts',
+    'python': 'py',
+    'html': 'html',
+    'css': 'css',
+    'json': 'json',
+    'java': 'java',
+    'php': 'php',
+    'c': 'c',
+    'cpp': 'cpp',
+    'csharp': 'cs',
+    'go': 'go',
+    'rust': 'rust',
+    'ruby': 'ruby',
+    'bash': 'sh',
+    'shell': 'sh',
+    'yaml': 'yml',
+    'sql': 'sql',
+    'markdown': 'md',
+    'dockerfile': 'docker',
+    'makefile': 'make',
+    'ini': 'ini',
+    'properties': 'prop',
+    'diff': 'diff',
+    'plaintext': 'txt'
+};
 
 // localStorage 键名
 const LS_SORT = 'cs_filter_sort';
@@ -131,11 +157,9 @@ export default function CodeSnippetsTool() {
     const codeRefs = useRef<{ [key: string]: HTMLElement | null }>({});
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-    // 获取合并后的语言列表
-    const getCombinedLanguages = () => {
-        const dynamicLangs = languages.map(l => l.language).filter(Boolean);
-        const combined = new Set([...PRESET_LANGUAGES, ...dynamicLangs]);
-        return Array.from(combined).sort();
+    // 获取当前已有的缩写
+    const getLanguageLabel = (lang: string) => {
+        return PRESET_LANGUAGES[lang] || lang;
     };
 
     // 构建查询参数并拉取数据
@@ -225,8 +249,10 @@ export default function CodeSnippetsTool() {
     const handleDelete = async (id: string) => {
         if (!confirm('确定删除此代码片段吗？')) return;
         const res = await fetch(`/api/snippets/${id}`, { method: 'DELETE' });
-        if (res.ok) setSnippets(prev => prev.filter(s => s.id !== id));
-        else alert('无法删除（可能由于权限问题）');
+        if (res.ok) {
+            setSnippets(prev => prev.filter(s => s.id !== id));
+            fetchLanguages(); // 更新语言统计
+        } else alert('无法删除（可能由于权限问题）');
     };
 
     const startEdit = (snippet: any) => {
@@ -257,11 +283,19 @@ export default function CodeSnippetsTool() {
         try {
             if (isCreating) {
                 const res = await fetch('/api/snippets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (res.ok) { setSnippets([await res.json(), ...snippets]); setIsCreating(false); }
+                if (res.ok) { 
+                    setSnippets([await res.json(), ...snippets]); 
+                    setIsCreating(false); 
+                    fetchLanguages(); // 更新语言统计
+                }
                 else alert('保存失败');
             } else if (editingId) {
                 const res = await fetch(`/api/snippets/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (res.ok) { setSnippets(prev => prev.map(s => s.id === editingId ? { ...s, ...payload } : s)); setEditingId(null); }
+                if (res.ok) { 
+                    setSnippets(prev => prev.map(s => s.id === editingId ? { ...s, ...payload } : s)); 
+                    setEditingId(null); 
+                    fetchLanguages(); // 更新语言统计
+                }
                 else alert('更新失败，您可能没有权限');
             }
         } catch { alert('网络错误'); }
@@ -314,22 +348,25 @@ export default function CodeSnippetsTool() {
                 <button
                     onClick={() => handleLanguageChange('')}
                     className={`shrink-0 text-[10px] px-2.5 py-1 rounded-full border transition-all whitespace-nowrap ${!languageFilter
-                            ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium'
+                            ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm'
                             : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
                         }`}
                 >
-                    所有语言
+                    全部
                 </button>
-                {LANGUAGE_GROUPS.flatMap(g => g.options).map(opt => (
+                {languages.map(opt => (
                     <button
-                        key={opt.value}
-                        onClick={() => handleLanguageChange(opt.value)}
-                        className={`shrink-0 text-[10px] px-2.5 py-1 rounded-full border transition-all whitespace-nowrap ${languageFilter === opt.value
-                                ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium'
+                        key={opt.language}
+                        onClick={() => handleLanguageChange(opt.language)}
+                        className={`shrink-0 text-[10px] px-2.5 py-1 rounded-full border transition-all whitespace-nowrap flex items-center gap-1.5 ${languageFilter === opt.language
+                                ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm'
                                 : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
                             }`}
                     >
-                        {opt.label}
+                        <span>{getLanguageLabel(opt.language)}</span>
+                        <span className={`opacity-60 text-[9px] ${languageFilter === opt.language ? 'text-white' : 'text-[var(--text-secondary)]'}`}>
+                            {opt.count}
+                        </span>
                     </button>
                 ))}
             </div>
