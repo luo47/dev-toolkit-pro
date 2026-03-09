@@ -6,12 +6,15 @@ import { useAuth } from './hooks/useAuth';
 const QRCodeTool = React.lazy(() => import('./components/QRCodeTool'));
 const ChainProcessor = React.lazy(() => import('./components/ChainProcessor'));
 const CodeSnippetsTool = React.lazy(() => import('./components/CodeSnippetsTool'));
+const CloudShare = React.lazy(() => import('./components/CloudShare'));
+const SharePreview = React.lazy(() => import('./components/SharePreview'));
 
-type Tool = 'home' | 'qrcode' | 'chain-processor' | 'code-snippets';
+type Tool = 'home' | 'qrcode' | 'chain-processor' | 'code-snippets' | 'cloud-share' | 'share-preview';
 
 export default function App() {
   const [activeTool, setActiveTool] = useState<Tool>(() => {
     const path = window.location.pathname.replace('/', '');
+    if (path.startsWith('share-preview')) return 'share-preview';
     return (path === '' ? 'home' : path) as Tool;
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 1024);
@@ -73,6 +76,7 @@ export default function App() {
   }, [activeTool]);
 
   const tools = [
+    { id: 'cloud-share', name: '云分享', icon: Server, isPremium: false, subName: '文本 & 文件' },
     { id: 'code-snippets', name: '代码片段', icon: Code, isPremium: true },
     { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, isPremium: true },
     { id: 'qrcode', name: '二维码', icon: QrCode, isPremium: false },
@@ -83,6 +87,7 @@ export default function App() {
   );
 
   const handleToolSelect = (id: Tool) => {
+    if (id === 'share-preview') return;
     const tool = tools.find(t => t.id === id);
     if (tool?.isPremium && !user) {
       // Save current intended tool path for redirection after login
@@ -481,6 +486,8 @@ export default function App() {
                     {activeTool === 'chain-processor' && <ChainProcessor />}
                     {activeTool === 'qrcode' && <QRCodeTool />}
                     {activeTool === 'code-snippets' && <CodeSnippetsTool />}
+                    {activeTool === 'cloud-share' && <CloudShare />}
+                    {activeTool === 'share-preview' && <SharePreview />}
                   </Suspense>
                 </div>
               </div>

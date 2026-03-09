@@ -14,3 +14,13 @@ database_name = "dev-toolkit-db"
 database_id = "2ff968e4-26bc-4eb5-b82e-9949cdce06d5"
 migrations_dir = "migrations"
 
+[[kv_namespaces]]
+binding = "SHARE_KV"
+id = "3d66c87ff95749f2a5e74306633d574e"
+
+[[r2_buckets]]
+binding = "SHARE_R2"
+bucket_name = "share-files"
+
+[observability]
+enabled = true

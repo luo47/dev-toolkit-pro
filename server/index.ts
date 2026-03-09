@@ -2,8 +2,29 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
 
+type FileItem = {
+  key: string;
+  name: string;
+  path: string;
+  size: number;
+  mimeType: string;
+};
+
+type ShareContent = {
+  id: string;
+  type: 'text' | 'file';
+  content?: string;
+  files?: FileItem[];
+  totalSize?: number;
+  name?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type Bindings = {
   DB: D1Database;
+  SHARE_KV: KVNamespace;
+  SHARE_R2: R2Bucket;
   ASSETS: Fetcher;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
@@ -568,6 +589,163 @@ app.post('/api/tools/usage/:toolName', async (c) => {
     return c.json({ success: false, error: '记录使用失败' }, 500);
   }
 });
+
+// --- Cloud Share Routes ---
+
+const generateShareId = () => Math.random().toString(36).substring(2, 10);
+
+// 获取所有分享列表
+app.get('/api/share/list', async (c) => {
+  try {
+    const list = await c.env.SHARE_KV.list({ prefix: 'share:' });
+    const items: ShareContent[] = [];
+    for (const key of list.keys) {
+      const data = await c.env.SHARE_KV.get(key.name);
+      if (data) items.push(JSON.parse(data));
+    }
+    items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return c.json({ success: true, data: items });
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500);
+  }
+});
+
+// 创建文本分享
+app.post('/api/share/text', async (c) => {
+  try {
+    const { content, name } = await c.req.json();
+    if (!content) return c.json({ error: '内容不能为空' }, 400);
+
+    const id = generateShareId();
+    const now = new Date().toISOString();
+    const item: ShareContent = {
+      id,
+      type: 'text',
+      content,
+      name: name || '未命名文本',
+      createdAt: now,
+      updatedAt: now,
+    };
+    await c.env.SHARE_KV.put(`share:${id}`, JSON.stringify(item));
+    return c.json({ success: true, data: item });
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500);
+  }
+});
+
+// 上传文件分享
+app.post('/api/share/files', async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const files = formData.getAll('files') as File[];
+    const shareName = formData.get('name') as string || '';
+
+    if (!files || files.length === 0) return c.json({ error: '没有文件' }, 400);
+
+    const id = generateShareId();
+    const now = new Date().toISOString();
+    const fileItems: FileItem[] = [];
+    let totalSize = 0;
+
+    for (const file of files) {
+      const relativePath = (file as any).webkitRelativePath || file.name;
+      const r2Key = `${id}/${relativePath}`;
+      
+      await c.env.SHARE_R2.put(r2Key, file.stream(), {
+        httpMetadata: { contentType: file.type || 'application/octet-stream' },
+        customMetadata: { shareId: id, fileName: file.name }
+      });
+
+      fileItems.push({
+        key: r2Key,
+        name: file.name,
+        path: relativePath,
+        size: file.size,
+        mimeType: file.type || 'application/octet-stream',
+      });
+      totalSize += file.size;
+    }
+
+    const item: ShareContent = {
+      id,
+      type: 'file',
+      files: fileItems,
+      totalSize,
+      name: shareName || files[0].name,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await c.env.SHARE_KV.put(`share:${id}`, JSON.stringify(item));
+    return c.json({ success: true, data: item });
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500);
+  }
+});
+
+// 删除分享
+app.delete('/api/share/:id', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const key = `share:${id}`;
+    const data = await c.env.SHARE_KV.get(key);
+    if (!data) return c.json({ error: '不存在' }, 404);
+
+    const item = JSON.parse(data) as ShareContent;
+    if (item.type === 'file' && item.files) {
+      for (const file of item.files) {
+        await c.env.SHARE_R2.delete(file.key);
+      }
+    }
+    await c.env.SHARE_KV.delete(key);
+    return c.json({ success: true });
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500);
+  }
+});
+
+// 公开获取分享信息
+app.get('/api/public/share/:id', async (c) => {
+  const id = c.req.param('id');
+  const data = await c.env.SHARE_KV.get(`share:${id}`);
+  if (!data) return c.json({ error: '不存在' }, 404);
+  const item = JSON.parse(data);
+  return c.json({ success: true, data: item });
+});
+
+// 公开下载文件
+app.get('/api/public/download/:id/:path{.+}', async (c) => {
+  const id = c.req.param('id');
+  const filePath = c.req.param('path');
+  const r2Key = `${id}/${filePath}`;
+
+  const object = await c.env.SHARE_R2.get(r2Key);
+  if (!object) return c.json({ error: '文件不存在' }, 404);
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set('etag', object.httpEtag);
+  headers.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(filePath.split('/').pop() || 'file')}`);
+
+  return new Response(object.body, { headers });
+});
+
+// 公开预览/访问路径 /s/:id
+app.get('/s/:id', async (c) => {
+  const id = c.req.param('id');
+  const data = await c.env.SHARE_KV.get(`share:${id}`);
+  if (!data) return c.text('分享不存在或已过期', 404);
+
+  const item = JSON.parse(data) as ShareContent;
+  if (item.type === 'text') {
+    return c.text(item.content || '');
+  }
+  
+  // 对于文件类型，重定向到前端预览页
+  const frontendUrl = c.env.FRONTEND_URL || 'https://www.928496.xyz';
+  return c.redirect(`${frontendUrl}/share-preview/${id}`);
+});
+
+// --- End Cloud Share Routes ---
 
 // SPA 路由支持：对于所有不匹配 API 或静态资源的请求，返回 index.html
 app.get('*', async (c) => {
