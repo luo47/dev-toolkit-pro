@@ -25,5 +25,6 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": ["docs", "node_modules", "dist", ".wrangler"]
 }

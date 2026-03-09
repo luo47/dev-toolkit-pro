@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
+import { zipSync } from 'fflate';
 
 type FileItem = {
   key: string;
@@ -32,6 +33,31 @@ type Bindings = {
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
+
+// --- 核心预览逻辑：必须具有绝对优先级 ---
+app.get('/s/:id', async (c) => {
+  const id = c.req.param('id');
+  const data = await c.env.SHARE_KV.get(`share:${id}`);
+  if (!data) return c.text('分享内容不存在或已过期', 404);
+
+  const item = JSON.parse(data) as ShareContent;
+  if (item.type === 'text') {
+    // 采用最原始的 Response 对象，绕过 Hono 的所有后续逻辑和中间件
+    return new Response(item.content || '', {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      },
+    });
+  }
+  
+  // 对于文件类型，重定向到前端预览页
+  const frontendUrl = c.env.FRONTEND_URL || 'https://www.928496.xyz';
+  return c.redirect(`${frontendUrl}/share-preview/${id}`, 302);
+});
 
 // 全局日志中间件
 app.use('*', async (c, next) => {
@@ -633,6 +659,29 @@ app.post('/api/share/text', async (c) => {
   }
 });
 
+// 编辑分享内容
+app.put('/api/share/:id', async (c) => {
+  const id = c.req.param('id');
+  try {
+    const { content, name } = await c.req.json();
+    const key = `share:${id}`;
+    const data = await c.env.SHARE_KV.get(key);
+    if (!data) return c.json({ error: '分享不存在' }, 404);
+
+    const item = JSON.parse(data) as ShareContent;
+    if (item.type === 'text') {
+      item.content = content !== undefined ? content : item.content;
+    }
+    item.name = name !== undefined ? name : item.name;
+    item.updatedAt = new Date().toISOString();
+
+    await c.env.SHARE_KV.put(key, JSON.stringify(item));
+    return c.json({ success: true, data: item });
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500);
+  }
+});
+
 // 上传文件分享
 app.post('/api/share/files', async (c) => {
   try {
@@ -653,7 +702,7 @@ app.post('/api/share/files', async (c) => {
       
       await c.env.SHARE_R2.put(r2Key, file.stream(), {
         httpMetadata: { contentType: file.type || 'application/octet-stream' },
-        customMetadata: { shareId: id, fileName: file.name }
+        customMetadata: { shareId: id, fileName: file.name, filePath: relativePath }
       });
 
       fileItems.push({
@@ -729,6 +778,39 @@ app.get('/api/public/download/:id/:path{.+}', async (c) => {
   return new Response(object.body, { headers });
 });
 
+// 公开打包下载
+app.get('/api/public/download/:id', async (c) => {
+  const id = c.req.param('id');
+  const data = await c.env.SHARE_KV.get(`share:${id}`);
+  if (!data) return c.json({ error: '分享不存在' }, 404);
+
+  const item = JSON.parse(data) as ShareContent;
+  if (!item.files || item.files.length === 0) return c.json({ error: '没有可下载的文件' }, 404);
+
+  try {
+    const zipData: { [path: string]: Uint8Array } = {};
+    for (const file of item.files) {
+      const object = await c.env.SHARE_R2.get(file.key);
+      if (object) {
+        zipData[file.path] = new Uint8Array(await object.arrayBuffer());
+      }
+    }
+
+    const zipped = zipSync(zipData, { level: 6 });
+    const zipName = `${item.name || id}.zip`;
+
+    return new Response(zipped as any, {
+      headers: {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(zipName)}`,
+        'Cache-Control': 'public, max-age=3600'
+      }
+    });
+  } catch (e: any) {
+    return c.json({ error: '打包失败: ' + e.message }, 500);
+  }
+});
+
 // 公开预览/访问路径 /s/:id
 app.get('/s/:id', async (c) => {
   const id = c.req.param('id');
@@ -737,21 +819,24 @@ app.get('/s/:id', async (c) => {
 
   const item = JSON.parse(data) as ShareContent;
   if (item.type === 'text') {
+    // 强制设置 Header 确保浏览器直接显示文本
+    c.header('Content-Type', 'text/plain; charset=utf-8');
     return c.text(item.content || '');
   }
   
   // 对于文件类型，重定向到前端预览页
   const frontendUrl = c.env.FRONTEND_URL || 'https://www.928496.xyz';
-  return c.redirect(`${frontendUrl}/share-preview/${id}`);
+  return c.redirect(`${frontendUrl}/share-preview/${id}`, 302);
 });
+
 
 // --- End Cloud Share Routes ---
 
 // SPA 路由支持：对于所有不匹配 API 或静态资源的请求，返回 index.html
 app.get('*', async (c) => {
   const url = new URL(c.req.url);
-  // 排除 API 请求
-  if (url.pathname.startsWith('/api/')) {
+  // 排除 API 请求和核心预览路由
+  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/s/')) {
     return c.notFound();
   }
 
@@ -770,4 +855,55 @@ app.get('*', async (c) => {
   }
 });
 
-export default app;
+export default {
+  async fetch(request: Request, env: Bindings, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+    const path = url.pathname;
+    
+    // ==========================================
+    // 核心分享拦截：拦截 /s/{id}
+    // ==========================================
+    const shareMatch = path.match(/^\/s\/([a-z0-9]+)$/);
+    if (shareMatch && request.method === 'GET') {
+      const id = shareMatch[1];
+      try {
+        const data = await env.SHARE_KV.get(`share:${id}`);
+        if (!data) {
+           return new Response('分享内容不存在或已过期', { 
+             status: 404,
+             headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+           });
+        }
+
+        const item = JSON.parse(data) as ShareContent;
+        // 兼容旧数据：没有 type 但有 content 的也算 text
+        const isText = item.type === 'text' || (!item.type && item.content);
+        
+        if (isText) {
+          // 文本：直接返回纯文本
+          return new Response(item.content || '', {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/plain; charset=utf-8',
+              'X-Content-Type-Options': 'nosniff',
+              'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+              'Pragma': 'no-cache',
+              'Expires': '0'
+            },
+          });
+        } else {
+          // 文件：重定向到前端 SPA 的预览页面 /share-preview/{id}
+          const frontendUrl = env.FRONTEND_URL || `${url.origin}`;
+          return Response.redirect(`${frontendUrl}/share-preview/${id}`, 302);
+        }
+      } catch (e) {
+        console.error('Preview error:', e);
+        return new Response('Server Error', { status: 500 });
+      }
+    }
+    // ==========================================
+
+    // 其他请求交给 Hono 处理
+    return app.fetch(request, env, ctx);
+  },
+};

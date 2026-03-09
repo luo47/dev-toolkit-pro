@@ -1,171 +1,181 @@
 import React, { useState, useEffect } from 'react';
-import { Download, File, Folder, Clock, Shield, ArrowLeft, ExternalLink } from 'lucide-react';
+import { 
+  File, 
+  FolderOpen, 
+  Download, 
+  ArrowLeft, 
+  Loader2, 
+  Package,
+  Calendar,
+  HardDrive
+} from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface FileItem {
-  key: string;
   name: string;
-  path: string;
   size: number;
-  mimeType: string;
+  type: string;
+  lastModified: number;
 }
 
-interface ShareContent {
+interface ShareData {
   id: string;
-  type: 'text' | 'file';
-  content?: string;
-  files?: FileItem[];
-  totalSize?: number;
-  name?: string;
+  name: string;
+  files: FileItem[];
+  totalSize: number;
   createdAt: string;
 }
 
-export default function SharePreview() {
-  const [id, setId] = useState<string>('');
-  const [data, setData] = useState<ShareContent | null>(null);
+const formatSize = (bytes: number) => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+const SharePreview: React.FC = () => {
+  // 手动从路径中获取 ID: /share-preview/:id
+  const id = window.location.pathname.split('/').pop();
+  const [data, setData] = useState<ShareData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const pathParts = window.location.pathname.split('/');
-    const shareId = pathParts[pathParts.length - 1];
-    if (shareId) {
-      setId(shareId);
-      fetchShareInfo(shareId);
-    }
-  }, []);
-
-  const fetchShareInfo = async (shareId: string) => {
-    try {
-      const res = await fetch(`/api/public/share/${shareId}`);
-      const json = await res.json() as { success: boolean, data: ShareContent, error?: string };
-      if (json.success) {
-        setData(json.data);
-      } else {
-        setError(json.error || '分享不存在');
-      }
-    } catch (e) {
-      setError('加载失败');
-    } finally {
+    if (!id) {
+      setError('无效的分享链接');
       setLoading(false);
+      return;
     }
+
+    const fetchShareDetail = async () => {
+      try {
+        const res = await fetch(`/api/share/detail/${id}`);
+        if (!res.ok) throw new Error('分享已失效或不存在');
+        const json = await res.json();
+        setData(json);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchShareDetail();
+  }, [id]);
+
+  const goBack = () => {
+    window.location.href = '/';
   };
 
-  const formatSize = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const downloadAll = () => {
+    // 触发打包下载 API
+    window.location.href = `/api/share/download/${id}`;
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[var(--bg-main)] flex items-center justify-center">
-        <div className="w-10 h-10 border-4 border-[var(--accent-color)] border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-white/50">
+        <Loader2 className="animate-spin mb-4" size={40} />
+        <p>正在拉取文件列表...</p>
       </div>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-[var(--bg-main)] flex flex-col items-center justify-center p-4">
-        <div className="bg-[var(--bg-surface)] p-8 rounded-[32px] border border-[var(--border-color)] text-center max-w-md w-full">
-          <Shield className="w-16 h-16 text-red-500 mx-auto mb-4 opacity-50" />
-          <h2 className="text-xl font-bold mb-2">访问受阻</h2>
-          <p className="text-[var(--text-secondary)] mb-6">{error || '该分享已失效或不存在'}</p>
-          <button 
-            onClick={() => window.location.href = '/'}
-            className="w-full py-3 bg-[var(--accent-color)] text-white rounded-xl font-bold"
-          >
-            返回首页
-          </button>
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div className="w-20 h-20 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-6">
+          <Package size={40} />
         </div>
+        <h2 className="text-2xl font-bold mb-2">出错了</h2>
+        <p className="text-white/50 mb-8">{error || '无法获取分享信息'}</p>
+        <button 
+          onClick={goBack}
+          className="px-6 py-2 bg-white/10 rounded-xl hover:bg-white/20 transition-colors"
+        >
+          回到首页
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[var(--bg-main)] p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        <button 
-          onClick={() => window.location.href = '/'}
-          className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] mb-8 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" /> 返回工具箱
-        </button>
+    <div className="max-w-4xl mx-auto p-6 space-y-8">
+      <button 
+        onClick={goBack}
+        className="inline-flex items-center gap-2 text-white/50 hover:text-white transition-colors"
+      >
+        <ArrowLeft size={18} />
+        <span>返回工具箱</span>
+      </button>
 
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-[var(--bg-surface)] rounded-[32px] border border-[var(--border-color)] shadow-2xl overflow-hidden"
-        >
-          <div className="p-8 border-b border-[var(--border-color)] bg-gradient-to-br from-[var(--accent-color)]/5 to-transparent">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-[var(--accent-color)] flex items-center justify-center text-white shadow-lg shadow-[var(--accent-color)]/20">
-                  {data.type === 'file' ? <Folder className="w-8 h-8" /> : <FileText className="w-8 h-8" />}
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold tracking-tight">{data.name || '未命名分享'}</h1>
-                  <p className="text-sm text-[var(--text-secondary)] flex items-center gap-2 mt-1">
-                    <Clock className="w-4 h-4" /> 分享于 {new Date(data.createdAt).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-              {data.type === 'file' && (
-                <div className="bg-[var(--bg-main)] px-6 py-3 rounded-2xl border border-[var(--border-color)]">
-                  <p className="text-[10px] text-[var(--text-secondary)] uppercase font-bold tracking-wider mb-1">总计大小</p>
-                  <p className="text-lg font-mono font-bold text-[var(--accent-color)]">{formatSize(data.totalSize || 0)}</p>
-                </div>
-              )}
+      {/* 分享头信息 */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-[var(--bg-main)] border border-white/10 rounded-2xl p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
+      >
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold flex items-center gap-3">
+            <FolderOpen className="text-[var(--accent-color)]" />
+            {data.name || '未命名分享'}
+          </h1>
+          <div className="flex flex-wrap gap-4 text-sm text-white/40">
+            <div className="flex items-center gap-1">
+              <Calendar size={14} />
+              {new Date(data.createdAt).toLocaleDateString()}
+            </div>
+            <div className="flex items-center gap-1">
+              <HardDrive size={14} />
+              {data.files.length} 个文件 / {formatSize(data.totalSize)}
             </div>
           </div>
+        </div>
+        <button 
+          onClick={downloadAll}
+          className="flex items-center gap-2 px-8 py-3 bg-[var(--accent-color)] text-white rounded-xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[var(--accent-color)]/20"
+        >
+          <Download size={20} />
+          下载全部
+        </button>
+      </motion.div>
 
-          <div className="p-8">
-            {data.type === 'text' ? (
-              <div className="bg-[var(--bg-main)] rounded-2xl p-6 border border-[var(--border-color)]">
-                <pre className="font-mono text-sm whitespace-pre-wrap break-all">{data.content}</pre>
+      {/* 文件列表 */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.1 }}
+        className="bg-[var(--bg-main)] border border-white/10 rounded-2xl overflow-hidden"
+      >
+        <div className="grid grid-cols-1 divide-y divide-white/5">
+          {data.files.map((file, index) => (
+            <div key={index} className="flex items-center justify-between p-4 hover:bg-white/[0.02] transition-colors group">
+              <div className="flex items-center gap-4 min-w-0">
+                <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center text-white/40 group-hover:text-[var(--accent-color)] transition-colors">
+                  <File size={20} />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-medium truncate">{file.name}</p>
+                  <p className="text-xs text-white/30">{formatSize(file.size)}</p>
+                </div>
               </div>
-            ) : (
-              <div className="space-y-3">
-                <h3 className="text-sm font-bold text-[var(--text-secondary)] px-2 mb-4">包含的文件 ({data.files?.length || 0})</h3>
-                {data.files?.map((file, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-4 bg-[var(--bg-main)] hover:bg-[var(--hover-color)] rounded-2xl border border-[var(--border-color)] transition-all group">
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-[var(--bg-surface)] flex items-center justify-center text-[var(--text-secondary)] group-hover:text-[var(--accent-color)] transition-colors">
-                        <File className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">{file.name}</p>
-                        <p className="text-[10px] text-[var(--text-secondary)]">{formatSize(file.size)}</p>
-                      </div>
-                    </div>
-                    <a 
-                      href={`/api/public/download/${data.id}/${encodeURIComponent(file.path)}`}
-                      className="flex items-center gap-2 px-4 py-2 bg-[var(--bg-surface)] hover:bg-[var(--accent-color)] hover:text-white border border-[var(--border-color)] rounded-xl text-xs font-bold transition-all shadow-sm"
-                    >
-                      下载 <Download className="w-3.5 h-3.5" />
-                    </a>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+              <a 
+                href={`/api/share/file/${data.id}/${encodeURIComponent(file.name)}`}
+                className="p-2 opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded-lg transition-all"
+                title="单文件下载"
+              >
+                <Download size={18} className="text-white/60" />
+              </a>
+            </div>
+          ))}
+        </div>
+      </motion.div>
 
-          <div className="px-8 py-6 bg-[var(--bg-main)] border-t border-[var(--border-color)] flex items-center justify-center text-[var(--text-secondary)] text-xs">
-            <Shield className="w-3 h-3 mr-2" /> 这是一个通过浮云工具箱生成的公开分享链接，请勿传输违法内容。
-          </div>
-        </motion.div>
-      </div>
+      <p className="text-center text-xs text-white/20">
+        文件由用户分享，请注意识别风险。ID: {data.id}
+      </p>
     </div>
   );
-}
+};
 
-function FileText(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/>
-    </svg>
-  );
-}
+export default SharePreview;

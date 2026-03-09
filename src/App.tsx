@@ -14,6 +14,7 @@ type Tool = 'home' | 'qrcode' | 'chain-processor' | 'code-snippets' | 'cloud-sha
 export default function App() {
   const [activeTool, setActiveTool] = useState<Tool>(() => {
     const path = window.location.pathname.replace('/', '');
+    // 关键修复：正确识别 /share-preview/:id 等深层路径
     if (path.startsWith('share-preview')) return 'share-preview';
     return (path === '' ? 'home' : path) as Tool;
   });
