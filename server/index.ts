@@ -869,9 +869,8 @@ export default {
     const path = url.pathname;
     
     // ==========================================
-    // 核心分享拦截：拦截 /s/{id} (直连文本或重定向到预览)
+    // 强制优先级：核心分享拦截 (直连文本或重定向到预览)
     // ==========================================
-    // 正则支持 6-12 位 ID，支持可选末尾斜杠
     const shareMatch = path.match(/^\/s\/([a-z0-9]{6,12})\/?$/i);
     if (shareMatch && request.method === 'GET') {
       const id = shareMatch[1];
@@ -883,7 +882,7 @@ export default {
           const isText = item.type === 'text' || (!item.type && item.content);
           
           if (isText) {
-            // 文本：直接返回纯文本响应，严格设置 Content-Type
+            // 文本：绝对返回纯文本响应
             return new Response(item.content || '', {
               status: 200,
               headers: {
@@ -899,18 +898,18 @@ export default {
             return Response.redirect(`${frontendUrl}/share-preview/${id}`, 302);
           }
         }
-        // 如果 KV 中没找到，不要交给 SPA，直接返回 404 文本，防止误触 HTML
-        return new Response('分享已失效或不存在', { 
+        // KV 未找到 ID 的兜底（防止透传到 SPA 返回 HTML）
+        return new Response('Content Lost or Invalid ID', { 
           status: 404, 
           headers: { 'Content-Type': 'text/plain; charset=utf-8' } 
         });
       } catch (e) {
-        console.error('Preview system failure:', e);
+        console.error('CRITICAL: Share system failure:', e);
       }
     }
     // ==========================================
 
-    // 其他请求（API, 静态资源, SPA 页面）交给 Hono 处理
+    // 其他所有请求（API, 静态资源, SPA 首页等）交给 Hono 处理
     return app.fetch(request, env, ctx);
   },
 };
