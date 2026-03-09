@@ -489,7 +489,7 @@ const CloudShare: React.FC = () => {
                 <thead>
                   <tr className="border-b border-[var(--border-color)] bg-[var(--bg-main)]/50">
                     <th className="px-6 py-5 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest w-24">ID</th>
-                    <th className="px-6 py-5 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest w-20">类型</th>
+                    <th className="px-6 py-5 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest w-24">类型</th>
                     <th className="px-6 py-5 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">展示内容</th>
                     <th className="px-6 py-5 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest w-40">时间</th>
                     <th className="px-6 py-5 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest text-right w-32">管理</th>
@@ -519,7 +519,7 @@ const CloudShare: React.FC = () => {
                           </code>
                         </td>
                         <td className="px-6 py-5">
-                          <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter ${
+                          <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter whitespace-nowrap ${
                             share.type === 'file' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'
                           }`}>
                             {share.type === 'file' ? '文件' : '文本'}
