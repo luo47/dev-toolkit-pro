@@ -318,7 +318,7 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
         <div className="h-16 flex items-center border-b border-[var(--border-color)] sticky top-0 bg-[var(--bg-main)]/80 backdrop-blur-md z-30">
-          <div className={`${activeTool === 'chain-processor' || activeTool === 'code-snippets' ? 'max-w-[1400px]' : 'max-w-[840px]'} mx-auto w-full px-4 lg:px-8 flex items-center justify-between`}>
+          <div className={`${activeTool === 'chain-processor' || activeTool === 'code-snippets' || activeTool === 'cloud-share' || activeTool === 'share-preview' ? 'max-w-[1400px]' : 'max-w-[840px]'} mx-auto w-full px-4 lg:px-8 flex items-center justify-between`}>
             <div className="flex items-center gap-4 lg:gap-8 flex-1 overflow-hidden">
               {!isSidebarOpen && <div className="w-10 lg:hidden shrink-0" />}
 
@@ -462,7 +462,7 @@ export default function App() {
         </div>
 
         <div className="flex-1 overflow-y-auto w-full">
-          <div className={`${activeTool === 'chain-processor' || activeTool === 'code-snippets' ? 'max-w-[1400px]' : 'max-w-[840px]'} mx-auto w-full px-4 lg:px-8 py-8 flex flex-col min-h-full`}>
+          <div className={`${activeTool === 'chain-processor' || activeTool === 'code-snippets' || activeTool === 'cloud-share' || activeTool === 'share-preview' ? 'max-w-[1400px]' : 'max-w-[840px]'} mx-auto w-full px-4 lg:px-8 py-8 flex flex-col min-h-full`}>
             {activeTool === 'home' ? (
               <div className="flex-1 flex flex-col pb-20">
                 <Home

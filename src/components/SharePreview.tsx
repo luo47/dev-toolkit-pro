@@ -101,7 +101,7 @@ const SharePreview: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-8">
+    <div className="w-full mx-auto p-6 space-y-8">
       <button 
         onClick={goBack}
         className="inline-flex items-center gap-2 text-white/50 hover:text-white transition-colors"
