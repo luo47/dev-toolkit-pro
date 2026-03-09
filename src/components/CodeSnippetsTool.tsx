@@ -441,7 +441,11 @@ export default function CodeSnippetsTool() {
                                             {snippet.title || ""}
                                         </div>
                                         {snippet.language && (
-                                            <div className="text-[9px] text-[var(--text-secondary)] uppercase tracking-wider leading-tight opacity-70">{snippet.language}</div>
+                                            <div className="flex items-center mt-0.5">
+                                                <span className="text-[9px] px-1.5 py-0 bg-[var(--accent-color)]/10 text-[var(--accent-color)] border border-[var(--accent-color)]/20 rounded-full font-medium uppercase tracking-wider leading-tight">
+                                                    {snippet.language}
+                                                </span>
+                                            </div>
                                         )}
                                     </div>
                                 </div>
