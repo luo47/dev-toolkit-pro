@@ -140,10 +140,10 @@ const CloudShare: React.FC = () => {
           {/* 新建按钮组 */}
           <button 
             onClick={() => setShowUploadModal(true)}
-            className="flex-1 sm:flex-none h-12 px-6 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-lg shadow-blue-600/20 active:scale-95 transition-all"
+            className="w-12 h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold flex items-center justify-center shadow-lg shadow-blue-600/20 active:scale-95 transition-all"
+            title="创建新分享"
           >
-            <Plus size={20} />
-            <span>创建新分享</span>
+            <Plus size={24} />
           </button>
         </div>
       </div>
