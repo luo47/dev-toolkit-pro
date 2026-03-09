@@ -52,8 +52,9 @@ const SharePreview: React.FC = () => {
       try {
         const res = await fetch(`/api/share/detail/${id}`);
         if (!res.ok) throw new Error('分享已失效或不存在');
-        const json = await res.json();
-        setData(json);
+        const json = await res.json() as any;
+        const shareData = json.success ? json.data : json;
+        setData(shareData);
       } catch (err: any) {
         setError(err.message);
       } finally {

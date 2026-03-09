@@ -72,8 +72,10 @@ const CloudShare: React.FC = () => {
     try {
       const res = await fetch('/api/share/list');
       if (res.ok) {
-        const data = await res.json();
-        setShares(Array.isArray(data) ? data : []);
+        const json = await res.json() as any;
+        // 修正：从 json.data 中提取数组
+        const list = Array.isArray(json) ? json : (json && Array.isArray(json.data) ? json.data : []);
+        setShares(list);
       }
     } catch (err) {
       console.error('获取分享列表失败:', err);
