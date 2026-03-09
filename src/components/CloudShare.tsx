@@ -18,7 +18,8 @@ import {
   FolderPlus,
   ArrowRight,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Eye
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
@@ -558,6 +559,13 @@ const CloudShare: React.FC = () => {
                         </td>
                         <td className="px-6 py-5 text-right">
                           <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0">
+                            <button 
+                              onClick={() => window.open(`/s/${share.id}`, '_blank')}
+                              className="p-2 hover:bg-emerald-500/10 rounded-lg transition-colors text-white/40 hover:text-emerald-400"
+                              title="预览分享"
+                            >
+                              <Eye size={16} />
+                            </button>
                             <button 
                               onClick={() => copyLink(share.id)}
                               className="p-2 hover:bg-[var(--accent-color)]/10 rounded-lg transition-colors text-white/40 hover:text-[var(--accent-color)]"
