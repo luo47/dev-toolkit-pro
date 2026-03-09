@@ -175,18 +175,18 @@ const CloudShare: React.FC = () => {
               {/* 信息概览 */}
               <div className="flex items-center gap-6 flex-1 min-w-0 w-full">
                 <div className={`w-16 h-16 rounded-[22px] flex items-center justify-center shrink-0 ${share.type === 'file' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                  {share.type === 'file' ? <Files size={28} /> : <FileText size={28} />}
+                  {share.type === 'file' ? (share.files?.length === 1 ? <FileIcon size={28} /> : <Files size={28} />) : <FileText size={28} />}
                 </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3 mb-1.5">
                     <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${share.type === 'file' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}`}>
-                      {share.type === 'file' ? '多文件' : '纯文本'}
+                      {share.type === 'file' ? (share.files?.length === 1 ? '单文件' : '多文件') : '纯文本'}
                     </span>
                     <code className="text-[10px] font-mono text-white/20 tracking-widest uppercase">ID: {share.id}</code>
                   </div>
                   <h3 className="text-lg font-bold text-white/90 truncate group-hover:text-white">
-                    {share.type === 'file' ? (share.name || '未命名资产包') : (share.content?.slice(0, 40) || '文本片段')}
+                    {share.type === 'file' ? (share.name || (share.files?.length === 1 ? '未命名文件' : '未命名资产包')) : (share.content?.slice(0, 40) || '文本片段')}
                   </h3>
                   <div className="flex items-center gap-4 mt-2">
                     <span className="text-[11px] text-white/20 flex items-center gap-1.5">

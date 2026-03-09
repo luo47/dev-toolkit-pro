@@ -102,7 +102,7 @@ const SharePreview: React.FC = () => {
         <div className="w-24 h-24 bg-red-500/10 text-red-500 rounded-[32px] flex items-center justify-center mb-8 shadow-2xl shadow-red-500/10 border border-red-500/20">
           <AlertTriangle size={40} />
         </div>
-        <h2 className="text-3xl font-black mb-4 tracking-tighter italic">ACCESS DENIED</h2>
+        <h2 className="text-3xl font-black mb-4 tracking-tighter italic">拒绝访问</h2>
         <p className="text-white/40 mb-10 text-sm max-w-sm font-light leading-relaxed">
             {error || '系统无法验证该分享 ID 的有效性，可能资源已被销毁或链接已失效。'}
         </p>
@@ -122,12 +122,12 @@ const SharePreview: React.FC = () => {
       <div className="flex items-center gap-4 text-white/20">
         <button onClick={goBack} className="flex items-center gap-2 hover:text-white transition-colors">
             <ArrowLeft size={16} />
-            <span className="text-[10px] uppercase font-black">Back to Toolkit</span>
+            <span className="text-[10px] uppercase font-black">返回工具箱</span>
         </button>
         <div className="h-px flex-1 bg-white/5" />
         <div className="flex items-center gap-2 text-[10px] font-bold">
             <ShieldCheck size={14} className="text-emerald-500" />
-            <span className="uppercase italic tracking-tighter">Verified Content</span>
+            <span className="uppercase italic tracking-tighter">内容已验证</span>
         </div>
       </div>
 
@@ -149,20 +149,20 @@ const SharePreview: React.FC = () => {
                 </div>
                 <div>
                    <h1 className="text-3xl font-black italic tracking-tighter uppercase leading-none">
-                    {data.name || 'BUNDLE CONTENT'}
+                    {data.name || '资产包'}
                   </h1>
-                  <p className="text-[10px] font-mono text-white/30 uppercase mt-1">SHARE ID: {data.id}</p>
+                  <p className="text-[10px] font-mono text-white/30 uppercase mt-1">分享 ID: {data.id}</p>
                 </div>
             </div>
             
             <div className="flex flex-wrap gap-6 text-[10px] font-bold text-white/40 uppercase tracking-widest">
                 <div className="flex items-center gap-2">
                     <Calendar size={14} className="text-[var(--accent-color)]/50" />
-                    <span>Published: {new Date(data.createdAt).toLocaleDateString()}</span>
+                    <span>发布于: {new Date(data.createdAt).toLocaleDateString()}</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <HardDrive size={14} className="text-[var(--accent-color)]/50" />
-                    <span>Load: {data.files?.length || 0} Assets / {formatSize(data.totalSize)}</span>
+                    <span>包含: {data.files?.length || 0} 个资产 / {formatSize(data.totalSize)}</span>
                 </div>
             </div>
           </div>
@@ -172,7 +172,7 @@ const SharePreview: React.FC = () => {
             className="group flex items-center gap-3 px-10 py-4 bg-[var(--accent-color)] text-white rounded-2xl font-black italic uppercase tracking-tighter hover:scale-105 active:scale-95 transition-all shadow-xl shadow-[var(--accent-color)]/20"
           >
             <Download size={22} className="group-hover:translate-y-0.5 transition-transform" />
-            <span>Download All Assets</span>
+            <span>下载全量资产</span>
           </button>
         </div>
       </motion.div>
@@ -185,8 +185,8 @@ const SharePreview: React.FC = () => {
         className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-[32px] overflow-hidden shadow-xl"
       >
         <div className="p-6 bg-[var(--bg-main)]/50 border-b border-[var(--border-color)] flex justify-between items-center px-8">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">File System Structure</span>
-            <span className="text-[10px] font-mono text-white/20">{data.files?.length} Items Verified</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">文件系统结构</span>
+            <span className="text-[10px] font-mono text-white/20">{data.files?.length} 个项已验证</span>
         </div>
         
         <div className="grid grid-cols-1 divide-y divide-[var(--border-color)]">
@@ -203,7 +203,9 @@ const SharePreview: React.FC = () => {
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-[10px] font-mono text-white/20 uppercase tracking-tighter">{formatSize(file.size)}</span>
                     <span className="w-1 h-1 rounded-full bg-white/10" />
-                    <span className="text-[10px] font-mono text-white/20 uppercase tracking-tighter">{file.mimeType.split('/')[1] || 'binary'}</span>
+                    <span className="text-[10px] font-mono text-white/20 uppercase tracking-tighter">
+                        {file.mimeType.includes('text') || file.mimeType.includes('plain') ? '纯文本' : file.mimeType.split('/')[1] || '二进制'}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -221,7 +223,7 @@ const SharePreview: React.FC = () => {
 
       <div className="flex flex-col items-center gap-3 pt-4">
         <p className="text-[10px] font-mono text-white/10 uppercase tracking-[0.3em]">
-            System Hash Verified · End-to-End Encryption Placeholder
+            系统哈希已验证 · 端到端加密校验中
         </p>
         <Link2External />
       </div>
@@ -232,7 +234,7 @@ const SharePreview: React.FC = () => {
 const Link2External = () => (
     <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 rounded-full text-[9px] font-bold text-white/20 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer uppercase tracking-tighter">
         <ExternalLink size={10} />
-        Cloudflare R2 Storage Powered
+        由 Cloudflare R2 存储驱动
     </div>
 )
 
