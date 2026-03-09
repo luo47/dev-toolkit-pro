@@ -117,10 +117,9 @@ const CloudShare: React.FC = () => {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6">
         <div>
           <h1 className="text-4xl font-black italic tracking-tighter text-white/90 flex items-center gap-4">
-            <span className="bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent">CLOUD_STORAGE</span>
-            <span className="text-white/20 text-xl font-light not-italic tracking-widest hidden sm:inline">云分享控制台</span>
+            <span className="bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent">云分享控制台</span>
           </h1>
-          <p className="text-white/30 text-xs mt-2 font-mono uppercase tracking-widest">Manage your digital assets with absolute efficiency.</p>
+          <p className="text-white/30 text-xs mt-2 font-mono uppercase tracking-widest">在这里高效管理您的所有云端分享资产</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
@@ -154,7 +153,7 @@ const CloudShare: React.FC = () => {
         {isLoading && shares.length === 0 ? (
           <div className="bg-white/5 rounded-[32px] border border-white/5 p-32 text-center animate-pulse">
             <Loader2 className="animate-spin mx-auto mb-4 text-blue-500" size={32} />
-            <p className="text-white/20 text-sm italic font-mono uppercase tracking-widest">Syncing Data...</p>
+            <p className="text-white/20 text-sm italic font-mono uppercase tracking-widest">正在同步数据...</p>
           </div>
         ) : filteredShares.length === 0 ? (
           <div className="bg-white/5 rounded-[32px] border border-white/5 p-32 text-center">
@@ -182,12 +181,12 @@ const CloudShare: React.FC = () => {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3 mb-1.5">
                     <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${share.type === 'file' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}`}>
-                      {share.type === 'file' ? 'Bundle' : 'Snippet'}
+                      {share.type === 'file' ? '多文件' : '纯文本'}
                     </span>
                     <code className="text-[10px] font-mono text-white/20 tracking-widest uppercase">ID: {share.id}</code>
                   </div>
                   <h3 className="text-lg font-bold text-white/90 truncate group-hover:text-white">
-                    {share.type === 'file' ? (share.name || 'UNNAMED_ASSETS_BUNDLE') : (share.content?.slice(0, 40) || 'TEXT_SNIPPET')}
+                    {share.type === 'file' ? (share.name || '未命名资产包') : (share.content?.slice(0, 40) || '文本片段')}
                   </h3>
                   <div className="flex items-center gap-4 mt-2">
                     <span className="text-[11px] text-white/20 flex items-center gap-1.5">
@@ -197,7 +196,7 @@ const CloudShare: React.FC = () => {
                     {share.type === 'file' && (
                       <span className="text-[11px] text-emerald-500/40 uppercase font-black flex items-center gap-1.5">
                         <span className="w-1 h-1 rounded-full bg-emerald-500/40" />
-                        {share.files?.length} Files · {formatSize(share.totalSize || 0)}
+                        {share.files?.length} 个文件 · {formatSize(share.totalSize || 0)}
                       </span>
                     )}
                   </div>
@@ -357,8 +356,8 @@ const UploadModal: React.FC<{ onClose: () => void, onSuccess: () => void }> = ({
             <div>
               <h2 className="text-xl font-bold">创建新分享</h2>
               <div className="flex gap-4 mt-1">
-                <button onClick={() => setShareType('text')} className={`text-xs font-bold uppercase transition-colors ${shareType === 'text' ? 'text-blue-500' : 'text-white/20'}`}>Text_Snippet</button>
-                <button onClick={() => setShareType('file')} className={`text-xs font-bold uppercase transition-colors ${shareType === 'file' ? 'text-emerald-500' : 'text-white/20'}`}>Files_Bundle</button>
+                <button onClick={() => setShareType('text')} className={`text-xs font-bold uppercase transition-colors ${shareType === 'text' ? 'text-blue-500' : 'text-white/20'}`}>纯文本</button>
+                <button onClick={() => setShareType('file')} className={`text-xs font-bold uppercase transition-colors ${shareType === 'file' ? 'text-emerald-500' : 'text-white/20'}`}>文件夹/文件</button>
               </div>
             </div>
           </div>
@@ -386,9 +385,9 @@ const UploadModal: React.FC<{ onClose: () => void, onSuccess: () => void }> = ({
                   <div className="flex justify-between items-end mb-6">
                     <div>
                       <p className="text-3xl font-black italic">{selectedFiles.length < 10 ? `0${selectedFiles.length}` : selectedFiles.length}</p>
-                      <p className="text-[10px] uppercase font-bold text-white/20 tracking-widest">Selected Assets</p>
+                      <p className="text-[10px] uppercase font-bold text-white/20 tracking-widest">已选资产</p>
                     </div>
-                    <button onClick={() => setSelectedFiles([])} className="text-xs font-bold text-red-500 underline">Clear</button>
+                    <button onClick={() => setSelectedFiles([])} className="text-xs font-bold text-red-500 underline">清除</button>
                   </div>
                   <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
                     {selectedFiles.map((f, i) => (
@@ -438,11 +437,11 @@ const UploadModal: React.FC<{ onClose: () => void, onSuccess: () => void }> = ({
                <>
                  <div className="absolute inset-0 bg-blue-500/20 origin-left transition-all" style={{ width: `${uploadProgress}%` }} />
                  <Loader2 className="animate-spin" size={24} />
-                 <span className="relative z-10">{uploadProgress}% SYNCING</span>
+                 <span className="relative z-10">{uploadProgress}% 正在同步</span>
                </>
              ) : (
                <>
-                 <span>INITIALIZE_SHARE</span>
+                 <span>开始创建分享</span>
                  <ArrowRight size={20} />
                </>
              )}
@@ -496,10 +495,10 @@ const EditModal: React.FC<{ share: ShareContent, onClose: () => void, onSuccess:
           />
         </div>
         <div className="p-8 bg-white/[0.02] flex justify-end gap-4">
-          <button onClick={onClose} className="px-8 py-4 text-white/40 font-bold">CANCEL</button>
+          <button onClick={onClose} className="px-8 py-4 text-white/40 font-bold">取消</button>
           <button onClick={save} disabled={isLoading} className="px-10 py-4 bg-blue-600 rounded-2xl font-bold shadow-lg shadow-blue-600/20 flex items-center gap-2">
             {isLoading && <Loader2 className="animate-spin" size={18} />}
-            <span>{isLoading ? 'SAVING...' : 'SAVE_EDITS'}</span>
+            <span>{isLoading ? '正在保存...' : '完成修改'}</span>
           </button>
         </div>
       </motion.div>
