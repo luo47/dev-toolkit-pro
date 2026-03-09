@@ -19,7 +19,8 @@ import {
   ArrowRight,
   CheckCircle2,
   AlertCircle,
-  Eye
+  Eye,
+  History
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
