@@ -14,5 +14,3 @@ database_name = "dev-toolkit-db"
 database_id = "2ff968e4-26bc-4eb5-b82e-9949cdce06d5"
 migrations_dir = "migrations"
 
-[observability]
-enabled = true

@@ -24,6 +24,7 @@ import dockerfile from 'highlight.js/lib/languages/dockerfile';
 import makefile from 'highlight.js/lib/languages/makefile';
 import ini from 'highlight.js/lib/languages/ini';
 import properties from 'highlight.js/lib/languages/properties';
+import toml from 'highlight.js/lib/languages/ini'; // highlight.js uses ini for toml often, or has a toml-specific one. Let's try importing it.
 import diff from 'highlight.js/lib/languages/diff';
 // import 'highlight.js/styles/github-dark.css'; // 移除固定的暗色样式，改为使用 CSS 变量控制
 
@@ -51,6 +52,7 @@ hljs.registerLanguage('dockerfile', dockerfile);
 hljs.registerLanguage('makefile', makefile);
 hljs.registerLanguage('ini', ini);
 hljs.registerLanguage('properties', properties);
+hljs.registerLanguage('toml', toml);
 hljs.registerLanguage('diff', diff);
 hljs.registerLanguage('plaintext', () => ({ name: 'plaintext', contains: [] }));
 
@@ -92,6 +94,7 @@ const LANGUAGE_GROUPS = [
             { value: 'bash', label: 'bash (sh)' },
             { value: 'shell', label: 'shell' },
             { value: 'yaml', label: 'yaml (yml)' },
+            { value: 'toml', label: 'toml' },
             { value: 'dockerfile', label: 'dockerfile' },
             { value: 'makefile', label: 'makefile' },
             { value: 'ini', label: 'ini' },
@@ -133,6 +136,7 @@ const PRESET_LANGUAGES: Record<string, string> = {
     'makefile': 'make',
     'ini': 'ini',
     'properties': 'prop',
+    'toml': 'toml',
     'diff': 'diff',
     'plaintext': 'txt'
 };
@@ -145,7 +149,7 @@ export default function CodeSnippetsTool() {
     const [snippets, setSnippets] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [languageFilter, setLanguageFilter] = useState(() => localStorage.getItem(LS_LANG) || '');
+    const [languageFilter, setLanguageFilter] = useState('');
     const [sortValue, setSortValue] = useState(() => localStorage.getItem(LS_SORT) || 'updated_at:desc');
     const [activeTag, setActiveTag] = useState('');
     const [allTags, setAllTags] = useState<{ name: string; count: number }[]>([]);
@@ -153,9 +157,32 @@ export default function CodeSnippetsTool() {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [formData, setFormData] = useState({ title: '', code: '', language: 'plaintext', tags: '', description: '' });
-    const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [langSearch, setLangSearch] = useState('');
+    const [isLangOpen, setIsLangOpen] = useState(false);
+    const langRef = useRef<HTMLDivElement>(null);
     const codeRefs = useRef<{ [key: string]: HTMLElement | null }>({});
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
+
+    // 点击外部关闭语言选择器
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (langRef.current && !langRef.current.contains(e.target as Node)) {
+                setIsLangOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    // 过滤后的语言分组
+    const filteredGroups = LANGUAGE_GROUPS.map(group => ({
+        ...group,
+        options: group.options.filter(opt => 
+            opt.label.toLowerCase().includes(langSearch.toLowerCase()) || 
+            opt.value.toLowerCase().includes(langSearch.toLowerCase())
+        )
+    })).filter(group => group.options.length > 0);
 
     // 获取当前已有的缩写
     const getLanguageLabel = (lang: string) => {
@@ -195,7 +222,10 @@ export default function CodeSnippetsTool() {
     const fetchLanguages = async () => {
         try {
             const res = await fetch('/api/snippets/data/languages');
-            if (res.ok) setLanguages(await res.json());
+            if (res.ok) {
+                const data = await res.json() as any[];
+                setLanguages(data);
+            }
         } catch { }
     };
 
@@ -227,7 +257,7 @@ export default function CodeSnippetsTool() {
     };
     const handleLanguageChange = (val: string) => {
         setLanguageFilter(val);
-        localStorage.setItem(LS_LANG, val);
+        // 不再持久化语言过滤，满足“默认不选中”
     };
 
     const handleTagClick = (tag: string) => {
@@ -335,30 +365,30 @@ export default function CodeSnippetsTool() {
                 {/* 新建按钮 */}
                 <button
                     onClick={startCreate}
-                    className="flex items-center gap-1 px-2.5 py-1 bg-[var(--accent-color)] text-white rounded-lg hover:opacity-90 transition-opacity text-xs font-medium shrink-0"
+                    className="flex items-center justify-center p-1.5 bg-[var(--accent-color)] text-white rounded-lg hover:opacity-90 transition-opacity shrink-0"
+                    title="新建片段"
                 >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">新建片段</span>
-                    <span className="sm:hidden">新建</span>
+                    <Plus className="w-4 h-4" />
                 </button>
             </div>
 
             {/* ── 语言筛选标签栏 ── */}
             <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 shrink-0 px-0.5">
-                <Code2 className="w-3 h-3 text-[var(--text-secondary)] shrink-0 ml-0.5" />
-                {languages.map(opt => (
-                    <button
-                        key={opt.language}
-                        onClick={() => handleLanguageChange(opt.language)}
-                        className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full border transition-all whitespace-nowrap ${languageFilter === opt.language
-                                ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm'
-                                : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
-                            }`}
-                    >
-                        {getLanguageLabel(opt.language)}
-                        <span className="ml-1 opacity-60">{opt.count}</span>
-                    </button>
-                ))}
+                {languages
+                    .filter(opt => opt.language !== '' && (!languageFilter || languageFilter === opt.language))
+                    .map(opt => (
+                        <button
+                            key={opt.language}
+                            onClick={() => handleLanguageChange(opt.language)}
+                            className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full border transition-all whitespace-nowrap ${languageFilter === opt.language
+                                    ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm'
+                                    : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
+                                }`}
+                        >
+                            {getLanguageLabel(opt.language)}
+                            <span className="ml-1 opacity-60">{opt.count}</span>
+                        </button>
+                    ))}
                 {languageFilter && (
                     <button
                         onClick={() => handleLanguageChange('')}
@@ -373,19 +403,21 @@ export default function CodeSnippetsTool() {
             {allTags.length > 0 && (
                 <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 shrink-0">
                     <Tag className="w-3 h-3 text-[var(--text-secondary)] shrink-0 ml-0.5" />
-                    {allTags.map(tag => (
-                        <button
-                            key={tag.name}
-                            onClick={() => handleTagClick(tag.name)}
-                            className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full border transition-all whitespace-nowrap ${activeTag === tag.name
-                                    ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium'
-                                    : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
-                                }`}
-                        >
-                            {tag.name}
-                            <span className="ml-1 opacity-60">{tag.count}</span>
-                        </button>
-                    ))}
+                    {allTags
+                        .filter(tag => !activeTag || activeTag === tag.name)
+                        .map(tag => (
+                            <button
+                                key={tag.name}
+                                onClick={() => handleTagClick(tag.name)}
+                                className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full border transition-all whitespace-nowrap ${activeTag === tag.name
+                                        ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium'
+                                        : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
+                                    }`}
+                            >
+                                {tag.name}
+                                <span className="ml-1 opacity-60">{tag.count}</span>
+                            </button>
+                        ))}
                     {activeTag && (
                         <button
                             onClick={() => setActiveTag('')}
@@ -411,19 +443,60 @@ export default function CodeSnippetsTool() {
                         </div>
                         <div>
                             <label className="block text-xs text-[var(--text-secondary)] mb-1">语言</label>
-                            <select
-                                value={formData.language}
-                                onChange={e => setFormData({ ...formData, language: e.target.value })}
-                                className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 text-sm outline-none cursor-pointer"
-                            >
-                                {LANGUAGE_GROUPS.map(group => (
-                                    <optgroup key={group.label} label={group.label}>
-                                        {group.options.map(opt => (
-                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                        ))}
-                                    </optgroup>
-                                ))}
-                            </select>
+                            <div className="relative" ref={langRef}>
+                                <div
+                                    onClick={() => setIsLangOpen(!isLangOpen)}
+                                    className="w-full bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 text-sm outline-none cursor-pointer flex justify-between items-center hover:border-[var(--text-secondary)] transition-colors"
+                                >
+                                    <span className="truncate">{formData.language}</span>
+                                    <ArrowUpDown className="w-3 h-3 opacity-50" />
+                                </div>
+
+                                {isLangOpen && (
+                                    <div className="absolute top-full left-0 w-full mt-1 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl shadow-2xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                                        <div className="p-2 border-b border-[var(--border-color)] bg-[var(--bg-main)]">
+                                            <div className="relative">
+                                                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 opacity-50" />
+                                                <input
+                                                    autoFocus
+                                                    type="text"
+                                                    placeholder="搜索语言..."
+                                                    value={langSearch}
+                                                    onChange={e => setLangSearch(e.target.value)}
+                                                    className="w-full pl-7 pr-2 py-1.5 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-lg text-xs outline-none focus:ring-1 focus:ring-[var(--accent-color)]"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
+                                            {filteredGroups.length === 0 ? (
+                                                <div className="py-8 text-center text-xs text-[var(--text-secondary)]">未找到匹配项</div>
+                                            ) : (
+                                                filteredGroups.map(group => (
+                                                    <div key={group.label} className="mb-2 last:mb-0">
+                                                        <div className="px-2 py-1 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">{group.label}</div>
+                                                        {group.options.map(opt => (
+                                                            <div
+                                                                key={opt.value}
+                                                                onClick={() => {
+                                                                    setFormData({ ...formData, language: opt.value });
+                                                                    setIsLangOpen(false);
+                                                                    setLangSearch('');
+                                                                }}
+                                                                className={`px-2.5 py-1.5 text-xs rounded-lg cursor-pointer transition-colors ${formData.language === opt.value
+                                                                        ? 'bg-[var(--accent-color)] text-white'
+                                                                        : 'hover:bg-[var(--hover-color)]'
+                                                                    }`}
+                                                            >
+                                                                {opt.label}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                     <div className="mb-3">
