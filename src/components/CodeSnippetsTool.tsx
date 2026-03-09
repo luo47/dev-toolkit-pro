@@ -284,22 +284,6 @@ export default function CodeSnippetsTool() {
                     />
                 </div>
 
-                {/* 语言筛选 */}
-                <select
-                    value={languageFilter}
-                    onChange={e => handleLanguageChange(e.target.value)}
-                    className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg px-2 py-1 text-xs outline-none shrink-0 min-w-[90px] cursor-pointer hover:border-[var(--text-secondary)] transition-colors"
-                >
-                    <option value="">所有语言</option>
-                    {LANGUAGE_GROUPS.map(group => (
-                        <optgroup key={group.label} label={group.label}>
-                            {group.options.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                        </optgroup>
-                    ))}
-                </select>
-
                 {/* 排序 */}
                 <div className="relative shrink-0">
                     <ArrowUpDown className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--text-secondary)] pointer-events-none" />
@@ -323,6 +307,31 @@ export default function CodeSnippetsTool() {
                     <span className="hidden sm:inline">新建片段</span>
                     <span className="sm:hidden">新建</span>
                 </button>
+            </div>
+
+            {/* ── 语言筛选标签栏 ── */}
+            <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 shrink-0 px-0.5">
+                <button
+                    onClick={() => handleLanguageChange('')}
+                    className={`shrink-0 text-[10px] px-2.5 py-1 rounded-full border transition-all whitespace-nowrap ${!languageFilter
+                            ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium'
+                            : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
+                        }`}
+                >
+                    所有语言
+                </button>
+                {LANGUAGE_GROUPS.flatMap(g => g.options).map(opt => (
+                    <button
+                        key={opt.value}
+                        onClick={() => handleLanguageChange(opt.value)}
+                        className={`shrink-0 text-[10px] px-2.5 py-1 rounded-full border transition-all whitespace-nowrap ${languageFilter === opt.value
+                                ? 'bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium'
+                                : 'bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)]'
+                            }`}
+                    >
+                        {opt.label}
+                    </button>
+                ))}
             </div>
 
             {/* ── 标签导航栏 ── */}
