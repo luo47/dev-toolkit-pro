@@ -867,6 +867,7 @@ export default {
   async fetch(request: Request, env: Bindings, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
+    console.log('>>> [WORKER_FETCH_START]', path, request.method);
     
     // ==========================================
     // 强制优先级：核心分享拦截 (直连文本或重定向到预览)
