@@ -482,122 +482,120 @@ const CloudShare: React.FC = () => {
         ) : (
           <motion.div 
             key="list"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="bg-[var(--bg-surface)] rounded-[28px] border border-[var(--border-color)] overflow-hidden shadow-xl"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-4"
           >
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-[var(--border-color)] bg-[var(--bg-main)]/50">
-                    <th className="px-6 py-5 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest w-24">ID</th>
-                    <th className="px-6 py-5 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest w-24">类型</th>
-                    <th className="px-6 py-5 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest">展示内容</th>
-                    <th className="px-6 py-5 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest w-40">时间</th>
-                    <th className="px-6 py-5 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest text-right w-32">管理</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border-color)]">
-                  {isLoading ? (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-24 text-center">
-                        <Loader2 className="animate-spin mx-auto mb-4 text-[var(--accent-color)]" size={32} />
-                        <p className="text-[var(--text-secondary)] text-sm italic">正在同步云端数据...</p>
-                      </td>
-                    </tr>
-                  ) : !Array.isArray(shares) || shares.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-24 text-center">
-                        <AlertCircle className="mx-auto mb-4 text-white/10" size={48} />
-                        <p className="text-[var(--text-secondary)]">您的库中空空如也，快去创建一个吧</p>
-                      </td>
-                    </tr>
-                  ) : (
-                    shares.map((share) => (
-                      <tr key={share.id} className="hover:bg-[var(--hover-color)] transition-colors group">
-                        <td className="px-6 py-5">
-                          <code className="bg-black/40 px-2.5 py-1 rounded-lg text-[var(--accent-color)] font-mono text-xs">
-                            {share.id}
-                          </code>
-                        </td>
-                        <td className="px-6 py-5">
-                          <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-tighter whitespace-nowrap ${
-                            share.type === 'file' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'
-                          }`}>
-                            {share.type === 'file' ? '文件' : '文本'}
+            {isLoading ? (
+              <div className="bg-[var(--bg-surface)] rounded-[32px] border border-[var(--border-color)] p-24 text-center">
+                <Loader2 className="animate-spin mx-auto mb-4 text-[var(--accent-color)]" size={32} />
+                <p className="text-[var(--text-secondary)] text-sm italic">正在同步云端数据...</p>
+              </div>
+            ) : !Array.isArray(shares) || shares.length === 0 ? (
+              <div className="bg-[var(--bg-surface)] rounded-[32px] border border-[var(--border-color)] p-24 text-center">
+                <AlertCircle className="mx-auto mb-4 text-white/10" size={48} />
+                <p className="text-[var(--text-secondary)]">您的库中空空如也，快去创建一个吧</p>
+              </div>
+            ) : (
+              shares.map((share, idx) => (
+                <motion.div 
+                  key={share.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className="group bg-[var(--bg-surface)] hover:bg-[var(--hover-color)] border border-[var(--border-color)] hover:border-[var(--accent-color)]/30 rounded-[28px] p-5 flex flex-col md:flex-row items-start md:items-center gap-6 transition-all shadow-sm hover:shadow-xl hover:shadow-[var(--accent-color)]/5 relative overflow-hidden"
+                >
+                  {/* 类型指示色块 (左侧装饰) */}
+                  <div className={`absolute left-0 top-0 bottom-0 w-1 ${
+                    share.type === 'file' ? 'bg-emerald-500/30' : 'bg-blue-500/30'
+                  }`} />
+
+                  {/* ID & 类型区 */}
+                  <div className="flex flex-row md:flex-col items-center md:items-start gap-3 md:gap-1.5 shrink-0">
+                    <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest whitespace-nowrap shadow-sm ${
+                      share.type === 'file' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'
+                    }`}>
+                      {share.type === 'file' ? 'Bundle' : 'Snippet'}
+                    </span>
+                    <code className="text-[10px] font-mono text-white/20 uppercase tracking-tighter">
+                      ID: {share.id}
+                    </code>
+                  </div>
+
+                  {/* 主内容区 */}
+                  <div className="flex-1 flex items-center gap-5 min-w-0 w-full">
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-inner ${
+                      share.type === 'file' ? 'bg-emerald-500/5 text-emerald-500' : 'bg-blue-500/5 text-blue-500'
+                    }`}>
+                      {share.type === 'file' ? <Files size={24} /> : <FileText size={24} />}
+                    </div>
+                    
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-base font-bold text-white/90 group-hover:text-white transition-colors truncate">
+                        {share.type === 'file' ? (share.name || 'UNNAMED_SHARE') : 'TEXT_CONTENT_SHARE'}
+                      </h3>
+                      <div className="flex items-center gap-3 mt-1 overflow-hidden">
+                        {share.type === 'file' ? (
+                          <span className="text-[11px] text-white/30 truncate flex items-center gap-1.5 leading-none">
+                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/20" />
+                             {share.files?.length || 0} Assets · {formatSize(share.totalSize || 0)}
                           </span>
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-3">
-                            {share.type === 'file' ? (
-                                <>
-                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/5 flex items-center justify-center text-emerald-400">
-                                        <Files size={16} />
-                                    </div>
-                                    <div className="flex flex-col min-w-0">
-                                        <span className="font-semibold text-sm truncate max-w-xs">{share.name || '未命名分享'}</span>
-                                        <span className="text-[10px] text-white/30 italic">
-                                            {share.files?.length || 0} 个文件 · {formatSize(share.totalSize || 0)}
-                                        </span>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="w-8 h-8 rounded-lg bg-blue-500/5 flex items-center justify-center text-blue-400">
-                                        <FileText size={16} />
-                                    </div>
-                                    <span className="text-sm text-white/70 line-clamp-1 italic font-light">
-                                        {share.content}
-                                    </span>
-                                </>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-5">
-                            <span className="text-white/30 text-xs tabular-nums">
-                                {new Date(share.createdAt).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-')}
-                            </span>
-                        </td>
-                        <td className="px-6 py-5 text-right">
-                          <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0">
-                            <button 
-                              onClick={() => window.open(`/s/${share.id}`, '_blank')}
-                              className="p-2 hover:bg-emerald-500/10 rounded-lg transition-colors text-white/40 hover:text-emerald-400"
-                              title="预览分享"
-                            >
-                              <Eye size={16} />
-                            </button>
-                            <button 
-                              onClick={() => copyLink(share.id)}
-                              className="p-2 hover:bg-[var(--accent-color)]/10 rounded-lg transition-colors text-white/40 hover:text-[var(--accent-color)]"
-                              title="复制链接"
-                            >
-                              <Copy size={16} />
-                            </button>
-                            {share.type === 'text' && (
-                              <button 
-                                onClick={() => setEditingShare(share)}
-                                className="p-2 hover:bg-blue-500/10 rounded-lg transition-colors text-white/40 hover:text-blue-400"
-                                title="编辑文本"
-                              >
-                                <Edit3 size={16} />
-                              </button>
-                            )}
-                            <button 
-                              onClick={() => deleteShare(share.id)}
-                              className="p-2 hover:bg-red-500/10 rounded-lg transition-colors text-white/40 hover:text-red-500"
-                              title="删除此项"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                        ) : (
+                          <span className="text-[11px] text-white/30 truncate italic font-light leading-none">
+                            "{share.content?.slice(0, 100)}"
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 元数据与时间 (桌面端靠右) */}
+                  <div className="hidden lg:flex flex-col items-end gap-1 shrink-0 px-4 border-l border-white/5">
+                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-tighter flex items-center gap-1.5">
+                      <History size={11} className="text-white/20" />
+                      {new Date(share.createdAt).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })}
+                    </span>
+                    <span className="text-[10px] font-mono text-white/10 uppercase italic">
+                      {new Date(share.createdAt).toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+
+                  {/* 管理按钮岛 */}
+                  <div className="flex items-center gap-1.5 p-1.5 bg-[var(--bg-main)]/50 rounded-2xl border border-white/5 shadow-sm self-stretch md:self-center shrink-0 transition-all group-hover:border-[var(--accent-color)]/20">
+                    <button 
+                      onClick={() => window.open(`/s/${share.id}`, '_blank')}
+                      className="w-10 h-10 flex items-center justify-center hover:bg-emerald-500 hover:text-white rounded-xl transition-all text-white/30"
+                      title="预览"
+                    >
+                      <Eye size={18} />
+                    </button>
+                    <button 
+                      onClick={() => copyLink(share.id)}
+                       className="w-10 h-10 flex items-center justify-center hover:bg-[var(--accent-color)] hover:text-white rounded-xl transition-all text-white/30"
+                      title="复制"
+                    >
+                      <Copy size={18} />
+                    </button>
+                    {share.type === 'text' && (
+                      <button 
+                        onClick={() => setEditingShare(share)}
+                        className="w-10 h-10 flex items-center justify-center hover:bg-blue-500 hover:text-white rounded-xl transition-all text-white/30"
+                        title="编辑"
+                      >
+                        <Edit3 size={18} />
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => deleteShare(share.id)}
+                      className="w-10 h-10 flex items-center justify-center hover:bg-red-500 hover:text-white rounded-xl transition-all text-white/30"
+                      title="删除"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </motion.div>
+              ))
+            )}
           </motion.div>
         )}
       </AnimatePresence>
