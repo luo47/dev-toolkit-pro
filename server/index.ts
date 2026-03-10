@@ -636,15 +636,34 @@ app.post('/api/shares', async (c) => {
   if (!userId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
   try {
-    const body = await c.req.json() as { content: string; name?: string };
+    const body = await c.req.json() as { content: string; name?: string; sourceId?: string };
     if (!body.content) return c.json({ success: false, error: '内容不能为空' }, 400);
+
+    // 如果提供了 sourceId，检查是否已经分享过
+    if (body.sourceId) {
+      const kvKey = `snippet_share:${userId}:${body.sourceId}`;
+      const existingId = await c.env.SHARE_KV.get(kvKey);
+      if (existingId) {
+        // 验证该分享是否依然存在且属于该用户
+        const exists = await c.env.DB.prepare('SELECT id FROM shares WHERE id = ? AND user_id = ?').bind(existingId, userId).first();
+        if (exists) {
+          return c.json({ success: true, alreadyExists: true, shareId: existingId });
+        }
+      }
+    }
 
     const id = await generateShareId(c.env.DB);
     const now = new Date().toISOString();
-    
+
     await c.env.DB.prepare(
       'INSERT INTO shares (id, user_id, type, content, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
     ).bind(id, userId, 'text', body.content, body.name || '未命名文本分享', now, now).run();
+
+    // 如果提供了 sourceId，记录对应关系
+    if (body.sourceId) {
+      const kvKey = `snippet_share:${userId}:${body.sourceId}`;
+      await c.env.SHARE_KV.put(kvKey, id);
+    }
 
     const item = {
       id,
@@ -656,10 +675,9 @@ app.post('/api/shares', async (c) => {
     };
     return c.json({ success: true, data: item });
   } catch (e: any) {
-    return c.json({ success: false, error: e.message }, 500);
+    return c.json({ success: false, error: e.message || 'Failed to create share' }, 500);
   }
 });
-
 // 更新、删除单个分享内容
 app.put('/api/shares/:id', async (c) => {
   const userId = await getUserFromSession(c);

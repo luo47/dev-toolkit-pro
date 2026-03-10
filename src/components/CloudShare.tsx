@@ -49,10 +49,25 @@ const CloudShare: React.FC = () => {
   const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
   const [editingShare, setEditingShare] = useState<ShareContent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
   // 1. 获取列表 (首屏默认执行)
   useEffect(() => {
     fetchShares();
+
+    // 检查是否有高亮参数
+    const params = new URLSearchParams(window.location.search);
+    const highlight = params.get('highlight');
+    if (highlight) {
+      setHighlightedId(highlight);
+      const timer = setTimeout(() => {
+        setHighlightedId(null);
+        // 清除 URL 参数以免刷新后再次高亮
+        const newUrl = window.location.pathname;
+        window.history.replaceState(null, '', newUrl);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
   }, [user]);
 
   const fetchShares = async () => {
@@ -149,9 +164,20 @@ const CloudShare: React.FC = () => {
             <motion.div 
               key={share.id}
               initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.03 }}
-              className="group bg-[var(--bg-surface)] hover:bg-[var(--hover-color)] border border-[var(--border-color)] hover:border-blue-500/30 rounded-[28px] p-6 flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8 transition-all relative overflow-hidden shadow-sm hover:shadow-md"
+              animate={{ 
+                opacity: 1, 
+                y: 0,
+                borderColor: highlightedId === share.id ? 'var(--accent-color)' : 'var(--border-color)',
+                boxShadow: highlightedId === share.id ? '0 0 20px var(--accent-color)40' : 'none',
+                scale: highlightedId === share.id ? 1.02 : 1
+              }}
+              transition={{ 
+                delay: idx * 0.03,
+                borderColor: { duration: 0.5 },
+                boxShadow: { duration: 0.5 },
+                scale: { duration: 0.3 }
+              }}
+              className={`group bg-[var(--bg-surface)] hover:bg-[var(--hover-color)] border rounded-[28px] p-6 flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8 transition-all relative overflow-hidden shadow-sm hover:shadow-md ${highlightedId === share.id ? 'z-10' : ''}`}
             >
               <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${share.type === 'file' ? 'bg-emerald-500/50' : 'bg-blue-500/50'}`} />
 

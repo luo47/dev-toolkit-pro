@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Plus, Copy, Check, Trash2, Edit2, Code2, Save, X, ArrowUpDown, Tag } from 'lucide-react';
+import { Search, Plus, Copy, Check, Trash2, Edit2, Code2, Save, X, ArrowUpDown, Tag, Share2 } from 'lucide-react';
 import { useAppStore } from '../store';
 import hljs from 'highlight.js/lib/core';
 import javascript from 'highlight.js/lib/languages/javascript';
@@ -144,7 +144,7 @@ const PRESET_LANGUAGES: Record<string, string> = {
 const LS_SORT = 'cs_filter_sort';
 
 export default function CodeSnippetsTool() {
-    const { isDarkMode } = useAppStore();
+    const { isDarkMode, showToast } = useAppStore();
     const [allSnippets, setAllSnippets] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -160,6 +160,8 @@ export default function CodeSnippetsTool() {
     const codeRefs = useRef<{ [key: string]: HTMLElement | null }>({});
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [copiedId, setCopiedId] = useState<string | null>(null);
+    const [sharingId, setSharingId] = useState<string | null>(null);
+    const [shareConfirmData, setShareConfirmData] = useState<{ snippet: any, shareId: string } | null>(null);
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -170,6 +172,91 @@ export default function CodeSnippetsTool() {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    const handleShare = async (snippet: any, forceUpdate = false) => {
+        if (sharingId) return;
+        
+        // 如果不是强制更新，先尝试创建（后端会检查是否存在）
+        if (!forceUpdate) {
+            setSharingId(snippet.id);
+            try {
+                const res = await fetch('/api/shares', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        content: snippet.code, 
+                        name: snippet.title || '代码片段分享',
+                        sourceId: snippet.id 
+                    })
+                });
+                
+                if (res.ok) {
+                    const data = await res.json() as { success: boolean; alreadyExists?: boolean; shareId?: string; data?: any; error?: string };
+                    if (data.success) {
+                        if (data.alreadyExists && data.shareId) {
+                            setShareConfirmData({ snippet, shareId: data.shareId });
+                            return;
+                        }
+                        
+                        showToast('已保存到云分享', 'success');
+                        const shareId = data.data?.id;
+                        window.history.pushState(null, '', `/cloud-share${shareId ? `?highlight=${shareId}` : ''}`);
+                        window.dispatchEvent(new PopStateEvent('popstate'));
+                    } else {
+                        showToast(data.error || '分享失败', 'error');
+                    }
+                } else {
+                    showToast('分享失败，请重试', 'error');
+                }
+            } catch {
+                showToast('网络错误，无法分享', 'error');
+            } finally {
+                setSharingId(null);
+            }
+        } else {
+            // 强制更新逻辑
+            setSharingId(snippet.id);
+            const shareId = shareConfirmData?.shareId;
+            setShareConfirmData(null); // 立即关闭对话框
+            
+            if (!shareId) {
+                showToast('无法定位原分享记录', 'error');
+                setSharingId(null);
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/shares/${shareId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        content: snippet.code,
+                        name: snippet.title || '代码片段分享'
+                    })
+                });
+
+                if (res.ok) {
+                    showToast('分享内容已更新', 'success');
+                    window.history.pushState(null, '', `/cloud-share?highlight=${shareId}`);
+                    window.dispatchEvent(new PopStateEvent('popstate'));
+                } else {
+                    showToast('更新失败', 'error');
+                }
+            } catch {
+                showToast('更新出错', 'error');
+            } finally {
+                setSharingId(null);
+            }
+        }
+    };
+
+    const copyShareLink = (shareId: string) => {
+        const link = `${window.location.origin}/s/${shareId}`;
+        navigator.clipboard.writeText(link).then(() => {
+            showToast('分享链接已复制', 'success');
+            setShareConfirmData(null);
+        });
+    };
 
     const filteredGroups = LANGUAGE_GROUPS.map(group => ({
         ...group,
@@ -527,9 +614,10 @@ export default function CodeSnippetsTool() {
                                 </div>
                                 <div className="flex items-center gap-0.5 shrink-0">
                                     <span className="text-[9px] text-[var(--text-secondary)] mr-1">{snippet.copy_count || 0}</span>
-                                    <button onClick={() => handleCopy(snippet.id, snippet.code)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]">{copiedId === snippet.id ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}</button>
-                                    <button onClick={() => startEdit(snippet)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]"><Edit2 size={14} /></button>
-                                    <button onClick={() => handleDelete(snippet.id)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md hover:text-red-400 text-[var(--text-secondary)]"><Trash2 size={14} /></button>
+                                    <button onClick={() => handleCopy(snippet.id, snippet.code)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]" title="复制">{copiedId === snippet.id ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}</button>
+                                    <button onClick={() => handleShare(snippet)} disabled={sharingId === snippet.id} className={`p-1.5 rounded-md text-[var(--text-secondary)] ${sharingId === snippet.id ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[var(--hover-color)] hover:text-blue-500'}`} title="分享到云端"><Share2 size={14} className={sharingId === snippet.id ? "animate-pulse" : ""} /></button>
+                                    <button onClick={() => startEdit(snippet)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]" title="编辑"><Edit2 size={14} /></button>
+                                    <button onClick={() => handleDelete(snippet.id)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md hover:text-red-400 text-[var(--text-secondary)]" title="删除"><Trash2 size={14} /></button>
                                 </div>
                             </div>
                             <div className="bg-[var(--code-bg)] flex-1 overflow-hidden flex flex-col min-h-[60px]">
@@ -548,6 +636,42 @@ export default function CodeSnippetsTool() {
                             )}
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* ── 分享确认对话框 ── */}
+            {shareConfirmData && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 animate-in fade-in duration-200">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShareConfirmData(null)} />
+                    <div className="relative w-full max-w-sm bg-[var(--bg-surface)] rounded-[24px] border border-[var(--border-color)] shadow-2xl p-6 flex flex-col items-center text-center gap-4 animate-in zoom-in-95 duration-200">
+                        <div className="w-12 h-12 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mb-1">
+                            <Share2 size={24} />
+                        </div>
+                        <div>
+                            <h4 className="text-base font-bold text-[var(--text-primary)] mb-1">该片段已分享过</h4>
+                            <p className="text-xs text-[var(--text-secondary)]">您可以选择更新云端内容，或者仅复制现有链接。</p>
+                        </div>
+                        <div className="flex flex-col w-full gap-2 mt-2">
+                            <button 
+                                onClick={() => handleShare(shareConfirmData.snippet, true)}
+                                className="w-full py-3 bg-[var(--accent-color)] text-white text-sm font-bold rounded-xl hover:opacity-90 transition-opacity"
+                            >
+                                更新内容并跳转
+                            </button>
+                            <button 
+                                onClick={() => copyShareLink(shareConfirmData.shareId)}
+                                className="w-full py-3 bg-[var(--bg-main)] border border-[var(--border-color)] text-[var(--text-primary)] text-sm font-bold rounded-xl hover:bg-[var(--hover-color)] transition-colors"
+                            >
+                                仅复制分享链接
+                            </button>
+                            <button 
+                                onClick={() => setShareConfirmData(null)}
+                                className="w-full py-2 text-[var(--text-secondary)] text-xs font-medium hover:text-[var(--text-primary)] transition-colors"
+                            >
+                                取消
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
