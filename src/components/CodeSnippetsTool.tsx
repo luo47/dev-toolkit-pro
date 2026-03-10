@@ -532,18 +532,18 @@ export default function CodeSnippetsTool() {
                                     <button onClick={() => handleDelete(snippet.id)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md hover:text-red-400 text-[var(--text-secondary)]"><Trash2 size={14} /></button>
                                 </div>
                             </div>
-                            <div className="relative bg-[var(--code-bg)] flex-1 overflow-hidden min-h-[60px]">
-                                <pre className="text-xs p-3 overflow-auto max-h-32 font-mono text-[var(--code-text)] custom-scrollbar-thin">
+                            <div className="bg-[var(--code-bg)] flex-1 overflow-hidden flex flex-col min-h-[60px]">
+                                <pre className="text-xs p-3 overflow-auto max-h-32 font-mono text-[var(--code-text)] custom-scrollbar-thin flex-1">
                                     <code ref={el => { codeRefs.current[snippet.id] = el; }} className={`language-${snippet.language || 'plaintext'}`}>{snippet.code}</code>
                                 </pre>
+                                {snippet.tags && snippet.tags.length > 0 && (
+                                    <div className="px-2.5 py-1.5 flex items-center gap-1 flex-wrap border-t border-[var(--border-color)] bg-[var(--bg-surface)]">
+                                        {snippet.tags.map((tag: any, i: number) => (
+                                            <button key={i} onClick={() => handleTagClick(tag)} className={`text-[9px] px-1.5 py-0.5 rounded ${activeTag === tag ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30' : 'bg-[var(--hover-color)] text-[var(--text-secondary)]'}`}>{tag}</button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
-                            {snippet.tags && snippet.tags.length > 0 && (
-                                <div className="px-2.5 py-1 flex items-center gap-1 flex-wrap border-t border-[var(--border-color)]">
-                                    {snippet.tags.map((tag: any, i: number) => (
-                                        <button key={i} onClick={() => handleTagClick(tag)} className={`text-[9px] px-1.5 py-0.5 rounded ${activeTag === tag ? 'bg-blue-500/20 text-blue-500 border border-blue-500/30' : 'bg-[var(--hover-color)] text-[var(--text-secondary)]'}`}>{tag}</button>
-                                    ))}
-                                </div>
-                            )}
                         </div>
                     ))}
                 </div>
