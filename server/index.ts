@@ -598,9 +598,14 @@ app.post('/api/tools/usage/:toolName', async (c) => {
 
 // --- Cloud Share Routes ---
 
-// --- Cloud Share Routes ---
-
-const generateShareId = () => crypto.randomUUID().split('-')[0];
+const generateShareId = async (db: any) => {
+  for (let i = 0; i < 5; i++) {
+    const id = crypto.randomUUID().split('-')[0];
+    const exist = await db.prepare('SELECT id FROM shares WHERE id = ?').bind(id).first();
+    if (!exist) return id;
+  }
+  return crypto.randomUUID().split('-')[0];
+};
 
 // 获取所有分享内容列表
 app.get('/api/shares', async (c) => {
@@ -608,14 +613,17 @@ app.get('/api/shares', async (c) => {
   if (!userId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
   try {
-    const list = await c.env.SHARE_KV.list({ prefix: 'share:' });
-    const items: ShareContent[] = [];
-    for (const key of list.keys) {
-      const data = await c.env.SHARE_KV.get(key.name);
-      if (data) items.push(JSON.parse(data));
-    }
-    // 按创建时间倒序排列
-    items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const results = await c.env.DB.prepare('SELECT * FROM shares WHERE user_id = ? ORDER BY created_at DESC').bind(userId).all();
+    const items = results.results.map((row: any) => ({
+      id: row.id,
+      type: row.type,
+      content: row.content,
+      files: row.files ? JSON.parse(row.files) : undefined,
+      totalSize: row.total_size,
+      name: row.name,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
     return c.json({ success: true, data: items });
   } catch (e: any) {
     return c.json({ success: false, error: e.message || 'Failed to list shares' }, 500);
@@ -624,13 +632,21 @@ app.get('/api/shares', async (c) => {
 
 // 创建新文本分享
 app.post('/api/shares', async (c) => {
+  const userId = await getUserFromSession(c);
+  if (!userId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
   try {
     const body = await c.req.json() as { content: string; name?: string };
     if (!body.content) return c.json({ success: false, error: '内容不能为空' }, 400);
 
-    const id = generateShareId();
+    const id = await generateShareId(c.env.DB);
     const now = new Date().toISOString();
-    const item: ShareContent = {
+    
+    await c.env.DB.prepare(
+      'INSERT INTO shares (id, user_id, type, content, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(id, userId, 'text', body.content, body.name || '未命名文本分享', now, now).run();
+
+    const item = {
       id,
       type: 'text',
       content: body.content,
@@ -638,7 +654,6 @@ app.post('/api/shares', async (c) => {
       createdAt: now,
       updatedAt: now,
     };
-    await c.env.SHARE_KV.put(`share:${id}`, JSON.stringify(item));
     return c.json({ success: true, data: item });
   } catch (e: any) {
     return c.json({ success: false, error: e.message }, 500);
@@ -647,24 +662,41 @@ app.post('/api/shares', async (c) => {
 
 // 更新、删除单个分享内容
 app.put('/api/shares/:id', async (c) => {
+  const userId = await getUserFromSession(c);
+  if (!userId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
   const id = c.req.param('id');
-  const key = `share:${id}`;
   try {
-    const existing = await c.env.SHARE_KV.get(key);
-    if (!existing) return c.json({ success: false, error: '分享不存在' }, 404);
+    const existing = await c.env.DB.prepare('SELECT * FROM shares WHERE id = ? AND user_id = ?').bind(id, userId).first();
+    if (!existing) return c.json({ success: false, error: '分享不存在或无权操作' }, 404);
 
     const body = await c.req.json() as { content?: string; name?: string };
-    const item = JSON.parse(existing) as ShareContent;
+    const now = new Date().toISOString();
     
-    if (item.type === 'text' && body.content !== undefined) {
-      item.content = body.content;
+    let newContent = existing.content;
+    let newName = existing.name;
+
+    if (existing.type === 'text' && body.content !== undefined) {
+      newContent = body.content;
     }
     if (body.name !== undefined) {
-      item.name = body.name;
+      newName = body.name;
     }
-    item.updatedAt = new Date().toISOString();
 
-    await c.env.SHARE_KV.put(key, JSON.stringify(item));
+    await c.env.DB.prepare(
+      'UPDATE shares SET content = ?, name = ?, updated_at = ? WHERE id = ?'
+    ).bind(newContent, newName, now, id).run();
+
+    const item = {
+      id,
+      type: existing.type,
+      content: newContent,
+      files: existing.files ? JSON.parse(existing.files as string) : undefined,
+      totalSize: existing.total_size,
+      name: newName,
+      createdAt: existing.created_at,
+      updatedAt: now,
+    };
     return c.json({ success: true, data: item });
   } catch (e: any) {
     return c.json({ success: false, error: e.message }, 500);
@@ -672,20 +704,22 @@ app.put('/api/shares/:id', async (c) => {
 });
 
 app.delete('/api/shares/:id', async (c) => {
-  const id = c.req.param('id');
-  const key = `share:${id}`;
-  try {
-    const existing = await c.env.SHARE_KV.get(key);
-    if (!existing) return c.json({ success: false, error: '分享不存在' }, 404);
+  const userId = await getUserFromSession(c);
+  if (!userId) return c.json({ success: false, error: 'Unauthorized' }, 401);
 
-    const item = JSON.parse(existing) as ShareContent;
-    // 如果是文件类型，删除 R2 中所有相关文件
-    if (item.type === 'file' && item.files) {
-      for (const file of item.files) {
-        await c.env.SHARE_R2.delete(file.key);
-      }
+  const id = c.req.param('id');
+  try {
+    const existing = await c.env.DB.prepare('SELECT * FROM shares WHERE id = ? AND user_id = ?').bind(id, userId).first();
+    if (!existing) return c.json({ success: false, error: '分享不存在或无权操作' }, 404);
+
+    if (existing.type === 'file' && existing.files) {
+      const files = JSON.parse(existing.files as string);
+      // 后台异步删除 R2 文件
+      const deletePromises = files.map((file: any) => c.env.SHARE_R2.delete(file.key));
+      c.executionCtx.waitUntil(Promise.all(deletePromises));
     }
-    await c.env.SHARE_KV.delete(key);
+    
+    await c.env.DB.prepare('DELETE FROM shares WHERE id = ?').bind(id).run();
     return c.json({ success: true });
   } catch (e: any) {
     return c.json({ success: false, error: e.message }, 500);
@@ -694,6 +728,9 @@ app.delete('/api/shares/:id', async (c) => {
 
 // 文件上传 (POST /api/files)
 app.post('/api/files', async (c) => {
+  const userId = await getUserFromSession(c);
+  if (!userId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
   try {
     const formData = await c.req.formData();
     const files = formData.getAll('files') as File[];
@@ -703,13 +740,12 @@ app.post('/api/files', async (c) => {
       return c.json({ success: false, error: '没有提供文件' }, 400);
     }
 
-    const id = generateShareId();
+    const id = await generateShareId(c.env.DB);
     const now = new Date().toISOString();
-    const fileItems: FileItem[] = [];
+    const fileItems = [];
     let totalSize = 0;
 
     for (const file of files) {
-      // 在 Hono/Workers 环境中，webkitRelativePath 通过 formData 的文件名部分传递（如果在 append 时指定了）
       const relativePath = file.name; 
       const r2Key = `${id}/${relativePath}`;
       
@@ -734,7 +770,11 @@ app.post('/api/files', async (c) => {
       totalSize += file.size;
     }
 
-    const item: ShareContent = {
+    await c.env.DB.prepare(
+      'INSERT INTO shares (id, user_id, type, files, total_size, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+    ).bind(id, userId, 'file', JSON.stringify(fileItems), totalSize, shareName || fileItems[0].name, now, now).run();
+
+    const item = {
       id,
       type: 'file',
       files: fileItems,
@@ -743,8 +783,6 @@ app.post('/api/files', async (c) => {
       createdAt: now,
       updatedAt: now,
     };
-    await c.env.SHARE_KV.put(`share:${id}`, JSON.stringify(item));
-    
     return c.json({ success: true, data: item });
   } catch (e: any) {
     return c.json({ success: false, error: e.message || 'Upload failed' }, 500);
@@ -756,19 +794,18 @@ app.post('/api/files', async (c) => {
 // 获取分享信息
 app.get('/api/public/share/:id', async (c) => {
   const id = c.req.param('id');
-  const data = await c.env.SHARE_KV.get(`share:${id}`);
-  if (!data) return c.json({ success: false, error: '分享不存在' }, 404);
+  const existing = await c.env.DB.prepare('SELECT * FROM shares WHERE id = ?').bind(id).first();
+  if (!existing) return c.json({ success: false, error: '分享不存在' }, 404);
   
-  const item = JSON.parse(data) as ShareContent;
   return c.json({ 
     success: true, 
     data: {
-      id: item.id,
-      type: item.type,
-      name: item.name,
-      files: item.files,
-      totalSize: item.totalSize,
-      createdAt: item.createdAt,
+      id: existing.id,
+      type: existing.type,
+      name: existing.name,
+      files: existing.files ? JSON.parse(existing.files as string) : undefined,
+      totalSize: existing.total_size,
+      createdAt: existing.created_at,
     }
   });
 });
@@ -785,7 +822,6 @@ app.get('/api/public/download/:id/:path{.+}', async (c) => {
   const headers = new Headers();
   object.writeHttpMetadata(headers);
   headers.set('etag', object.httpEtag);
-  // 确保下载时有正确的文件名
   const fileName = filePath.split('/').pop() || 'file';
   headers.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
 
@@ -795,17 +831,26 @@ app.get('/api/public/download/:id/:path{.+}', async (c) => {
 // 打包下载所有文件 (ZIP)
 app.get('/api/public/download/:id', async (c) => {
   const id = c.req.param('id');
-  const data = await c.env.SHARE_KV.get(`share:${id}`);
-  if (!data) return c.json({ success: false, error: '分享不存在' }, 404);
+  const existing = await c.env.DB.prepare('SELECT * FROM shares WHERE id = ?').bind(id).first();
+  if (!existing) return c.json({ success: false, error: '分享不存在' }, 404);
 
-  const item = JSON.parse(data) as ShareContent;
-  if (!item.files || item.files.length === 0) {
+  if (existing.type !== 'file' || !existing.files) {
     return c.json({ success: false, error: '没有可下载的文件' }, 404);
+  }
+
+  const files = JSON.parse(existing.files as string);
+  if (files.length === 0) {
+    return c.json({ success: false, error: '没有可下载的文件' }, 404);
+  }
+
+  // ZIP 大小限制
+  if ((existing.total_size as number) > 50 * 1024 * 1024) {
+    return c.json({ success: false, error: '打包文件总大小超过 50MB 限制，请使用其他工具或单独下载' }, 400);
   }
 
   try {
     const zipData: { [path: string]: Uint8Array } = {};
-    for (const file of item.files) {
+    for (const file of files) {
       const object = await c.env.SHARE_R2.get(file.key);
       if (object) {
         zipData[file.path] = new Uint8Array(await object.arrayBuffer());
@@ -813,7 +858,7 @@ app.get('/api/public/download/:id', async (c) => {
     }
 
     const zipped = zipSync(zipData, { level: 6 });
-    const zipName = `${item.name || id}.zip`;
+    const zipName = `${existing.name || id}.zip`;
     
     return new Response(zipped as any, {
       headers: {
@@ -830,21 +875,17 @@ app.get('/api/public/download/:id', async (c) => {
 // 公开预览/访问路径 /s/:id
 app.get('/s/:id', async (c) => {
   const id = c.req.param('id');
-  const data = await c.env.SHARE_KV.get(`share:${id}`);
-  if (!data) return c.text('分享不存在或已过期', 404);
+  const existing = await c.env.DB.prepare('SELECT * FROM shares WHERE id = ?').bind(id).first();
+  if (!existing) return c.text('分享不存在或已过期', 404);
 
-  const item = JSON.parse(data) as ShareContent;
-  if (item.type === 'text') {
-    // 强制设置 Header 确保浏览器直接显示文本
+  if (existing.type === 'text') {
     c.header('Content-Type', 'text/plain; charset=utf-8');
-    return c.text(item.content || '');
+    return c.text((existing.content as string) || '');
   }
   
-  // 对于文件类型，重定向到前端预览页
   const frontendUrl = c.env.FRONTEND_URL || 'https://www.928496.xyz';
   return c.redirect(`${frontendUrl}/share-preview/${id}`, 302);
 });
-
 
 // --- End Cloud Share Routes ---
 
@@ -884,15 +925,12 @@ export default {
     if (shareMatch && request.method === 'GET') {
       const id = shareMatch[1];
       try {
-        const data = await env.SHARE_KV.get(`share:${id}`);
-        if (data) {
-          const item = JSON.parse(data) as ShareContent;
-          // 兼容旧数据：没有 type 但有 content 的也算 text
-          const isText = item.type === 'text' || (!item.type && item.content);
+        const existing = await env.DB.prepare('SELECT * FROM shares WHERE id = ?').bind(id).first();
+        if (existing) {
+          const isText = existing.type === 'text';
           
           if (isText) {
-            // 文本：绝对返回纯文本响应
-            return new Response(item.content || '', {
+            return new Response((existing.content as string) || '', {
               status: 200,
               headers: {
                 'Content-Type': 'text/plain; charset=utf-8',
@@ -902,12 +940,10 @@ export default {
               },
             });
           } else {
-            // 文件：重定向到前端预览页面
             const frontendUrl = env.FRONTEND_URL || url.origin;
             return Response.redirect(`${frontendUrl}/share-preview/${id}`, 302);
           }
         }
-        // KV 未找到 ID 的兜底（防止透传到 SPA 返回 HTML）
         return new Response('Content Lost or Invalid ID', { 
           status: 404, 
           headers: { 'Content-Type': 'text/plain; charset=utf-8' } 
