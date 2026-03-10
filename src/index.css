@@ -14,6 +14,9 @@
     --text-secondary: #444746;
     --border-color: #c4c7c5;
     --accent-color: #0b57d0;
+    --success-color: #1e8e3e;
+    --error-color: #d93025;
+    --warning-color: #f9ab00;
     --hover-color: #f1f3f4;
     
     /* Code block colors - Light */
@@ -35,6 +38,9 @@
     --text-secondary: #c4c7c5;
     --border-color: #333537;
     --accent-color: #4285f4;
+    --success-color: #34a853;
+    --error-color: #ea4335;
+    --warning-color: #fbbc04;
     --hover-color: #333537;
 
     /* Code block colors - Dark */

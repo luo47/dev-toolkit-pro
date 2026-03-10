@@ -251,7 +251,9 @@ app.post('/api/chains', async (c) => {
   try {
     const body = await c.req.json();
     const { name, steps } = body;
-    if (!name || !steps) return c.json({ error: 'Missing name or steps' }, 400);
+    if (!name || !steps || !Array.isArray(steps)) return c.json({ error: '无效的处理链数据' }, 400);
+    if (name.length > 100) return c.json({ error: '名称过长' }, 400);
+    if (steps.length > 50) return c.json({ error: '处理步骤过多' }, 400);
 
     const stepsJson = JSON.stringify(steps);
 
@@ -332,11 +334,14 @@ app.get('/api/snippets', async (c) => {
   const search = url.searchParams.get('search');
   const sort = url.searchParams.get('sort') || 'updated_at';
   const order = url.searchParams.get('order') || 'desc';
-  const limit = parseInt(url.searchParams.get('limit') || '50');
-  const offset = parseInt(url.searchParams.get('offset') || '0');
+  let limit = parseInt(url.searchParams.get('limit') || '50');
+  let offset = parseInt(url.searchParams.get('offset') || '0');
+
+  if (limit > 100) limit = 100;
+  if (offset < 0) offset = 0;
 
   try {
-    let query = `SELECT * FROM code_snippets WHERE (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''})`;
+    let query = `SELECT * FROM code_snippets WHERE (user_id = 'system' ${userId ? 'OR user_id = ?' : ''})`;
     const params: any[] = [];
     if (userId) {
       params.push(userId);
@@ -595,10 +600,13 @@ app.post('/api/tools/usage/:toolName', async (c) => {
 
 // --- Cloud Share Routes ---
 
-const generateShareId = () => Math.random().toString(36).substring(2, 10);
+const generateShareId = () => crypto.randomUUID().split('-')[0];
 
 // 获取所有分享内容列表
 app.get('/api/shares', async (c) => {
+  const userId = await getUserFromSession(c);
+  if (!userId) return c.json({ success: false, error: 'Unauthorized' }, 401);
+
   try {
     const list = await c.env.SHARE_KV.list({ prefix: 'share:' });
     const items: ShareContent[] = [];

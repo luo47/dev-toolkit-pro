@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Plus, Copy, Check, Trash2, Edit2, Code2, Save, X, ArrowUpDown, Tag } from 'lucide-react';
+import { useAppStore } from '../store';
 import hljs from 'highlight.js/lib/core';
 import javascript from 'highlight.js/lib/languages/javascript';
 import typescript from 'highlight.js/lib/languages/typescript';
@@ -143,6 +144,7 @@ const PRESET_LANGUAGES: Record<string, string> = {
 const LS_SORT = 'cs_filter_sort';
 
 export default function CodeSnippetsTool() {
+    const { isDarkMode } = useAppStore();
     const [allSnippets, setAllSnippets] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -427,7 +429,7 @@ export default function CodeSnippetsTool() {
             {/* ── 编辑/新建弹窗 (全量重构) ── */}
             {(isCreating || editingId) && (
                 <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 animate-in fade-in duration-300">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={cancelEdit} />
+                    <div className={`absolute inset-0 backdrop-blur-sm ${isDarkMode ? 'bg-black/80' : 'bg-black/20'}`} onClick={cancelEdit} />
                     <div className="relative w-full max-w-[800px] h-[95vh] md:h-auto max-h-[95vh] bg-[var(--bg-surface)] rounded-t-[32px] md:rounded-[28px] border border-[var(--border-color)] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 md:slide-in-from-bottom-4">
                         <div className="flex justify-between items-center px-6 py-5 border-b border-[var(--border-color)] shrink-0">
                             <h3 className="text-xl font-bold">{isCreating ? '新建代码片段' : '编辑代码片段'}</h3>
@@ -472,7 +474,7 @@ export default function CodeSnippetsTool() {
                                                                             setIsLangOpen(false); 
                                                                             setLangSearch('');
                                                                         }} 
-                                                                        className={`mx-1 px-3 py-2 text-xs rounded-xl cursor-pointer transition-all flex items-center justify-between group/lang ${formData.language === opt.value ? 'bg-blue-600 text-white font-bold shadow-lg shadow-blue-600/20' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'}`}
+                                                                        className={`mx-1 px-3 py-2 text-xs rounded-xl cursor-pointer transition-all flex items-center justify-between group/lang ${formData.language === opt.value ? 'bg-[var(--accent-color)] text-white font-bold shadow-lg shadow-[var(--accent-color)]/20' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'}`}
                                                                     >
                                                                         <span className="uppercase">{opt.label}</span>
                                                                         {formData.language === opt.value && <Check size={12} />}
@@ -498,7 +500,7 @@ export default function CodeSnippetsTool() {
                         </div>
                         <div className="p-6 border-t border-[var(--border-color)] flex gap-3 shrink-0">
                             <button onClick={cancelEdit} className="flex-1 h-14 bg-[var(--hover-color)] rounded-2xl text-sm font-bold text-[var(--text-secondary)]">取消</button>
-                            <button onClick={saveSnippet} className="flex-[2] h-14 bg-blue-600 text-white rounded-2xl text-sm font-black uppercase tracking-wider flex items-center justify-center gap-3 shadow-xl shadow-blue-600/20"><Save size={20} />保存变更</button>
+                            <button onClick={saveSnippet} className="flex-[2] h-14 bg-[var(--accent-color)] text-white rounded-2xl text-sm font-black uppercase tracking-wider flex items-center justify-center gap-3 shadow-xl shadow-[var(--accent-color)]/20"><Save size={20} />保存变更</button>
                         </div>
                     </div>
                 </div>

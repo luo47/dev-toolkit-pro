@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { QrCode, Upload, Copy, Check, Trash2, Image as ImageIcon } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import jsQR from 'jsqr';
+import { useAppStore } from '../store';
 
 export default function QRCodeTool() {
+  const { isDarkMode } = useAppStore();
   const [text, setText] = useState('https://example.com');
   const [scanResult, setScanResult] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
@@ -123,9 +125,16 @@ export default function QRCodeTool() {
             )}
           </div>
 
-          <div className="flex justify-center p-6 bg-white rounded-2xl border border-[var(--border-color)]">
+          <div className="flex justify-center p-6 bg-white rounded-2xl border border-[var(--border-color)] shadow-inner">
             {text ? (
-              <QRCodeSVG value={text} size={200} level="H" includeMargin={true} />
+              <QRCodeSVG 
+                value={text} 
+                size={200} 
+                level="H" 
+                includeMargin={true}
+                fgColor="#000000"
+                bgColor="#ffffff"
+              />
             ) : (
               <div className="w-[200px] h-[200px] flex items-center justify-center text-gray-300">
                 等待输入...

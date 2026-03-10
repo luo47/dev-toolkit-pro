@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { LogIn, X, Github, ShieldCheck, KeyRound } from 'lucide-react';
+import { useAppStore } from '../store';
+import '../types';
 
 interface LoginProps {
   onLogin: (username: string) => void;
@@ -9,6 +11,7 @@ interface LoginProps {
 type LoginStep = 'credentials' | '2fa';
 
 export default function Login({ onLogin, onClose }: LoginProps) {
+  const { isDarkMode } = useAppStore();
   const [step, setStep] = useState<LoginStep>('credentials');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -32,7 +35,7 @@ export default function Login({ onLogin, onClose }: LoginProps) {
   const handleSocialLogin = async (provider: string) => {
     if (provider === 'GitHub') {
       try {
-        const baseUrl = (import.meta as any).env.VITE_API_URL || '';
+        const baseUrl = import.meta.env.VITE_API_URL || '';
         const res = await fetch(`${baseUrl}/api/auth/github/login?t=${Date.now()}`);
         const data = await res.json() as { url?: string };
         if (data.url) {
@@ -53,7 +56,7 @@ export default function Login({ onLogin, onClose }: LoginProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className={`fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4 ${isDarkMode ? 'bg-black/80' : 'bg-black/20'}`}>
       <div className="bg-[var(--bg-surface)] border border-[var(--border-color)] w-full max-w-md rounded-2xl p-8 relative shadow-2xl overflow-hidden">
         <button
           onClick={onClose}
@@ -159,7 +162,7 @@ export default function Login({ onLogin, onClose }: LoginProps) {
               </div>
               <button
                 type="submit"
-                className="w-full bg-[var(--text-primary)] text-[var(--bg-main)] font-semibold py-3 rounded-xl hover:opacity-90 transition-all"
+                className="w-full bg-[var(--accent-color)] text-white font-semibold py-3 rounded-xl hover:opacity-90 transition-all shadow-lg shadow-[var(--accent-color)]/20"
               >
                 下一步
               </button>

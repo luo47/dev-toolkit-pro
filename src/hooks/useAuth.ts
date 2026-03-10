@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
+import { useAppStore } from '../store';
+import '../types';
 
 export interface User {
     id: string;
@@ -9,8 +11,7 @@ export interface User {
 }
 
 export function useAuth() {
-    const [user, setUser] = useState<User | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { user, loading, setUser, setLoading } = useAppStore();
 
     useEffect(() => {
         fetchUser();
@@ -18,7 +19,7 @@ export function useAuth() {
 
     const fetchUser = async () => {
         try {
-            const baseUrl = (import.meta as any).env.VITE_API_URL || '';
+            const baseUrl = import.meta.env.VITE_API_URL || '';
             const response = await fetch(`${baseUrl}/api/auth/me`, {
                 credentials: 'include'
             });
@@ -37,13 +38,13 @@ export function useAuth() {
     };
 
     const loginWithGithub = () => {
-        const baseUrl = (import.meta as any).env.VITE_API_URL || '';
+        const baseUrl = import.meta.env.VITE_API_URL || '';
         window.location.href = `${baseUrl}/api/auth/github/login?t=${Date.now()}`;
     };
 
     const logout = async () => {
         try {
-            const baseUrl = (import.meta as any).env.VITE_API_URL || '';
+            const baseUrl = import.meta.env.VITE_API_URL || '';
             await fetch(`${baseUrl}/api/auth/logout`, {
                 method: 'POST',
                 credentials: 'include'

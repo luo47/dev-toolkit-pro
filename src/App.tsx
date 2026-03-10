@@ -1,47 +1,52 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { Code, Hash, Menu, Search, X, Plus, Github, Home as HomeIcon, LogIn, LogOut, FileSearch, Settings, HelpCircle, History, Link2, FileText, Sun, Moon, Cloud, QrCode, Server, List } from 'lucide-react';
+import { Code, Menu, Search, X, Plus, Home as HomeIcon, LogIn, FileSearch, Settings, Sun, Moon, Cloud, QrCode, Server } from 'lucide-react';
 import Home from './components/Home';
 import Login from './components/Login';
 import { useAuth } from './hooks/useAuth';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ToolId, ToolMetadata } from './types';
+import { useAppStore } from './store';
+
+// --- 常量定义 ---
+const BREAKPOINTS = { LG: 1024 };
+
 const QRCodeTool = React.lazy(() => import('./components/QRCodeTool'));
 const ChainProcessor = React.lazy(() => import('./components/ChainProcessor'));
 const CodeSnippetsTool = React.lazy(() => import('./components/CodeSnippetsTool'));
 const CloudShare = React.lazy(() => import('./components/CloudShare'));
 const SharePreview = React.lazy(() => import('./components/SharePreview'));
 
-type Tool = 'home' | 'qrcode' | 'chain-processor' | 'code-snippets' | 'cloud-share' | 'share-preview';
+const tools: ToolMetadata[] = [
+  { id: 'cloud-share', name: '云分享', icon: Server, isPremium: false },
+  { id: 'code-snippets', name: '代码片段', icon: Code, isPremium: true },
+  { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, isPremium: true },
+  { id: 'qrcode', name: '二维码', icon: QrCode, isPremium: false },
+];
 
 export default function App() {
-  const [activeTool, setActiveTool] = useState<Tool>(() => {
+  const { user, loading, isDarkMode, toast, toggleDarkMode, showToast, logout } = useAppStore();
+  const [activeTool, setActiveTool] = useState<ToolId>(() => {
     const path = window.location.pathname.replace('/', '');
-    // 关键修复：正确识别 /share-preview/:id 等深层路径
     if (path.startsWith('share-preview')) return 'share-preview';
-    return (path === '' ? 'home' : path) as Tool;
+    return (path === '' ? 'home' : path) as ToolId;
   });
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 1024);
-  const { user, loading, logout } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= BREAKPOINTS.LG);
   const [showLogin, setShowLogin] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    return saved ? saved === 'dark' : true;
-  });
 
+  // 挂载全局 Toast 触发器以兼容
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDarkMode]);
+    window.showToast = showToast;
+  }, [showToast]);
+
+  // 同步 useAuth
+  useAuth();
 
   // Handle browser back/forward buttons
   useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname.replace('/', '');
-      setActiveTool((path === '' ? 'home' : path) as Tool);
+      setActiveTool((path === '' ? 'home' : path) as ToolId);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -53,7 +58,7 @@ export default function App() {
       const redirectTo = localStorage.getItem('redirect_to');
       if (redirectTo) {
         localStorage.removeItem('redirect_to');
-        const toolId = redirectTo.replace('/', '') as Tool;
+        const toolId = redirectTo.replace('/', '') as ToolId;
         if (toolId && (toolId === 'home' || tools.some(t => t.id === toolId))) {
           setActiveTool(toolId);
           if (window.location.pathname !== redirectTo) {
@@ -76,18 +81,11 @@ export default function App() {
     }
   }, [activeTool]);
 
-  const tools = [
-    { id: 'cloud-share', name: '云分享', icon: Server, isPremium: false },
-    { id: 'code-snippets', name: '代码片段', icon: Code, isPremium: true },
-    { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, isPremium: true },
-    { id: 'qrcode', name: '二维码', icon: QrCode, isPremium: false },
-  ];
-
   const filteredTools = tools.filter(tool =>
     tool.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleToolSelect = (id: Tool) => {
+  const handleToolSelect = (id: ToolId) => {
     if (id === 'share-preview') return;
     const tool = tools.find(t => t.id === id);
     if (tool?.isPremium && !user) {
@@ -100,7 +98,7 @@ export default function App() {
       if (window.location.pathname !== newPath) {
         window.history.pushState(null, '', newPath);
       }
-      if (window.innerWidth < 1024) {
+      if (window.innerWidth < BREAKPOINTS.LG) {
         setIsSidebarOpen(false);
       }
     }
@@ -241,7 +239,7 @@ export default function App() {
           {filteredTools.map((tool) => (
             <button
               key={tool.id}
-              onClick={() => handleToolSelect(tool.id as Tool)}
+              onClick={() => handleToolSelect(tool.id as ToolId)}
               className={`flex items-center gap-3 w-full rounded-full transition-colors group ${activeTool === tool.id ? 'bg-[var(--accent-color)] text-white' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'
                 } ${isSidebarOpen ? 'px-4 py-2' : 'justify-center h-10'}`}
               title={!isSidebarOpen ? tool.name : undefined}
@@ -377,7 +375,7 @@ export default function App() {
                               <button
                                 key={tool.id}
                                 onClick={() => {
-                                  handleToolSelect(tool.id as Tool);
+                                  handleToolSelect(tool.id as ToolId);
                                   setSearchQuery('');
                                 }}
                                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--hover-color)] rounded-xl transition-colors text-left group"
@@ -411,7 +409,7 @@ export default function App() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setIsDarkMode(!isDarkMode)}
+                onClick={toggleDarkMode}
                 className="p-2 hover:bg-[var(--hover-color)] rounded-full transition-colors text-[var(--text-secondary)]"
                 title={isDarkMode ? '切换到浅色模式' : '切换到深色模式'}
               >
@@ -466,7 +464,7 @@ export default function App() {
             {activeTool === 'home' ? (
               <div className="flex-1 flex flex-col pb-20">
                 <Home
-                  onSelectTool={(id) => handleToolSelect(id as Tool)}
+                  onSelectTool={(id) => handleToolSelect(id as ToolId)}
                   isLoggedIn={!!user}
                   onOpenLogin={() => setShowLogin(true)}
                   searchQuery={searchQuery}
@@ -505,6 +503,40 @@ export default function App() {
           </p>
         </div>
       </main>
+
+      {/* 全局加载遮罩 */}
+      <AnimatePresence>
+        {loading && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-[var(--bg-main)] flex flex-col items-center justify-center gap-4"
+          >
+            <div className="w-12 h-12 border-4 border-[var(--accent-color)] border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm font-medium text-[var(--text-secondary)] animate-pulse">正在初始化环境...</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 全局 Toast 通知 */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[110]"
+          >
+            <div className={`px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-xl border ${
+              toast.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-red-500/10 border-red-500/20 text-red-500'
+            }`}>
+              <div className={`w-2 h-2 rounded-full ${toast.type === 'success' ? 'bg-emerald-500' : 'bg-red-500'} animate-pulse`} />
+              <span className="text-sm font-bold">{toast.message}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

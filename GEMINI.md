@@ -24,31 +24,32 @@
 - **部署/工具**: Cloudflare Wrangler, pnpm
 
 ## 目录结构
-- `src/`: 源代码根目录
+- `src/`: 前端源代码根目录
   - `src/App.tsx`: 前端主入口，负责路由和布局
   - `src/main.tsx`: React 渲染入口
-  - `src/components/`: 存放各个工具的 UI 组件
+  - `src/store.ts`: 全局状态管理
+  - `src/components/`: UI 组件库
+    - `ChainProcessor/`: 链式处理工具及其子组件
+    - `CodeSnippetsTool.tsx`: 代码片段管理工具
+    - `JsonCsvConverter.tsx`: 格式转换工具
+    - `QRCodeTool.tsx`: 二维码工具
+    - `CloudShare.tsx`: 云端分享功能
   - `src/hooks/`: 自定义 React Hooks (如 `useAuth`)
-  - `src/server/`: Hono 后端代码
-    - `index.ts`: API 路由定义与入口
-    - `auth.ts`: 认证相关逻辑
+- `server/`: Hono 后端代码 (Cloudflare Workers)
+  - `server/index.ts`: API 路由定义与入口
+  - `server/auth.ts`: 认证相关逻辑
 - `migrations/`: D1 数据库迁移 SQL 文件
-- `public/`: 静态资源
 - `wrangler.toml`: Cloudflare Workers/D1 配置文件
+- `vite.config.ts`: Vite 构建配置
+- `GEMINI.md`: 项目上下文与开发指南
 
 ## 开发与运行
 
 ### 关键命令
 - **构建项目**: `pnpm build`
 - **部署到 Cloudflare**: `pnpm deploy`
-- **本地数据库迁移**: `pnpm db:migrate:local`
 - **远程数据库迁移**: `pnpm db:migrate`
 - **类型检查**: `pnpm lint` (执行 `tsc --noEmit`)
-
-### 环境变量
-本地开发需创建 `.env` 或 `.dev.vars` 文件，包含以下配置：
-- `GITHUB_CLIENT_ID`: GitHub OAuth 客户端 ID
-- `GITHUB_CLIENT_SECRET`: GitHub OAuth 客户端密钥
 
 ## 开发规范
 1. **TypeScript**: 始终使用严格类型定义。

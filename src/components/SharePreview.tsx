@@ -13,6 +13,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ShareContent } from '../types';
 
 interface FileItem {
   key: string;
@@ -57,7 +58,7 @@ const SharePreview: React.FC = () => {
         // 对齐参考路径 /api/public/share/:id
         const res = await fetch(`/api/public/share/${id}`);
         if (!res.ok) throw new Error('该分享已过期或已被发布者移除');
-        const json = await res.json() as any;
+        const json = await res.json() as { success: boolean; data?: ShareContent; error?: string };
         
         if (json.success) {
             setData(json.data);
