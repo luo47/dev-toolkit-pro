@@ -25,6 +25,7 @@ interface IOSectionProps {
   onPaste: (e: React.ClipboardEvent) => void;
   onExportOutput: () => void;
   onCopyOutput: () => void;
+  children?: React.ReactNode;
 }
 
 export default function IOSection({
@@ -41,7 +42,8 @@ export default function IOSection({
   onDragLeave,
   onPaste,
   onExportOutput,
-  onCopyOutput
+  onCopyOutput,
+  children
 }: IOSectionProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -96,9 +98,9 @@ export default function IOSection({
         </div>
       </div>
 
-      {/* Column 2: Steps Placeholder (Filled by parent) */}
-      <div id="steps-container" className="space-y-3 h-full">
-        {/* steps will be rendered here by the parent component or via children prop */}
+      {/* Column 2: Steps (Filled by parent) */}
+      <div className="space-y-3 h-[calc(100vh-280px)] min-h-[400px] flex flex-col">
+        {children}
       </div>
 
       {/* Column 3: Output */}

@@ -409,42 +409,36 @@ export default function ChainProcessor() {
             const a = document.createElement('a'); a.href = url; a.download = `result-${Date.now()}.txt`; a.click(); URL.revokeObjectURL(url);
         }}
         onCopyOutput={() => { navigator.clipboard.writeText(output); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-      />
-
-      {/* Middle Column Override: Steps */}
-      <div className="lg:grid lg:grid-cols-3 gap-6 !mt-0 relative lg:-mt-[420px]" style={{ pointerEvents: 'none' }}>
-        <div className="hidden lg:block" />
-        <div className="space-y-3 pointer-events-auto">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-[var(--text-secondary)] flex items-center gap-2">
-              <ArrowRight className="w-4 h-4" /> 处理链
-            </label>
-            <div className="relative group">
-              <button className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-color)] text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all">
-                <Plus className="w-3.5 h-3.5" /> 添加步骤
-              </button>
-              <div className="absolute right-0 top-full pt-2 z-50 hidden group-hover:block">
-                <div className="w-48 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl shadow-2xl p-1 max-h-80 overflow-y-auto custom-scrollbar">
-                  {(Object.keys(STEP_CONFIG) as StepType[]).map(type => (
-                    <button key={type} onClick={() => addStep(type)} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[var(--hover-color)] rounded-lg text-left">
-                      <span className="w-8 h-8 flex items-center justify-center bg-[var(--bg-main)] rounded text-[10px] font-bold text-[var(--accent-color)]">{STEP_CONFIG[type].icon}</span>
-                      <span className="text-xs text-[var(--text-primary)]">{STEP_CONFIG[type].label}</span>
-                    </button>
-                  ))}
-                </div>
+      >
+        <div className="flex items-center justify-between shrink-0">
+          <label className="text-sm font-medium text-[var(--text-secondary)] flex items-center gap-2">
+            <ArrowRight className="w-4 h-4" /> 处理链
+          </label>
+          <div className="relative group">
+            <button className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-color)] text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all">
+              <Plus className="w-3.5 h-3.5" /> 添加步骤
+            </button>
+            <div className="absolute right-0 top-full pt-2 z-50 hidden group-hover:block">
+              <div className="w-48 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl shadow-2xl p-1 max-h-80 overflow-y-auto custom-scrollbar">
+                {(Object.keys(STEP_CONFIG) as StepType[]).map(type => (
+                  <button key={type} onClick={() => addStep(type)} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[var(--hover-color)] rounded-lg text-left">
+                    <span className="w-8 h-8 flex items-center justify-center bg-[var(--bg-main)] rounded text-[10px] font-bold text-[var(--accent-color)]">{STEP_CONFIG[type].icon}</span>
+                    <span className="text-xs text-[var(--text-primary)]">{STEP_CONFIG[type].label}</span>
+                  </button>
+                ))}
               </div>
             </div>
-            <button onClick={() => setIsSaveModalOpen(true)} disabled={steps.length === 0} className="p-1.5 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)] disabled:opacity-30"><Save className="w-4 h-4" /></button>
           </div>
-          <div className="space-y-3 h-[calc(100vh-280px)] min-h-[400px] overflow-y-auto custom-scrollbar pr-1">
-            {steps.length === 0 ? (
-                <div className="h-full border-2 border-dashed border-[var(--border-color)] rounded-2xl flex flex-col items-center justify-center text-[var(--text-secondary)]">
-                    <Plus className="w-8 h-8 mb-2 opacity-20" /><p className="text-sm">尚未添加处理步骤</p>
-                </div>
-            ) : steps.map((step, i) => <StepItem key={step.id} step={step} index={i} totalSteps={steps.length} error={error} onUpdate={updateStep} onRemove={removeStep} onMove={moveStep} />)}
-          </div>
+          <button onClick={() => setIsSaveModalOpen(true)} disabled={steps.length === 0} className="p-1.5 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)] disabled:opacity-30"><Save className="w-4 h-4" /></button>
         </div>
-      </div>
+        <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
+          {steps.length === 0 ? (
+              <div className="h-full border-2 border-dashed border-[var(--border-color)] rounded-2xl flex flex-col items-center justify-center text-[var(--text-secondary)]">
+                  <Plus className="w-8 h-8 mb-2 opacity-20" /><p className="text-sm">尚未添加处理步骤</p>
+              </div>
+          ) : steps.map((step, i) => <StepItem key={step.id} step={step} index={i} totalSteps={steps.length} error={error} onUpdate={updateStep} onRemove={removeStep} onMove={moveStep} />)}
+        </div>
+      </IOSection>
 
       <ChainLibrary 
         savedChains={savedChains} 
