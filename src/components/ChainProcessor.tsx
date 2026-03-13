@@ -120,8 +120,26 @@ export default function ChainProcessor() {
               current = typeof result === 'object' && result !== null ? JSON.stringify(result, null, 2) : String(result);
               break;
             }
-            case 'base64-encode': current = btoa(unescape(encodeURIComponent(current))); break;
-            case 'base64-decode': current = decodeURIComponent(escape(atob(current))); break;
+            case 'base64-encode': {
+              let options = { byline: false };
+              try { if (step.value) options = JSON.parse(step.value); } catch(e) {}
+              if (options.byline) {
+                current = current.split(/\\r?\\n/).map(line => line ? btoa(unescape(encodeURIComponent(line))) : line).join('\\n');
+              } else {
+                current = btoa(unescape(encodeURIComponent(current)));
+              }
+              break;
+            }
+            case 'base64-decode': {
+              let options = { byline: false };
+              try { if (step.value) options = JSON.parse(step.value); } catch(e) {}
+              if (options.byline) {
+                current = current.split(/\\r?\\n/).map(line => line ? decodeURIComponent(escape(atob(line))) : line).join('\\n');
+              } else {
+                current = decodeURIComponent(escape(atob(current)));
+              }
+              break;
+            }
             case 'url-encode': current = encodeURIComponent(current); break;
             case 'url-decode': current = decodeURIComponent(current); break;
             case 'trim': current = current.trim(); break;

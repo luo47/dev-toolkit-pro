@@ -81,6 +81,39 @@ const StepItem: React.FC<StepItemProps> = ({
         </div>
       )}
 
+      {(step.type === 'base64-encode' || step.type === 'base64-decode') && (() => {
+        let options = { byline: false };
+        try {
+          if (step.value.startsWith('{')) {
+            const parsed = JSON.parse(step.value);
+            options = { ...options, ...parsed };
+          }
+        } catch (e) { }
+
+        const updateOptions = (updates: any) => {
+          onUpdate(step.id, { value: JSON.stringify({ ...options, ...updates }) });
+        };
+
+        return (
+          <div className="mt-3 pt-3 border-t border-[var(--border-color)]/30">
+            <label className="flex items-center gap-2 cursor-pointer select-none group/label">
+              <div className="relative flex items-center justify-center">
+                <input
+                  type="checkbox"
+                  checked={options.byline}
+                  onChange={(e) => updateOptions({ byline: e.target.checked })}
+                  className="peer appearance-none w-4 h-4 rounded border border-[var(--border-color)] checked:bg-[var(--accent-color)] checked:border-[var(--accent-color)] transition-all cursor-pointer"
+                />
+                <Check className="absolute w-2.5 h-2.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" />
+              </div>
+              <span className="text-[11px] font-medium text-[var(--text-secondary)] group-hover/label:text-[var(--text-primary)] transition-colors whitespace-nowrap">
+                按行处理 (每一行单独 {step.type === 'base64-encode' ? '编码' : '解码'})
+              </span>
+            </label>
+          </div>
+        );
+      })()}
+
       {step.type === 'json-to-xml' && (() => {
         let options = { root: 'root', noRoot: false, noHeader: false };
         try {
