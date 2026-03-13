@@ -70,6 +70,49 @@ const StepItem: React.FC<StepItemProps> = ({
         </div>
       </div>
 
+      {step.type === 'regex-replace' && (() => {
+        let options = { pattern: '', flags: 'g', replacement: '' };
+        try {
+          if (step.value.startsWith('{')) {
+            options = { ...options, ...JSON.parse(step.value) };
+          }
+        } catch (e) { }
+
+        const updateOptions = (updates: any) => {
+          onUpdate(step.id, { value: JSON.stringify({ ...options, ...updates }) });
+        };
+
+        return (
+          <div className="space-y-3 mt-3 pt-3 border-t border-[var(--border-color)]/30">
+            <div className="flex bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl focus-within:ring-2 focus-within:ring-[var(--accent-color)]/30 transition-all overflow-hidden relative">
+              <div className="flex items-center justify-center px-3 text-[var(--text-secondary)] font-mono text-xs border-r border-[var(--border-color)]">/</div>
+              <input
+                type="text"
+                value={options.pattern}
+                onChange={(e) => updateOptions({ pattern: e.target.value })}
+                placeholder="正则表达式"
+                className="flex-1 min-w-0 p-2 text-xs font-mono outline-none bg-transparent placeholder:font-sans placeholder:text-[var(--text-secondary)]/50"
+              />
+              <div className="flex items-center justify-center px-3 text-[var(--text-secondary)] font-mono text-xs border-l border-[var(--border-color)]">/</div>
+              <input
+                type="text"
+                value={options.flags}
+                onChange={(e) => updateOptions({ flags: e.target.value })}
+                placeholder="例: gm"
+                className="w-16 p-2 text-xs font-mono outline-none bg-transparent placeholder:font-sans text-center placeholder:text-[var(--text-secondary)]/50"
+              />
+            </div>
+            <input
+              type="text"
+              value={options.replacement}
+              onChange={(e) => updateOptions({ replacement: e.target.value })}
+              placeholder="替换为... (支持 $1 分组和 \n 会被转义为换行)"
+              className="w-full p-2.5 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl text-xs font-mono outline-none focus:ring-2 focus:ring-[var(--accent-color)]/30 transition-all placeholder:font-sans placeholder:text-[var(--text-secondary)]/50"
+            />
+          </div>
+        );
+      })()}
+
       {['jsonpath', 'xpath', 'css', 'js'].includes(step.type) && (
         <div className="space-y-2">
           <textarea
@@ -81,33 +124,48 @@ const StepItem: React.FC<StepItemProps> = ({
         </div>
       )}
 
-      {(step.type === 'base64-encode' || step.type === 'base64-decode') && (() => {
-        let options = { byline: false };
-        try {
-          if (step.value.startsWith('{')) {
-            const parsed = JSON.parse(step.value);
-            options = { ...options, ...parsed };
-          }
-        } catch (e) { }
+      {(() => {
+        const isBylineSupported = [
+          'jsonpath', 'xpath', 'css', 'base64-encode', 'base64-decode', 
+          'url-encode', 'url-decode', 'regex-replace', 'trim', 
+          'lowercase', 'uppercase', 'json-beautify', 'json-compress', 
+          'xml-beautify', 'xml-compress', 'xml-to-json', 'json-to-xml'
+        ].includes(step.type);
 
-        const updateOptions = (updates: any) => {
-          onUpdate(step.id, { value: JSON.stringify({ ...options, ...updates }) });
-        };
+        if (!isBylineSupported) return null;
+
+        let stepByLine = !!step.byline;
+        if (!stepByLine && (step.type === 'base64-encode' || step.type === 'base64-decode' || step.type === 'regex-replace')) {
+            try { const opts = JSON.parse(step.value); if (opts.byline) stepByLine = true; } catch(e) {}
+        }
 
         return (
           <div className="mt-3 pt-3 border-t border-[var(--border-color)]/30">
-            <label className="flex items-center gap-2 cursor-pointer select-none group/label">
+            <label className="flex items-center gap-2 cursor-pointer select-none group/label w-fit">
               <div className="relative flex items-center justify-center">
                 <input
                   type="checkbox"
-                  checked={options.byline}
-                  onChange={(e) => updateOptions({ byline: e.target.checked })}
+                  checked={stepByLine}
+                  onChange={(e) => {
+                     const isChecked = e.target.checked;
+                     const updates: Partial<Step> = { byline: isChecked };
+                     if (step.type === 'base64-encode' || step.type === 'base64-decode' || step.type === 'regex-replace') {
+                         try {
+                             const opts = step.value ? JSON.parse(step.value) : {};
+                             if ('byline' in opts) {
+                                 delete opts.byline;
+                                 updates.value = Object.keys(opts).length === 0 ? '' : JSON.stringify(opts);
+                             }
+                         } catch(err) {}
+                     }
+                     onUpdate(step.id, updates);
+                  }}
                   className="peer appearance-none w-4 h-4 rounded border border-[var(--border-color)] checked:bg-[var(--accent-color)] checked:border-[var(--accent-color)] transition-all cursor-pointer"
                 />
                 <Check className="absolute w-2.5 h-2.5 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" />
               </div>
               <span className="text-[11px] font-medium text-[var(--text-secondary)] group-hover/label:text-[var(--text-primary)] transition-colors whitespace-nowrap">
-                按行处理 (每一行单独 {step.type === 'base64-encode' ? '编码' : '解码'})
+                按行处理 (对每一行独立执行该步骤)
               </span>
             </label>
           </div>

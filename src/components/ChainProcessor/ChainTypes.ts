@@ -17,13 +17,15 @@ export type StepType =
   | 'xml-to-json'
   | 'json-to-xml'
   | 'json-to-csv'
-  | 'csv-to-json';
+  | 'csv-to-json'
+  | 'regex-replace';
 
 export interface Step {
   id: string;
   type: StepType;
   value: string;
   active: boolean;
+  byline?: boolean;
 }
 
 export interface SavedChain {
@@ -54,6 +56,7 @@ export const STEP_CONFIG: Record<StepType, { label: string; placeholder: string;
   'json-to-xml': { label: 'JSON 转 XML', placeholder: 'root', icon: 'J2X' },
   'json-to-csv': { label: 'JSON 转 CSV', placeholder: '', icon: 'J2C' },
   'csv-to-json': { label: 'CSV 转 JSON', placeholder: '', icon: 'C2J' },
+  'regex-replace': { label: '正则替换', placeholder: '', icon: '/.*/' },
 };
 
 export const DEFAULT_PROXY_STEPS: Step[] = [

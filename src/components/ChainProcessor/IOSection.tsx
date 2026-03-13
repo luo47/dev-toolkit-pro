@@ -48,8 +48,8 @@ export default function IOSection({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Column 1: Input */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 h-[calc(100vh-240px)] min-h-[450px]">
+        <div className="flex items-center justify-between shrink-0">
           <label className="text-sm font-medium text-[var(--text-secondary)] flex items-center gap-2">
             <Settings2 className="w-4 h-4" />
             原始输入
@@ -77,7 +77,7 @@ export default function IOSection({
           </div>
         </div>
         <div
-          className={`relative group h-[calc(100vh-280px)] min-h-[400px] rounded-2xl transition-all ${isDragging ? 'ring-2 ring-[var(--accent-color)] ring-offset-2 ring-offset-[var(--bg-main)]' : ''}`}
+          className={`relative group flex-1 rounded-2xl transition-all ${isDragging ? 'ring-2 ring-[var(--accent-color)] ring-offset-2 ring-offset-[var(--bg-main)]' : ''}`}
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
@@ -99,13 +99,13 @@ export default function IOSection({
       </div>
 
       {/* Column 2: Steps (Filled by parent) */}
-      <div className="space-y-3 h-[calc(100vh-280px)] min-h-[400px] flex flex-col">
+      <div className="flex flex-col gap-3 h-[calc(100vh-240px)] min-h-[450px]">
         {children}
       </div>
 
       {/* Column 3: Output */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 h-[calc(100vh-240px)] min-h-[450px]">
+        <div className="flex items-center justify-between shrink-0">
           <label className="text-sm font-medium text-[var(--text-secondary)] flex items-center gap-2">
             <Play className="w-4 h-4" />
             处理结果
@@ -137,10 +137,10 @@ export default function IOSection({
           readOnly
           value={output}
           placeholder="处理后的结果将显示在这里..."
-          className="w-full h-[calc(100vh-280px)] min-h-[400px] p-4 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-2xl text-sm font-mono outline-none resize-none custom-scrollbar"
+          className="flex-1 w-full p-4 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-2xl text-sm font-mono outline-none resize-none custom-scrollbar"
         />
         {error?.stepId === 'global' && (
-          <div className="p-3 bg-[var(--error-color)]/10 border border-[var(--error-color)]/20 rounded-xl flex items-start gap-2">
+          <div className="shrink-0 p-3 bg-[var(--error-color)]/10 border border-[var(--error-color)]/20 rounded-xl flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-[var(--error-color)] shrink-0 mt-0.5" />
             <p className="text-xs text-[var(--error-color)] leading-relaxed">{error.message}</p>
           </div>

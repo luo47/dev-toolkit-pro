@@ -21,44 +21,11 @@ import IOSection from './ChainProcessor/IOSection';
 import StepItem from './ChainProcessor/StepItem';
 import ChainLibrary from './ChainProcessor/ChainLibrary';
 
-export default function ChainProcessor() {
-  const { user, isDarkMode } = useAppStore();
-  const [input, setInput] = useState('');
-  const [steps, setSteps] = useState<Step[]>([]);
-  const [output, setOutput] = useState('');
-  const [error, setError] = useState<{ stepId: string; message: string } | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [savedChains, setSavedChains] = useState<SavedChain[]>([]);
-  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  const [newChainName, setNewChainName] = useState('');
-  const [isDragging, setIsDragging] = useState(false);
-
-  const handleFileUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      setInput(content);
-    };
-    reader.readAsText(file);
-  };
-
-  const processChain = useCallback(() => {
-    setError(null);
-    if (!input.trim()) {
-      setOutput('');
-      return;
-    }
-    let current = input;
-
-    try {
-      for (const step of steps) {
-        if (!step.active) continue;
-
-        try {
-          switch (step.type) {
+const executeStepLogic = (type: StepType, value: string, current: string): string => {
+          switch (type) {
             case 'jsonpath': {
               const json = JSON.parse(current);
-              const paths = step.value.split('||').map(p => p.trim());
+              const paths = value.split('||').map(p => p.trim());
               let result: any = undefined;
               for (const path of paths) {
                 const searchResult = JSONPath({ path, json, wrap: false });
@@ -73,7 +40,7 @@ export default function ChainProcessor() {
             case 'xpath': {
               const parser = new DOMParser();
               const doc = parser.parseFromString(current, 'text/html');
-              const result = doc.evaluate(step.value, doc, null, XPathResult.ANY_TYPE, null);
+              const result = doc.evaluate(value, doc, null, XPathResult.ANY_TYPE, null);
               if (result.resultType === XPathResult.STRING_TYPE) current = result.stringValue;
               else if (result.resultType === XPathResult.NUMBER_TYPE) current = result.numberValue.toString();
               else if (result.resultType === XPathResult.BOOLEAN_TYPE) current = result.booleanValue.toString();
@@ -86,10 +53,10 @@ export default function ChainProcessor() {
               break;
             }
             case 'css': {
-              if (!step.value.trim()) { current = ''; break; }
+              if (!value.trim()) { current = ''; break; }
               const parser = new DOMParser();
               const doc = parser.parseFromString(current, 'text/html');
-              let selector = step.value;
+              let selector = value;
               let attr: string | null = null;
               if (selector.includes(' @')) {
                 const parts = selector.split(' @');
@@ -115,33 +82,28 @@ export default function ChainProcessor() {
               if (typeof current === 'string' && (current.trim().startsWith('{') || current.trim().startsWith('['))) {
                 try { inputData = JSON.parse(current); } catch (e) {}
               } else if (current === 'undefined') inputData = undefined;
-              const fn = new Function('input', step.value);
+              const fn = new Function('input', value);
               const result = fn(inputData);
               current = typeof result === 'object' && result !== null ? JSON.stringify(result, null, 2) : String(result);
               break;
             }
-            case 'base64-encode': {
-              let options = { byline: false };
-              try { if (step.value) options = JSON.parse(step.value); } catch(e) {}
-              if (options.byline) {
-                current = current.split(/\\r?\\n/).map(line => line ? btoa(unescape(encodeURIComponent(line))) : line).join('\\n');
-              } else {
-                current = btoa(unescape(encodeURIComponent(current)));
-              }
-              break;
-            }
-            case 'base64-decode': {
-              let options = { byline: false };
-              try { if (step.value) options = JSON.parse(step.value); } catch(e) {}
-              if (options.byline) {
-                current = current.split(/\\r?\\n/).map(line => line ? decodeURIComponent(escape(atob(line))) : line).join('\\n');
-              } else {
-                current = decodeURIComponent(escape(atob(current)));
-              }
-              break;
-            }
+            case 'base64-encode': current = btoa(unescape(encodeURIComponent(current))); break;
+            case 'base64-decode': current = decodeURIComponent(escape(atob(current))); break;
             case 'url-encode': current = encodeURIComponent(current); break;
             case 'url-decode': current = decodeURIComponent(current); break;
+            case 'regex-replace': {
+              let options = { pattern: '', flags: 'g', replacement: '' };
+              try { if (value) options = { ...options, ...JSON.parse(value) }; } catch(e) {}
+              if (!options.pattern) break;
+              try {
+                const regex = new RegExp(options.pattern, options.flags);
+                const rep = options.replacement.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\r/g, '\r');
+                current = current.replace(regex, rep);
+              } catch (e: any) {
+                throw new Error(`正则错误: ${e.message}`);
+              }
+              break;
+            }
             case 'trim': current = current.trim(); break;
             case 'lowercase': current = current.toLowerCase(); break;
             case 'uppercase': current = current.toUpperCase(); break;
@@ -287,13 +249,13 @@ export default function ChainProcessor() {
               const obj = JSON.parse(current);
               let options = { root: 'root', noRoot: false, noHeader: false };
               try {
-                if (step.value.startsWith('{')) {
-                  const parsed = JSON.parse(step.value); options = { ...options, ...parsed };
-                } else if (step.value === '__none__') options.noRoot = true;
-                else if (step.value.trim()) options.root = step.value.trim();
+                if (value.startsWith('{')) {
+                  const parsed = JSON.parse(value); options = { ...options, ...parsed };
+                } else if (value === '__none__') options.noRoot = true;
+                else if (value.trim()) options.root = value.trim();
               } catch (e) {
-                if (step.value === '__none__') options.noRoot = true;
-                else if (step.value.trim()) options.root = step.value.trim();
+                if (value === '__none__') options.noRoot = true;
+                else if (value.trim()) options.root = value.trim();
               }
               const rootName = options.noRoot ? null : (options.root.trim() || 'root');
               const xmlHeader = options.noHeader ? '' : '<?xml version="1.0" encoding="UTF-8"?>\n';
@@ -351,6 +313,71 @@ export default function ChainProcessor() {
               break;
             }
           }
+  return current;
+};
+
+export default function ChainProcessor() {
+  const { user, isDarkMode } = useAppStore();
+  const [input, setInput] = useState('');
+  const [steps, setSteps] = useState<Step[]>([]);
+  const [output, setOutput] = useState('');
+  const [error, setError] = useState<{ stepId: string; message: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [savedChains, setSavedChains] = useState<SavedChain[]>([]);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [newChainName, setNewChainName] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleFileUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      setInput(content);
+    };
+    reader.readAsText(file);
+  };
+
+  const processChain = useCallback(() => {
+    setError(null);
+    if (!input.trim()) {
+      setOutput('');
+      return;
+    }
+    let current = input;
+
+    try {
+      for (const step of steps) {
+        if (!step.active) continue;
+
+        try {
+          const isBylineSupported = [
+            'jsonpath', 'xpath', 'css', 'base64-encode', 'base64-decode', 
+            'url-encode', 'url-decode', 'regex-replace', 'trim', 
+            'lowercase', 'uppercase', 'json-beautify', 'json-compress', 
+            'xml-beautify', 'xml-compress', 'xml-to-json', 'json-to-xml'
+          ].includes(step.type);
+
+          let stepByLine = !!step.byline;
+          
+          if (!stepByLine && (step.type === 'base64-encode' || step.type === 'base64-decode' || step.type === 'regex-replace')) {
+              try { const opts = JSON.parse(step.value); if (opts.byline) stepByLine = true; } catch(e) {}
+          }
+
+          if (isBylineSupported && stepByLine) {
+              const lines = current.split(/\n/);
+              // Handle original \r\n safely in string if necessary - usually just splitting by \n and keeping trailing \r works fine, or split by /\r?\n/
+              const processed = current.split(/\r?\n/).map((line, idx) => {
+                  try {
+                      return executeStepLogic(step.type, step.value, line);
+                  } catch (e: any) {
+                      throw new Error(`第 ${idx + 1} 行处理失败: ${e.message}`);
+                  }
+              });
+              current = processed.join('\n');
+          } else {
+              current = executeStepLogic(step.type, step.value, current);
+          }
+
         } catch (e: any) { throw { stepId: step.id, message: e.message }; }
       }
       setOutput(current);
