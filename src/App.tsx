@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { Code, Menu, Search, X, Plus, Home as HomeIcon, LogIn, FileSearch, Settings, Sun, Moon, Cloud, QrCode, Server } from 'lucide-react';
+import { Code, Menu, Search, X, Home as HomeIcon, LogIn, FileSearch, Settings, Sun, Moon, Cloud, QrCode, Server, PlugZap } from 'lucide-react';
 import Home from './components/Home';
 import Login from './components/Login';
 import { useAuth } from './hooks/useAuth';
@@ -14,10 +14,12 @@ const QRCodeTool = React.lazy(() => import('./components/QRCodeTool'));
 const ChainProcessor = React.lazy(() => import('./components/ChainProcessor'));
 const CodeSnippetsTool = React.lazy(() => import('./components/CodeSnippetsTool'));
 const CloudShare = React.lazy(() => import('./components/CloudShare'));
+const OpenAIConnectivityTool = React.lazy(() => import('./components/OpenAIConnectivityTool'));
 const SharePreview = React.lazy(() => import('./components/SharePreview'));
 
 const tools: ToolMetadata[] = [
   { id: 'cloud-share', name: '云分享', icon: Server, isPremium: false },
+  { id: 'openai-api-tester', name: 'OPENAI-API测试', icon: PlugZap, isPremium: false, subName: '连通性检测' },
   { id: 'code-snippets', name: '代码片段', icon: Code, isPremium: true },
   { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, isPremium: true },
   { id: 'qrcode', name: '二维码', icon: QrCode, isPremium: false },
@@ -224,6 +226,9 @@ export default function App() {
           <button
             onClick={() => {
               setActiveTool('home');
+              if (window.location.pathname !== '/') {
+                window.history.pushState(null, '', '/');
+              }
               if (window.innerWidth < 1024) {
                 setIsSidebarOpen(false);
               }
@@ -316,7 +321,7 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
         <div className="h-16 flex items-center border-b border-[var(--border-color)] sticky top-0 bg-[var(--bg-main)]/80 backdrop-blur-md z-30">
-          <div className={`${activeTool === 'chain-processor' || activeTool === 'code-snippets' || activeTool === 'cloud-share' || activeTool === 'share-preview' ? 'max-w-[1400px]' : 'max-w-[840px]'} mx-auto w-full px-4 lg:px-8 flex items-center justify-between`}>
+          <div className={`${activeTool === 'chain-processor' || activeTool === 'code-snippets' || activeTool === 'cloud-share' || activeTool === 'openai-api-tester' || activeTool === 'share-preview' ? 'max-w-[1400px]' : 'max-w-[840px]'} mx-auto w-full px-4 lg:px-8 flex items-center justify-between`}>
             <div className="flex items-center gap-4 lg:gap-8 flex-1 overflow-hidden">
               {!isSidebarOpen && <div className="w-10 lg:hidden shrink-0" />}
 
@@ -460,7 +465,7 @@ export default function App() {
         </div>
 
         <div className="flex-1 overflow-y-auto w-full">
-          <div className={`${activeTool === 'chain-processor' || activeTool === 'code-snippets' || activeTool === 'cloud-share' || activeTool === 'share-preview' ? 'max-w-[1400px]' : 'max-w-[840px]'} mx-auto w-full px-4 lg:px-8 py-8 flex flex-col min-h-full`}>
+          <div className={`${activeTool === 'chain-processor' || activeTool === 'code-snippets' || activeTool === 'cloud-share' || activeTool === 'openai-api-tester' || activeTool === 'share-preview' ? 'max-w-[1400px]' : 'max-w-[840px]'} mx-auto w-full px-4 lg:px-8 py-8 flex flex-col min-h-full`}>
             {activeTool === 'home' ? (
               <div className="flex-1 flex flex-col pb-20">
                 <Home
@@ -487,6 +492,7 @@ export default function App() {
                     {activeTool === 'qrcode' && <QRCodeTool />}
                     {activeTool === 'code-snippets' && <CodeSnippetsTool />}
                     {activeTool === 'cloud-share' && <CloudShare />}
+                    {activeTool === 'openai-api-tester' && <OpenAIConnectivityTool />}
                     {activeTool === 'share-preview' && <SharePreview />}
                   </Suspense>
                 </div>

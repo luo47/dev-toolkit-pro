@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type ToolId = 'home' | 'qrcode' | 'chain-processor' | 'code-snippets' | 'cloud-share' | 'share-preview';
+export type ToolId = 'home' | 'qrcode' | 'chain-processor' | 'code-snippets' | 'cloud-share' | 'openai-api-tester' | 'share-preview';
 
 export interface FileItem {
   key: string;

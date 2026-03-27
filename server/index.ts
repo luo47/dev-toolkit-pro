@@ -555,6 +555,68 @@ app.get('/api/snippets/data/tags', async (c) => {
 });
 // --- End Code Snippets Routes ---
 
+// --- Search Engines Routes ---
+app.get('/api/search_engines', async (c) => {
+  const userId = await getUserFromSession(c);
+  if (!userId) {
+    return c.json({ success: true, data: [] });
+  }
+  try {
+    const res = await c.env.DB.prepare('SELECT * FROM search_engines WHERE user_id = ? ORDER BY sort_order ASC').bind(userId).all();
+    const engines = res.results.map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      icon: row.icon,
+      url_template: row.url_template,
+      is_visible: row.is_visible === 1,
+      sort_order: row.sort_order
+    }));
+    return c.json({ success: true, data: engines });
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message || 'Database error' }, 500);
+  }
+});
+
+app.post('/api/search_engines/batch', async (c) => {
+  const userId = await getUserFromSession(c);
+  if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+  try {
+    const body = await c.req.json();
+    const engines = body.engines;
+    if (!Array.isArray(engines)) {
+      return c.json({ error: 'Invalid data format' }, 400);
+    }
+
+    const stmts: any[] = [];
+    stmts.push(c.env.DB.prepare('DELETE FROM search_engines WHERE user_id = ?').bind(userId));
+    
+    if (engines.length > 0) {
+      const insertStmt = c.env.DB.prepare(
+        'INSERT INTO search_engines (id, user_id, name, icon, url_template, is_visible, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)'
+      );
+      for (let i = 0; i < engines.length; i++) {
+        const e = engines[i];
+        stmts.push(insertStmt.bind(
+          e.id || crypto.randomUUID(),
+          userId,
+          e.name,
+          e.icon || null,
+          e.url_template,
+          e.is_visible ? 1 : 0,
+          i
+        ));
+      }
+    }
+    
+    await c.env.DB.batch(stmts);
+    return c.json({ success: true });
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message || 'Database error' }, 500);
+  }
+});
+// --- End Search Engines Routes ---
+
+
 // 健康检查
 
 app.get('/api/health', (c) => {
@@ -595,6 +657,84 @@ app.post('/api/tools/usage/:toolName', async (c) => {
     return c.json({ success: false, error: '记录使用失败' }, 500);
   }
 });
+
+// --- OpenAI API Tester Routes ---
+app.post('/api/openai/test', async (c) => {
+  try {
+    const body = await c.req.json() as {
+      url?: string;
+      token?: string;
+      endpoint?: string;
+      method?: string;
+      payload?: unknown;
+    };
+
+    const baseUrl = (body.url || '').trim();
+    const token = (body.token || '').trim();
+    const endpoint = (body.endpoint || '/models').trim();
+    const method = (body.method || 'GET').toUpperCase();
+
+    if (!baseUrl || !token) {
+      return c.json({ success: false, error: '缺少 API Base URL 或 Token' }, 400);
+    }
+
+    let normalizedBaseUrl: URL;
+    try {
+      normalizedBaseUrl = new URL(baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`);
+    } catch {
+      return c.json({ success: false, error: 'API Base URL 格式无效' }, 400);
+    }
+
+    const finalUrl = new URL(endpoint.replace(/^\/+/, ''), normalizedBaseUrl).toString();
+    const headers = new Headers({
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+    });
+
+    const init: RequestInit = { method, headers };
+    if (body.payload !== undefined && method !== 'GET' && method !== 'HEAD') {
+      headers.set('Content-Type', 'application/json');
+      init.body = JSON.stringify(body.payload);
+    }
+
+    const response = await fetch(finalUrl, init);
+    const contentType = response.headers.get('content-type') || '';
+    const responseText = await response.text();
+
+    let parsedData: unknown = responseText;
+    if (contentType.includes('application/json')) {
+      try {
+        parsedData = JSON.parse(responseText);
+      } catch {
+        parsedData = responseText;
+      }
+    }
+
+    if (!response.ok) {
+      return c.json({
+        success: false,
+        error: `接口返回异常：${response.status} ${response.statusText}`,
+        details: parsedData,
+        status: response.status,
+        url: finalUrl,
+      }, { status: response.status as any });
+    }
+
+    return c.json({
+      success: true,
+      data: parsedData,
+      status: response.status,
+      url: finalUrl,
+    });
+  } catch (error: any) {
+    return c.json({
+      success: false,
+      error: '代理请求失败',
+      details: error?.message || '未知错误',
+    }, { status: 500 });
+  }
+});
+// --- End OpenAI API Tester Routes ---
 
 // --- Cloud Share Routes ---
 

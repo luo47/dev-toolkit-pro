@@ -1,4 +1,5 @@
-import { Code, Hash, QrCode, Lock, ArrowRight, Sparkles, Link2, FileText, FileSearch, Server } from 'lucide-react';
+import { Code, QrCode, Lock, ArrowRight, Sparkles, FileSearch, Server, PlugZap } from 'lucide-react';
+import SearchBox from './SearchBox';
 
 interface HomeProps {
   onSelectTool: (toolId: string) => void;
@@ -10,6 +11,7 @@ interface HomeProps {
 export default function Home({ onSelectTool, isLoggedIn, onOpenLogin, searchQuery = '' }: HomeProps) {
   const allTools = [
     { id: 'cloud-share', name: '云分享', icon: Server, description: '极简且高效的云端资产同步工具，支持文本片段与多文件包分享。', isPremium: false },
+    { id: 'openai-api-tester', name: 'OPENAI-API测试', icon: PlugZap, description: '检测 OpenAI 及兼容接口的模型列表、Chat Completions 与 Responses 可用性。', isPremium: false },
     { id: 'code-snippets', name: '代码片段', icon: Code, description: '代码片段管理工具，带有标签过滤和一键复制功能。', isPremium: true },
     { id: 'chain-processor', name: '链式文本处理', icon: FileSearch, description: '强大的链式文本处理引擎，支持 JS、JSONPath 等多种处理步骤。', isPremium: true },
     { id: 'qrcode', name: '二维码', icon: QrCode, description: '二维码生成与识别，支持实时生成及图片识别。', isPremium: false },
@@ -30,8 +32,11 @@ export default function Home({ onSelectTool, isLoggedIn, onOpenLogin, searchQuer
   };
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-      {tools.map((tool) => (
+    <div className="flex flex-col gap-8 w-full">
+      <SearchBox />
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {tools.map((tool) => (
         <button
           key={tool.id}
           onClick={() => handleToolClick(tool)}
@@ -76,6 +81,7 @@ export default function Home({ onSelectTool, isLoggedIn, onOpenLogin, searchQuer
           </div>
         </button>
       ))}
+      </div>
     </div>
   );
 }
