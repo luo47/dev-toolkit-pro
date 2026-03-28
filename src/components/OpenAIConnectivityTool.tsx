@@ -508,12 +508,13 @@ export default function OpenAIConnectivityTool() {
                     </div>
                     <button
                       onClick={() => {
-                        const normalized = url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '');
-                        const cmd = `& ([scriptblock]::Create((irm 'https://www.928496.xyz/s/68c6daaf'))) -BaseUrl "${normalized}" -AuthToken "${token.trim()}"`;
-                        navigator.clipboard.writeText(cmd).then(() => {
-                          window.showToast?.('命令已复制到剪贴板', 'success');
-                        });
-                      }}
+                      const base = url.trim().replace(/\/+$/, '');
+                      const normalized = base.endsWith('/v1') ? base : `${base}/v1`;
+                      const cmd = `& ([scriptblock]::Create((irm 'https://www.928496.xyz/s/68c6daaf'))) -BaseUrl "${normalized}" -AuthToken "${token.trim()}"`;
+                      navigator.clipboard.writeText(cmd).then(() => {
+                        window.showToast?.('命令已复制到剪贴板', 'success');
+                      });
+                    }}
                       title="复制命令"
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--accent-color)] text-xs font-medium transition-all"
                     >
@@ -523,7 +524,7 @@ export default function OpenAIConnectivityTool() {
                   </div>
                   <div className="relative group">
                     <div className="text-[13px] font-mono break-all bg-[var(--bg-main)] p-3.5 rounded-xl border border-[var(--border-color)] text-[var(--text-primary)] leading-relaxed select-all">
-                      & ([scriptblock]::Create((irm 'https://www.928496.xyz/s/68c6daaf'))) -BaseUrl "{url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '')}" -AuthToken "{token.trim()}"
+                      & ([scriptblock]::Create((irm 'https://www.928496.xyz/s/68c6daaf'))) -BaseUrl "{url.trim().replace(/\/+$/, '').endsWith('/v1') ? url.trim().replace(/\/+$/, '') : `${url.trim().replace(/\/+$/, '')}/v1`}" -AuthToken "{token.trim()}"
                     </div>
                   </div>
                   <p className="mt-2 text-[11px] text-[var(--text-secondary)] opacity-70">
@@ -539,12 +540,13 @@ export default function OpenAIConnectivityTool() {
                     </div>
                     <button
                       onClick={() => {
-                        const normalized = url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '');
-                        const cmd = `& ([scriptblock]::Create((irm 'https://www.928496.xyz/s/321b2e18'))) -BaseUrl "${normalized}" -AuthToken "${token.trim()}"`;
-                        navigator.clipboard.writeText(cmd).then(() => {
-                          window.showToast?.('命令已复制到剪贴板', 'success');
-                        });
-                      }}
+                      const base = url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '');
+                      const normalized = `${base}/v1`;
+                      const cmd = `& ([scriptblock]::Create((irm 'https://www.928496.xyz/s/321b2e18'))) -BaseUrl "${normalized}" -AuthToken "${token.trim()}"`;
+                      navigator.clipboard.writeText(cmd).then(() => {
+                        window.showToast?.('命令已复制到剪贴板', 'success');
+                      });
+                    }}
                       title="复制命令"
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--accent-color)] text-xs font-medium transition-all"
                     >
@@ -554,7 +556,7 @@ export default function OpenAIConnectivityTool() {
                   </div>
                   <div className="relative group">
                     <div className="text-[13px] font-mono break-all bg-[var(--bg-main)] p-3.5 rounded-xl border border-[var(--border-color)] text-[var(--text-primary)] leading-relaxed select-all">
-                      & ([scriptblock]::Create((irm 'https://www.928496.xyz/s/321b2e18'))) -BaseUrl "{url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '')}" -AuthToken "{token.trim()}"
+                      & ([scriptblock]::Create((irm 'https://www.928496.xyz/s/321b2e18'))) -BaseUrl "{url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '') + '/v1'}" -AuthToken "{token.trim()}"
                     </div>
                   </div>
                   <p className="mt-2 text-[11px] text-[var(--text-secondary)] opacity-70">
