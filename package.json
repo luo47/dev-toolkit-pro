@@ -41,6 +41,7 @@
     "@cloudflare/workers-types": "^4.20260307.1",
     "@types/highlight.js": "^10.1.0",
     "@types/node": "^25.3.5",
+    "@types/react": "^19.2.14",
     "autoprefixer": "^10.4.27",
     "tailwindcss": "^4.2.1",
     "tsx": "^4.21.0",

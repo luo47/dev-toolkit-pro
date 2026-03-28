@@ -14,15 +14,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
-import type { ShareContent } from "../types";
-
-interface FileItem {
-  key: string;
-  name: string;
-  path: string;
-  size: number;
-  mimeType: string;
-}
+import type { FileItem, ShareContent } from "../types";
 
 interface ShareData {
   id: string;
@@ -32,6 +24,12 @@ interface ShareData {
   createdAt: string;
 }
 
+interface ShareResponse {
+  success: boolean;
+  data?: ShareContent;
+  error?: string;
+}
+
 const formatSize = (bytes: number) => {
   if (bytes === 0) return "0 B";
   const k = 1024;
@@ -39,6 +37,14 @@ const formatSize = (bytes: number) => {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`;
 };
+
+const mapShareContentToData = (content: ShareContent): ShareData => ({
+  id: content.id,
+  name: content.name || "资产包",
+  files: content.files || [],
+  totalSize: content.totalSize || 0,
+  createdAt: content.createdAt,
+});
 
 const SharePreview: React.FC = () => {
   // 从路径获取 ID: /s/:id
@@ -56,17 +62,12 @@ const SharePreview: React.FC = () => {
 
     const fetchShareDetail = async () => {
       try {
-        // 对齐参考路径 /api/public/share/:id
         const res = await fetch(`/api/public/share/${id}`);
         if (!res.ok) throw new Error("该分享已过期或已被发布者移除");
-        const json = (await res.json()) as {
-          success: boolean;
-          data?: ShareContent;
-          error?: string;
-        };
+        const json = (await res.json()) as ShareResponse;
 
-        if (json.success) {
-          setData(json.data);
+        if (json.success && json.data) {
+          setData(mapShareContentToData(json.data));
         } else {
           throw new Error(json.error || "获取数据失败");
         }

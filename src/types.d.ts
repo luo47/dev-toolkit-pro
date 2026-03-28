@@ -1,12 +1,16 @@
-interface Window {
-  showToast?: (message: string, type?: "success" | "error") => void;
+declare global {
+  interface Window {
+    showToast?: (message: string, type?: "success" | "error") => void;
+  }
+
+  interface ImportMetaEnv {
+    readonly VITE_API_URL: string;
+    // 可以在此添加其他环境变量
+  }
+
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
 }
 
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
-
-interface ImportMetaEnv {
-  readonly VITE_API_URL: string;
-  // 可以在此添加其他环境变量
-}
+export {};

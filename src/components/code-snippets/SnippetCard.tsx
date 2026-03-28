@@ -1,11 +1,11 @@
 import { Check, Code2, Copy, Edit2, Share2, Trash2 } from "lucide-react";
 import type React from "react";
-import type { MutableRefObject } from "react";
+import type { RefObject } from "react";
 import type { SnippetItem } from "./helpers";
 
 interface SnippetCardProps {
   activeTag: string;
-  codeRefs: MutableRefObject<Record<string, HTMLElement | null>>;
+  codeRefs: RefObject<Record<string, HTMLElement | null>>;
   copiedId: string | null;
   sharingId: string | null;
   snippet: SnippetItem;
