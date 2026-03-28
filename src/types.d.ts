@@ -1,5 +1,5 @@
 interface Window {
-  showToast?: (message: string, type?: 'success' | 'error') => void;
+  showToast?: (message: string, type?: "success" | "error") => void;
 }
 
 interface ImportMeta {

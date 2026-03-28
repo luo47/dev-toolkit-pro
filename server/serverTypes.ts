@@ -1,0 +1,17 @@
+export type FileItem = {
+  key: string;
+  name: string;
+  path: string;
+  size: number;
+  mimeType: string;
+};
+
+export type Bindings = {
+  DB: D1Database;
+  SHARE_KV: KVNamespace;
+  SHARE_R2: R2Bucket;
+  ASSETS: Fetcher;
+  GITHUB_CLIENT_ID: string;
+  GITHUB_CLIENT_SECRET: string;
+  FRONTEND_URL: string;
+};

@@ -1,26 +1,27 @@
-import React, { useState } from 'react';
-import { LogIn, X, Github, ShieldCheck, KeyRound } from 'lucide-react';
-import { useAppStore } from '../store';
-import '../types';
+import { Github, KeyRound, LogIn, ShieldCheck, X } from "lucide-react";
+import type React from "react";
+import { useState } from "react";
+import { useAppStore } from "../store";
+import "../types";
 
 interface LoginProps {
   onLogin: (username: string) => void;
   onClose: () => void;
 }
 
-type LoginStep = 'credentials' | '2fa';
+type LoginStep = "credentials" | "2fa";
 
 export default function Login({ onLogin, onClose }: LoginProps) {
   const { isDarkMode } = useAppStore();
-  const [step, setStep] = useState<LoginStep>('credentials');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [step, setStep] = useState<LoginStep>("credentials");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [twoFactorCode, setTwoFactorCode] = useState("");
 
   const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
     if (username.trim() && password.trim()) {
-      setStep('2fa');
+      setStep("2fa");
     }
   };
 
@@ -33,20 +34,20 @@ export default function Login({ onLogin, onClose }: LoginProps) {
   };
 
   const handleSocialLogin = async (provider: string) => {
-    if (provider === 'GitHub') {
+    if (provider === "GitHub") {
       try {
-        const baseUrl = import.meta.env.VITE_API_URL || '';
+        const baseUrl = import.meta.env.VITE_API_URL || "";
         const res = await fetch(`${baseUrl}/api/auth/github/login?t=${Date.now()}`);
-        const data = await res.json() as { url?: string };
+        const data = (await res.json()) as { url?: string };
         if (data.url) {
           // 在重定向到 GitHub 之前，记录当前路径以便登录后返回
-          localStorage.setItem('redirect_to', window.location.pathname);
+          localStorage.setItem("redirect_to", window.location.pathname);
           window.location.href = data.url;
         } else {
-          console.error('Failed to get GitHub login URL:', data);
+          console.error("Failed to get GitHub login URL:", data);
         }
       } catch (err) {
-        console.error('Error fetching GitHub login URL:', err);
+        console.error("Error fetching GitHub login URL:", err);
       }
     } else {
       // Simulate social login skipping 2FA for demo
@@ -56,7 +57,9 @@ export default function Login({ onLogin, onClose }: LoginProps) {
   };
 
   return (
-    <div className={`fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4 ${isDarkMode ? 'bg-black/80' : 'bg-black/20'}`}>
+    <div
+      className={`fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4 ${isDarkMode ? "bg-black/80" : "bg-black/20"}`}
+    >
       <div className="bg-[var(--bg-surface)] border border-[var(--border-color)] w-full max-w-md rounded-2xl p-8 relative shadow-2xl overflow-hidden">
         <button
           onClick={onClose}
@@ -67,34 +70,34 @@ export default function Login({ onLogin, onClose }: LoginProps) {
 
         <div className="flex flex-col items-center mb-8">
           <div className="w-16 h-16 bg-[var(--bg-main)] rounded-2xl flex items-center justify-center mb-4">
-            {step === 'credentials' ? (
+            {step === "credentials" ? (
               <LogIn className="w-8 h-8 text-[var(--accent-color)]" />
             ) : (
               <ShieldCheck className="w-8 h-8 text-[var(--accent-color)] animate-pulse" />
             )}
           </div>
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">
-            {step === 'credentials' ? '欢迎回来' : '安全验证'}
+            {step === "credentials" ? "欢迎回来" : "安全验证"}
           </h2>
           <p className="text-[var(--text-secondary)] text-sm mt-2 text-center">
-            {step === 'credentials'
-              ? '登录以解锁高级开发者工具和进阶功能。'
-              : '请输入发送至您设备的 6 位验证码。'}
+            {step === "credentials"
+              ? "登录以解锁高级开发者工具和进阶功能。"
+              : "请输入发送至您设备的 6 位验证码。"}
           </p>
         </div>
 
-        {step === 'credentials' ? (
+        {step === "credentials" ? (
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="grid grid-cols-2 gap-3 mb-6">
               <button
-                onClick={() => handleSocialLogin('GitHub')}
+                onClick={() => handleSocialLogin("GitHub")}
                 className="flex items-center justify-center gap-2 bg-[var(--bg-input)] border border-[var(--border-color)] hover:bg-[var(--hover-color)] text-[var(--text-primary)] py-2.5 rounded-xl transition-all text-sm font-medium"
               >
                 <Github className="w-5 h-5" />
                 GitHub
               </button>
               <button
-                onClick={() => handleSocialLogin('Google')}
+                onClick={() => handleSocialLogin("Google")}
                 className="flex items-center justify-center gap-2 bg-[var(--bg-input)] border border-[var(--border-color)] hover:bg-[var(--hover-color)] text-[var(--text-primary)] py-2.5 rounded-xl transition-all text-sm font-medium"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -124,7 +127,9 @@ export default function Login({ onLogin, onClose }: LoginProps) {
                 <div className="w-full border-t border-[var(--border-color)]"></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-[var(--bg-surface)] px-2 text-[var(--text-secondary)]">或使用账号登录</span>
+                <span className="bg-[var(--bg-surface)] px-2 text-[var(--text-secondary)]">
+                  或使用账号登录
+                </span>
               </div>
             </div>
 
@@ -180,11 +185,10 @@ export default function Login({ onLogin, onClose }: LoginProps) {
                     type="text"
                     maxLength={6}
                     value={twoFactorCode}
-                    onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                    onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ""))}
                     autoComplete="one-time-code"
                     className="w-full max-w-[200px] bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-4 py-4 text-center text-2xl font-bold tracking-[0.5em] text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent-color)] focus:border-transparent outline-none transition-all"
                     placeholder="000000"
-                    autoFocus
                     required
                   />
                 </div>
@@ -195,7 +199,7 @@ export default function Login({ onLogin, onClose }: LoginProps) {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => setStep('credentials')}
+                  onClick={() => setStep("credentials")}
                   className="flex-1 bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-primary)] font-semibold py-3 rounded-xl hover:bg-[var(--hover-color)] transition-all"
                 >
                   返回

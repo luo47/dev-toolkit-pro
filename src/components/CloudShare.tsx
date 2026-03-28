@@ -1,131 +1,94 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Plus, 
-  FileText, 
-  Files, 
-  Copy, 
-  Trash2, 
-  Edit3, 
-  Upload, 
-  X,
-  Loader2,
-  Download,
-  File as FileIcon,
-  FolderPlus,
-  ArrowRight,
-  AlertCircle,
-  Eye,
-  History,
-  FolderIcon,
-  Search
-} from 'lucide-react';
-import { useAppStore } from '../store';
-import { ShareContent, FileItem } from '../types';
+import { AnimatePresence } from "framer-motion";
+import { AlertCircle, Loader2, Plus, Search } from "lucide-react";
+import { useEffect, useEffectEvent, useState } from "react";
+import type { ShareContent } from "../types";
+import EditModal from "./cloud-share/EditModal";
+import ShareCard from "./cloud-share/ShareCard";
+import UploadModal from "./cloud-share/UploadModal";
 
-// --- 类型定义 ---
+const readHighlightId = () => new URLSearchParams(window.location.search).get("highlight");
 
-interface SelectedFile {
-  name: string;
-  size: number;
-  path: string;
-  raw: File;
-}
-
-// --- 工具函数 ---
-
-const formatSize = (bytes: number) => {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-};
-
-const CloudShare: React.FC = () => {
-  const { user, isDarkMode } = useAppStore();
+export default function CloudShare() {
   const [shares, setShares] = useState<ShareContent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [showUploadModal, setShowUploadModal] = useState<boolean>(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [editingShare, setEditingShare] = useState<ShareContent | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
-  // 1. 获取列表 (首屏默认执行)
-  useEffect(() => {
-    fetchShares();
-
-    // 检查是否有高亮参数
-    const params = new URLSearchParams(window.location.search);
-    const highlight = params.get('highlight');
-    if (highlight) {
-      setHighlightedId(highlight);
-      const timer = setTimeout(() => {
-        setHighlightedId(null);
-        // 清除 URL 参数以免刷新后再次高亮
-        const newUrl = window.location.pathname;
-        window.history.replaceState(null, '', newUrl);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [user]);
-
-  const fetchShares = async () => {
+  const fetchShares = useEffectEvent(async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/shares?_t=${Date.now()}`);
-      const json = await res.json() as { success: boolean; data?: ShareContent[] };
-      if (json.success) {
-        setShares(json.data || []);
+      const response = await fetch(`/api/shares?_t=${Date.now()}`);
+      const data = (await response.json()) as { success: boolean; data?: ShareContent[] };
+      if (data.success) {
+        setShares(data.data || []);
       }
-    } catch (err) {
-      console.error('获取分享列表失败:', err);
-      window.showToast?.('同步数据失败，请检查网络', 'error');
+    } catch (error) {
+      console.error("获取分享列表失败:", error);
+      window.showToast?.("同步数据失败，请检查网络", "error");
     } finally {
       setIsLoading(false);
     }
-  };
+  });
+
+  useEffect(() => {
+    fetchShares();
+
+    const highlight = readHighlightId();
+    if (!highlight) return;
+
+    setHighlightedId(highlight);
+    const timer = setTimeout(() => {
+      setHighlightedId(null);
+      window.history.replaceState(null, "", window.location.pathname);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const copyLink = (id: string) => {
     const link = `${window.location.origin}/s/${id}`;
     navigator.clipboard.writeText(link);
-    window.showToast?.('分享链接已复制到剪贴板', 'success');
+    window.showToast?.("分享链接已复制到剪贴板", "success");
   };
 
   const deleteShare = async (id: string) => {
-    if (!confirm('确定要彻底删除该分享吗？该操作不可撤销。')) return;
+    if (!confirm("确定要彻底删除该分享吗？该操作不可撤销。")) return;
     try {
-      const res = await fetch(`/api/shares/${id}`, { method: 'DELETE' });
-      const data = await res.json() as { success: boolean; error?: string };
+      const response = await fetch(`/api/shares/${id}`, { method: "DELETE" });
+      const data = (await response.json()) as { success: boolean; error?: string };
       if (data.success) {
-        window.showToast?.('分享已彻底移除', 'success');
+        window.showToast?.("分享已彻底移除", "success");
         fetchShares();
       } else {
-        window.showToast?.(data.error || '删除失败', 'error');
+        window.showToast?.(data.error || "删除失败", "error");
       }
-    } catch (err) {
-      console.error('删除失败:', err);
-      window.showToast?.('删除请求失败', 'error');
+    } catch (error) {
+      console.error("删除失败:", error);
+      window.showToast?.("删除请求失败", "error");
     }
   };
 
-  const filteredShares = shares.filter(s => 
-    s.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    (s.name && s.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (s.content && s.content.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredShares = shares.filter((share) => {
+    const keyword = searchQuery.toLowerCase();
+    return (
+      share.id.toLowerCase().includes(keyword) ||
+      share.name?.toLowerCase().includes(keyword) ||
+      share.content?.toLowerCase().includes(keyword)
+    );
+  });
 
   return (
     <div className="w-full max-w-[1400px] mx-auto min-h-[800px] pb-24 px-4 sm:px-6 lg:px-8 space-y-8">
-      
-      {/* 顶部工具栏 - 搜索与操作 */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6">
         <div className="flex flex-wrap items-center gap-4 w-full">
-          {/* 搜索框 */}
           <div className="relative group flex-1 md:max-w-md">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] group-focus-within:text-blue-500 transition-colors" size={18} />
-            <input 
-              type="text" 
+            <Search
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] group-focus-within:text-blue-500 transition-colors"
+              size={18}
+            />
+            <input
+              type="text"
               placeholder="快速检索分享内容 or ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -135,8 +98,7 @@ const CloudShare: React.FC = () => {
 
           <div className="h-8 w-px bg-[var(--border-color)] hidden sm:block" />
 
-          {/* 新建按钮组 */}
-          <button 
+          <button
             onClick={() => setShowUploadModal(true)}
             className="w-12 h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold flex items-center justify-center shadow-lg shadow-blue-600/20 active:scale-95 transition-all"
             title="创建新分享"
@@ -146,116 +108,44 @@ const CloudShare: React.FC = () => {
         </div>
       </div>
 
-      {/* 主列表区域 */}
       <div className="space-y-4">
         {isLoading && shares.length === 0 ? (
           <div className="bg-[var(--bg-surface)] rounded-[32px] border border-[var(--border-color)] p-32 text-center animate-pulse">
             <Loader2 className="animate-spin mx-auto mb-4 text-blue-500" size={32} />
-            <p className="text-[var(--text-secondary)] text-sm italic font-mono uppercase tracking-widest">正在同步数据...</p>
+            <p className="text-[var(--text-secondary)] text-sm italic font-mono uppercase tracking-widest">
+              正在同步数据...
+            </p>
           </div>
         ) : filteredShares.length === 0 ? (
           <div className="bg-white/5 rounded-[32px] border border-white/5 p-32 text-center">
             <AlertCircle className="mx-auto mb-4 text-white/10" size={48} />
             <p className="text-white/30 font-medium">未找到匹配的分享项</p>
-            <button onClick={() => setSearchQuery('')} className="mt-4 text-blue-500 text-sm underline">清除搜索</button>
+            <button
+              onClick={() => setSearchQuery("")}
+              className="mt-4 text-blue-500 text-sm underline"
+            >
+              清除搜索
+            </button>
           </div>
         ) : (
-          filteredShares.map((share, idx) => (
-            <motion.div 
+          filteredShares.map((share, index) => (
+            <ShareCard
               key={share.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ 
-                opacity: 1, 
-                y: 0,
-                borderColor: highlightedId === share.id ? 'var(--accent-color)' : 'var(--border-color)',
-                boxShadow: highlightedId === share.id ? '0 0 20px var(--accent-color)40' : 'none',
-                scale: highlightedId === share.id ? 1.02 : 1
-              }}
-              transition={{ 
-                delay: idx * 0.03,
-                borderColor: { duration: 0.5 },
-                boxShadow: { duration: 0.5 },
-                scale: { duration: 0.3 }
-              }}
-              className={`group bg-[var(--bg-surface)] hover:bg-[var(--hover-color)] border rounded-[28px] p-6 flex flex-col md:flex-row items-start md:items-center gap-6 md:gap-8 transition-all relative overflow-hidden shadow-sm hover:shadow-md ${highlightedId === share.id ? 'z-10' : ''}`}
-            >
-              <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${share.type === 'file' ? 'bg-emerald-500/50' : 'bg-blue-500/50'}`} />
-
-              {/* 信息概览 */}
-              <div className="flex items-center gap-6 flex-1 min-w-0 w-full">
-                <div className={`w-16 h-16 rounded-[22px] flex items-center justify-center shrink-0 ${share.type === 'file' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                  {share.type === 'file' ? (share.files?.length === 1 ? <FileIcon size={28} /> : <Files size={28} />) : <FileText size={28} />}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-3 mb-1.5">
-                    <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${share.type === 'file' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-blue-500/10 text-blue-400'}`}>
-                      {share.type === 'file' ? (share.files?.length === 1 ? '单文件' : '多文件') : '纯文本'}
-                    </span>
-                    <code className="text-[10px] font-mono text-[var(--text-secondary)] tracking-widest uppercase">ID: {share.id}</code>
-                  </div>
-                  <h3 className="text-lg font-bold text-[var(--text-primary)] truncate group-hover:text-blue-500">
-                    {share.type === 'file' ? (share.name || (share.files?.length === 1 ? '未命名文件' : '未命名资产包')) : (share.content?.slice(0, 40) || '文本片段')}
-                  </h3>
-                  <div className="flex items-center gap-4 mt-2">
-                    <span className="text-[11px] text-[var(--text-secondary)] flex items-center gap-1.5">
-                      <History size={12} />
-                      {new Date(share.createdAt).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    {share.type === 'file' && (
-                      <span className="text-[11px] text-emerald-500/40 uppercase font-black flex items-center gap-1.5">
-                        <span className="w-1 h-1 rounded-full bg-emerald-500/40" />
-                        {share.files?.length} 个文件 · {formatSize(share.totalSize || 0)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* 操作区 - 移动端默认可见，桌面端悬停可见 */}
-              <div className="flex items-center gap-2 p-1.5 bg-[var(--bg-surface)] backdrop-blur rounded-2xl border border-[var(--border-color)] md:opacity-0 md:group-hover:opacity-100 transition-all md:scale-95 md:group-hover:scale-100 shadow-xl shadow-black/5">
-                <button 
-                  onClick={() => window.open(`/s/${share.id}`, '_blank')}
-                  className="w-12 h-12 flex items-center justify-center hover:bg-emerald-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
-                  title="立即预览"
-                >
-                  <Eye size={20} />
-                </button>
-                <button 
-                  onClick={() => copyLink(share.id)}
-                  className="w-12 h-12 flex items-center justify-center hover:bg-blue-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
-                  title="复制链接"
-                >
-                  <Copy size={20} />
-                </button>
-                {share.type === 'text' && (
-                  <button 
-                    onClick={() => setEditingShare(share)}
-                    className="w-12 h-12 flex items-center justify-center hover:bg-blue-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
-                    title="编辑"
-                  >
-                    <Edit3 size={20} />
-                  </button>
-                )}
-                <div className="w-px h-6 bg-[var(--border-color)] mx-1" />
-                <button 
-                  onClick={() => deleteShare(share.id)}
-                  className="w-12 h-12 flex items-center justify-center hover:bg-red-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
-                  title="删除"
-                >
-                  <Trash2 size={20} />
-                </button>
-              </div>
-            </motion.div>
+              highlighted={highlightedId === share.id}
+              index={index}
+              share={share}
+              onCopyLink={copyLink}
+              onDelete={deleteShare}
+              onEdit={setEditingShare}
+            />
           ))
         )}
       </div>
 
-      {/* 上传模态框 */}
       <AnimatePresence>
         {showUploadModal && (
-          <UploadModal 
-            onClose={() => setShowUploadModal(false)} 
+          <UploadModal
+            onClose={() => setShowUploadModal(false)}
             onSuccess={() => {
               setShowUploadModal(false);
               fetchShares();
@@ -264,10 +154,9 @@ const CloudShare: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* 编辑模态框 */}
       <AnimatePresence>
         {editingShare && (
-          <EditModal 
+          <EditModal
             share={editingShare}
             onClose={() => setEditingShare(null)}
             onSuccess={() => {
@@ -279,271 +168,4 @@ const CloudShare: React.FC = () => {
       </AnimatePresence>
     </div>
   );
-};
-
-// --- 子组件: 上传模态框 ---
-
-const UploadModal: React.FC<{ onClose: () => void, onSuccess: () => void }> = ({ onClose, onSuccess }) => {
-  const { isDarkMode } = useAppStore();
-  const [shareType, setShareType] = useState<'text' | 'file'>('text');
-  const [textContent, setTextContent] = useState('');
-  const [shareName, setShareName] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isDragover, setIsDragover] = useState(false);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []) as File[];
-    const mapped: SelectedFile[] = files.map(f => ({
-      name: f.name,
-      size: f.size,
-      path: (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name,
-      raw: f
-    }));
-    setSelectedFiles(prev => [...prev, ...mapped]);
-    setShareType('file');
-  };
-
-  const createShare = async () => {
-    if (shareType === 'text') {
-      if (!textContent.trim()) return;
-      setIsUploading(true);
-      try {
-        const res = await fetch('/api/shares', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ content: textContent })
-        });
-        const data = await res.json() as { success: boolean; data?: ShareContent; error?: string };
-        if (data.success) {
-          window.showToast?.('文本分享创建成功', 'success');
-          onSuccess();
-        }
-      } catch (err) {
-        console.error(err);
-        window.showToast?.('创建失败，请重试', 'error');
-      } finally {
-        setIsUploading(false);
-      }
-    } else {
-      if (selectedFiles.length === 0) return;
-      setIsUploading(true);
-      const formData = new FormData();
-      formData.append('name', shareName || selectedFiles[0].name);
-      selectedFiles.forEach(file => formData.append('files', file.raw, file.path));
-
-      const xhr = new XMLHttpRequest();
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
-      };
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          window.showToast?.('资产同步完成', 'success');
-          onSuccess();
-        } else {
-          window.showToast?.('同步失败', 'error');
-        }
-        setIsUploading(false);
-      };
-      xhr.onerror = () => {
-        window.showToast?.('网络连接异常', 'error');
-        setIsUploading(false);
-      };
-      xhr.open('POST', '/api/files');
-      xhr.send(formData);
-    }
-  };
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className={`fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-xl ${isDarkMode ? 'bg-black/80' : 'bg-black/20'}`}
-    >
-      <motion.div 
-        initial={{ scale: 0.9, opacity: 0, y: 20 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="bg-[var(--bg-surface)] border border-[var(--border-color)] w-full max-w-[800px] rounded-[32px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
-      >
-        <div className="p-8 border-b border-[var(--border-color)] flex items-center justify-between opacity-80">
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${shareType === 'text' ? 'bg-blue-500/10 text-blue-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
-              <Plus size={24} />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-[var(--text-primary)]">创建新分享</h2>
-              <div className="flex gap-4 mt-1">
-                <button onClick={() => setShareType('text')} className={`text-xs font-bold uppercase transition-colors ${shareType === 'text' ? 'text-blue-500' : 'text-[var(--text-secondary)]'}`}>纯文本</button>
-                <button onClick={() => setShareType('file')} className={`text-xs font-bold uppercase transition-colors ${shareType === 'file' ? 'text-emerald-500' : 'text-[var(--text-secondary)]'}`}>文件夹/文件</button>
-              </div>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-3 hover:bg-[var(--hover-color)] rounded-full transition-colors text-[var(--text-secondary)]"><X size={24} /></button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8">
-          {shareType === 'text' ? (
-            <textarea 
-              autoFocus
-              value={textContent}
-              onChange={(e) => setTextContent(e.target.value)}
-              placeholder="粘贴您的文本或代码..."
-              className="w-full h-[300px] bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl p-6 text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all resize-none shadow-inner"
-            />
-          ) : (
-            <div 
-              onDragOver={(e) => { e.preventDefault(); setIsDragover(true); }}
-              onDragLeave={() => setIsDragover(false)}
-              onDrop={(e) => { e.preventDefault(); setIsDragover(false); /* DROP 逻辑 */ }}
-              className={`min-h-[300px] border-2 border-dashed rounded-[32px] flex flex-col items-center justify-center p-8 transition-all ${isDragover ? 'border-emerald-500 bg-emerald-500/5' : 'border-[var(--border-color)] hover:border-emerald-500/30'}`}
-            >
-              {selectedFiles.length > 0 ? (
-                <div className="w-full">
-                  <div className="flex justify-between items-end mb-6">
-                    <div>
-                      <p className="text-3xl font-black italic">{selectedFiles.length < 10 ? `0${selectedFiles.length}` : selectedFiles.length}</p>
-                      <p className="text-[10px] uppercase font-bold text-[var(--text-secondary)] opacity-50 tracking-widest">已选资产</p>
-                    </div>
-                    <button onClick={() => setSelectedFiles([])} className="text-xs font-bold text-red-500 underline">清除</button>
-                  </div>
-                  <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                    {selectedFiles.map((f, i) => (
-                      <div key={i} className="flex justify-between p-3 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl text-xs font-mono">
-                        <span className="truncate text-[var(--text-primary)] opacity-70">{f.path}</span>
-                        <span className="text-[var(--text-secondary)] opacity-40 ml-4">{formatSize(f.size)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <Upload className="text-[var(--text-secondary)] opacity-20 mb-4" size={48} />
-                  <p className="text-[var(--text-secondary)] opacity-60 text-sm mb-6">释放资产以进行云同步</p>
-                  <div className="flex gap-4">
-                    <button onClick={() => fileInputRef.current?.click()} className="h-12 px-6 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl text-sm font-bold text-[var(--text-primary)] hover:bg-[var(--hover-color)] transition-all">选择文件</button>
-                    <button onClick={() => folderInputRef.current?.click()} className="h-12 px-6 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl text-sm font-bold text-[var(--text-primary)] hover:bg-[var(--hover-color)] transition-all">选择文件夹</button>
-                  </div>
-                </>
-              )}
-              <input type="file" multiple ref={fileInputRef} onChange={handleFileInputChange} className="hidden" />
-              <input type="file" 
-                // @ts-ignore
-                webkitdirectory="" directory="" multiple ref={folderInputRef} onChange={handleFileInputChange} className="hidden" />
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] opacity-50 tracking-widest ml-1">分享名称 (可选)</span>
-            <input 
-              type="text"
-              placeholder="给本次分享取个名字..."
-              value={shareName}
-              onChange={(e) => setShareName(e.target.value)}
-              className="w-full h-14 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl px-5 text-sm text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all"
-            />
-          </div>
-        </div>
-
-        <div className="p-8 bg-[var(--bg-main)] border-t border-[var(--border-color)]">
-          <button 
-            disabled={isUploading || (shareType === 'text' ? !textContent.trim() : selectedFiles.length === 0)}
-            onClick={createShare}
-            className={`w-full h-16 rounded-[22px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all relative overflow-hidden ${isUploading ? 'bg-[var(--border-color)] text-[var(--text-secondary)]' : 'bg-[var(--accent-color)] text-white hover:scale-[1.02] active:scale-95 shadow-xl shadow-blue-500/20'}`}
-          >
-             {isUploading ? (
-               <>
-                 <div className="absolute inset-0 bg-blue-500/20 origin-left transition-all" style={{ width: `${uploadProgress}%` }} />
-                 <Loader2 className="animate-spin" size={24} />
-                 <span className="relative z-10">{uploadProgress}% 正在同步</span>
-               </>
-             ) : (
-               <>
-                 <span>开始创建分享</span>
-                 <ArrowRight size={20} />
-               </>
-             )}
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-};
-
-// --- 子组件: 编辑模态框 ---
-
-const EditModal: React.FC<{ share: ShareContent, onClose: () => void, onSuccess: () => void }> = ({ share, onClose, onSuccess }) => {
-  const { isDarkMode } = useAppStore();
-  const [content, setContent] = useState(share.content || '');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const save = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`/api/shares/${share.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content })
-      });
-      const data = await res.json() as { success: boolean; data?: ShareContent; error?: string };
-      if (data.success) {
-        window.showToast?.('内容已成功同步', 'success');
-        onSuccess();
-      }
-    } catch (err) {
-      console.error(err);
-      window.showToast?.('同步失败，请检查网络', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }} 
-      className={`fixed inset-0 z-[110] flex items-center justify-center p-6 backdrop-blur-3xl ${isDarkMode ? 'bg-black/90' : 'bg-black/10'}`}
-    >
-      <motion.div 
-        initial={{ y: 50, opacity: 0 }} 
-        animate={{ y: 0, opacity: 1 }} 
-        className="bg-[var(--bg-surface)] border border-[var(--border-color)] w-full max-w-[900px] rounded-[40px] overflow-hidden shadow-2xl"
-      >
-        <div className="p-8 flex justify-between items-center border-b border-[var(--border-color)] opacity-80">
-          <h2 className="text-xl font-bold flex items-center gap-3">
-            <Edit3 className="text-[var(--accent-color)]" size={20} />
-            <span className="text-[var(--text-primary)]">编辑内容</span>
-            <code className="text-xs font-mono ml-2 text-[var(--text-secondary)] opacity-40">ID: {share.id}</code>
-          </h2>
-          <button onClick={onClose} className="p-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"><X size={24} /></button>
-        </div>
-        <div className="p-8">
-          <textarea 
-            autoFocus
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            className="w-full h-[450px] bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl p-6 font-mono text-sm leading-relaxed text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-color)]/30 transition-all shadow-inner"
-          />
-        </div>
-        <div className="p-8 bg-[var(--bg-main)] border-t border-[var(--border-color)] flex justify-end gap-4">
-          <button onClick={onClose} className="px-8 py-4 text-[var(--text-secondary)] font-bold hover:text-[var(--text-primary)] transition-colors">取消</button>
-          <button 
-            onClick={save} 
-            disabled={isLoading} 
-            className="px-10 py-4 bg-[var(--accent-color)] text-white rounded-2xl font-bold shadow-lg shadow-[var(--accent-color)]/20 flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
-          >
-            {isLoading && <Loader2 className="animate-spin" size={18} />}
-            <span>{isLoading ? '正在保存...' : '完成修改'}</span>
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-};
-
-export default CloudShare;
+}

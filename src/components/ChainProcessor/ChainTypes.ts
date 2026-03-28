@@ -1,24 +1,24 @@
 export type StepType =
-  | 'jsonpath'
-  | 'xpath'
-  | 'css'
-  | 'js'
-  | 'base64-encode'
-  | 'base64-decode'
-  | 'url-encode'
-  | 'url-decode'
-  | 'trim'
-  | 'lowercase'
-  | 'uppercase'
-  | 'json-beautify'
-  | 'json-compress'
-  | 'xml-beautify'
-  | 'xml-compress'
-  | 'xml-to-json'
-  | 'json-to-xml'
-  | 'json-to-csv'
-  | 'csv-to-json'
-  | 'regex-replace';
+  | "jsonpath"
+  | "xpath"
+  | "css"
+  | "js"
+  | "base64-encode"
+  | "base64-decode"
+  | "url-encode"
+  | "url-decode"
+  | "trim"
+  | "lowercase"
+  | "uppercase"
+  | "json-beautify"
+  | "json-compress"
+  | "xml-beautify"
+  | "xml-compress"
+  | "xml-to-json"
+  | "json-to-xml"
+  | "json-to-csv"
+  | "csv-to-json"
+  | "regex-replace";
 
 export interface Step {
   id: string;
@@ -37,47 +37,51 @@ export interface SavedChain {
 }
 
 export const STEP_CONFIG: Record<StepType, { label: string; placeholder: string; icon: string }> = {
-  jsonpath: { label: 'JSONPath', placeholder: '$.items[*].name', icon: 'J' },
-  xpath: { label: 'XPath', placeholder: '//div[@class="title"]/text()', icon: 'X' },
-  css: { label: 'CSS 选择器', placeholder: 'a.link @href 或 @outerHTML', icon: 'C' },
-  js: { label: '自定义 JS', placeholder: 'return input.split("\\n").filter(Boolean).join(",");', icon: 'JS' },
-  'base64-encode': { label: 'Base64 编码', placeholder: '', icon: 'B64' },
-  'base64-decode': { label: 'Base64 解码', placeholder: '', icon: 'B64' },
-  'url-encode': { label: 'URL 编码', placeholder: '', icon: 'URL' },
-  'url-decode': { label: 'URL 解码', placeholder: '', icon: 'URL' },
-  trim: { label: '去除首尾空格', placeholder: '', icon: 'T' },
-  lowercase: { label: '转小写', placeholder: '', icon: 'a' },
-  uppercase: { label: '转大写', placeholder: '', icon: 'A' },
-  'json-beautify': { label: 'JSON 美化', placeholder: '', icon: '{ }' },
-  'json-compress': { label: 'JSON 压缩', placeholder: '', icon: '{..}' },
-  'xml-beautify': { label: 'XML 美化', placeholder: '', icon: '< >' },
-  'xml-compress': { label: 'XML 压缩', placeholder: '', icon: '<..>' },
-  'xml-to-json': { label: 'XML 转 JSON', placeholder: '', icon: 'X2J' },
-  'json-to-xml': { label: 'JSON 转 XML', placeholder: 'root', icon: 'J2X' },
-  'json-to-csv': { label: 'JSON 转 CSV', placeholder: '', icon: 'J2C' },
-  'csv-to-json': { label: 'CSV 转 JSON', placeholder: '', icon: 'C2J' },
-  'regex-replace': { label: '正则替换', placeholder: '', icon: '/.*/' },
+  jsonpath: { label: "JSONPath", placeholder: "$.items[*].name", icon: "J" },
+  xpath: { label: "XPath", placeholder: '//div[@class="title"]/text()', icon: "X" },
+  css: { label: "CSS 选择器", placeholder: "a.link @href 或 @outerHTML", icon: "C" },
+  js: {
+    label: "自定义 JS",
+    placeholder: 'return input.split("\\n").filter(Boolean).join(",");',
+    icon: "JS",
+  },
+  "base64-encode": { label: "Base64 编码", placeholder: "", icon: "B64" },
+  "base64-decode": { label: "Base64 解码", placeholder: "", icon: "B64" },
+  "url-encode": { label: "URL 编码", placeholder: "", icon: "URL" },
+  "url-decode": { label: "URL 解码", placeholder: "", icon: "URL" },
+  trim: { label: "去除首尾空格", placeholder: "", icon: "T" },
+  lowercase: { label: "转小写", placeholder: "", icon: "a" },
+  uppercase: { label: "转大写", placeholder: "", icon: "A" },
+  "json-beautify": { label: "JSON 美化", placeholder: "", icon: "{ }" },
+  "json-compress": { label: "JSON 压缩", placeholder: "", icon: "{..}" },
+  "xml-beautify": { label: "XML 美化", placeholder: "", icon: "< >" },
+  "xml-compress": { label: "XML 压缩", placeholder: "", icon: "<..>" },
+  "xml-to-json": { label: "XML 转 JSON", placeholder: "", icon: "X2J" },
+  "json-to-xml": { label: "JSON 转 XML", placeholder: "root", icon: "J2X" },
+  "json-to-csv": { label: "JSON 转 CSV", placeholder: "", icon: "J2C" },
+  "csv-to-json": { label: "CSV 转 JSON", placeholder: "", icon: "C2J" },
+  "regex-replace": { label: "正则替换", placeholder: "", icon: "/.*/" },
 };
 
 export const DEFAULT_PROXY_STEPS: Step[] = [
   {
-    id: 'step-1',
-    type: 'jsonpath',
-    value: '$.data.free_ip_list || $.data.page.list || $',
-    active: true
+    id: "step-1",
+    type: "jsonpath",
+    value: "$.data.free_ip_list || $.data.page.list || $",
+    active: true,
   },
   {
-    id: 'step-2',
-    type: 'js',
+    id: "step-2",
+    type: "js",
     value: `if (!Array.isArray(input)) return "错误：输入不是有效的数组。请检查 JSONPath 提取结果。";\n\nreturn input.map(item => {\n  // 格式化：socks://base64(user:pass)@ip:port#city-ip\n  const auth = btoa(\`\${item.username}:\${item.password}\`);\n  const city = (item.city || 'Unknown').replace(/\\s+/g, '');\n  return \`socks://\${auth}@\${item.ip}:\${item.port}#\${city}-\${item.ip}\`;\n}).join('\\n');`,
-    active: true
-  }
+    active: true,
+  },
 ];
 
 export const DEFAULT_SMB_STEPS: Step[] = [
   {
-    id: 'smb-step-1',
-    type: 'js',
+    id: "smb-step-1",
+    type: "js",
     value: `// SMB 路径双向转换脚本
 const lines = input.split('\\n').filter(line => line.trim());
 
@@ -108,14 +112,14 @@ return lines.map(line => {
   
   return clean;
 }).join('\\n');`,
-    active: true
-  }
+    active: true,
+  },
 ];
 
 export const DEFAULT_PROXY_LINK_STEPS: Step[] = [
   {
-    id: 'proxy-link-step-1',
-    type: 'js',
+    id: "proxy-link-step-1",
+    type: "js",
     value: `// 代理链接转换脚本
 const line = input.trim();
 if (!line) return "";
@@ -151,6 +155,6 @@ try {
 } catch (e) {
   return "错误：解析链接失败 - " + e.message;
 }`,
-    active: true
-  }
+    active: true,
+  },
 ];

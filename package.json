@@ -9,7 +9,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "busybox rm -rf dist",
-    "lint": "tsc --noEmit",
+    "lint": "pnpm run lint:types && pnpm run lint:biome",
+    "lint:types": "tsc --noEmit",
+    "lint:biome": "biome check .",
+    "format": "biome format --write .",
+    "check": "biome check .",
     "predeploy": "pnpm install && pnpm run clean && pnpm run lint",
     "deploy": "pnpm build && wrangler deploy",
     "db:migrate:local": "wrangler d1 migrations apply dev-toolkit-db --local --yes",
@@ -33,6 +37,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.9",
     "@cloudflare/workers-types": "^4.20260307.1",
     "@types/highlight.js": "^10.1.0",
     "@types/node": "^25.3.5",

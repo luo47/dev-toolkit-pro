@@ -1,6 +1,13 @@
-import React from 'react';
+import type React from "react";
 
-export type ToolId = 'home' | 'qrcode' | 'chain-processor' | 'code-snippets' | 'cloud-share' | 'openai-api-tester' | 'share-preview';
+export type ToolId =
+  | "home"
+  | "qrcode"
+  | "chain-processor"
+  | "code-snippets"
+  | "cloud-share"
+  | "openai-api-tester"
+  | "share-preview";
 
 export interface FileItem {
   key: string;
@@ -12,7 +19,7 @@ export interface FileItem {
 
 export interface ShareContent {
   id: string;
-  type: 'text' | 'file';
+  type: "text" | "file";
   content?: string;
   files?: FileItem[];
   totalSize?: number;
@@ -31,7 +38,7 @@ export interface ToolMetadata {
 
 declare global {
   interface Window {
-    showToast?: (message: string, type?: 'success' | 'error') => void;
+    showToast?: (message: string, type?: "success" | "error") => void;
   }
 
   interface ImportMetaEnv {

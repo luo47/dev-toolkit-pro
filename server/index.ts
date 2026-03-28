@@ -1,1068 +1,199 @@
-import { Hono } from 'hono';
-import { cors } from 'hono/cors';
-import { getCookie, setCookie, deleteCookie } from 'hono/cookie';
-import { zipSync } from 'fflate';
-
-type FileItem = {
-  key: string;
-  name: string;
-  path: string;
-  size: number;
-  mimeType: string;
-};
-
-type ShareContent = {
-  id: string;
-  type: 'text' | 'file';
-  content?: string;
-  files?: FileItem[];
-  totalSize?: number;
-  name?: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-type Bindings = {
-  DB: D1Database;
-  SHARE_KV: KVNamespace;
-  SHARE_R2: R2Bucket;
-  ASSETS: Fetcher;
-  GITHUB_CLIENT_ID: string;
-  GITHUB_CLIENT_SECRET: string;
-  FRONTEND_URL: string;
-};
+import { Hono } from "hono";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
+import { cors } from "hono/cors";
+import { registerChainsRoutes } from "./registerChainsRoutes";
+import { registerOpenAiRoutes } from "./registerOpenAiRoutes";
+import { registerSearchEngineRoutes } from "./registerSearchEngineRoutes";
+import { registerShareRoutes } from "./registerShareRoutes";
+import { registerSnippetsRoutes } from "./registerSnippetsRoutes";
+import type { Bindings } from "./serverTypes";
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-// --- 核心预览逻辑：必须具有绝对优先级 ---
-app.use('*', async (c, next) => {
+app.use("*", async (c, next) => {
   console.log(`[${new Date().toISOString()}] Request: ${c.req.method} ${c.req.url}`);
   await next();
 });
 
-// 全局机制：所有 API 请求都不应该被缓存
-app.use('/api/*', async (c, next) => {
-  c.header('Cache-Control', 'no-store, no-cache, must-revalidate, private');
-  c.header('Pragma', 'no-cache');
-  c.header('Expires', '0');
-
-  const origin = c.env.FRONTEND_URL || '*';
+app.use("/api/*", async (c, next) => {
+  c.header("Cache-Control", "no-store, no-cache, must-revalidate, private");
+  c.header("Pragma", "no-cache");
+  c.header("Expires", "0");
   return cors({
-    origin: [origin, 'http://localhost:3000', 'https://www.928496.xyz'],
+    origin: [c.env.FRONTEND_URL || "*", "http://localhost:3000", "https://www.928496.xyz"],
     credentials: true,
   })(c, next);
 });
 
-// --- Auth Routes ---
-
-// 获取 GitHub 登录跳转 URL
-app.get('/api/auth/github/login', (c) => {
+app.get("/api/auth/github/login", (c) => {
   const clientId = c.env.GITHUB_CLIENT_ID;
-  const frontendUrl = c.env.FRONTEND_URL || 'https://www.928496.xyz';
+  const frontendUrl = c.env.FRONTEND_URL || "https://www.928496.xyz";
   const redirectUri = `${frontendUrl}/api/auth/github/callback`;
-
-  console.log('Login URL requested:', { clientId: !!clientId, redirectUri });
-
-  if (!clientId) {
-    return c.json({ error: 'GITHUB_CLIENT_ID not configured' }, 500);
-  }
-
+  console.log("Login URL requested:", { clientId: !!clientId, redirectUri });
+  if (!clientId) return c.json({ error: "GITHUB_CLIENT_ID not configured" }, 500);
   const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read:user`;
-
-  console.log('Returning auth url:', githubAuthUrl);
+  console.log("Returning auth url:", githubAuthUrl);
   return c.json({ url: githubAuthUrl });
 });
 
-// GitHub 登录回调处理
-app.get('/api/auth/github/callback', async (c) => {
-  console.log('Callback reached');
-  const code = c.req.query('code');
-  if (!code) return c.json({ error: 'No code provided' }, 400);
+app.get("/api/auth/github/callback", async (c) => {
+  console.log("Callback reached");
+  const code = c.req.query("code");
+  if (!code) return c.json({ error: "No code provided" }, 400);
 
   try {
-    const frontendUrl = c.env.FRONTEND_URL || 'https://www.928496.xyz';
+    const frontendUrl = c.env.FRONTEND_URL || "https://www.928496.xyz";
     const redirectUri = `${frontendUrl}/api/auth/github/callback`;
-
-    // 用 Authorization Code 交换 Access Token
     const params = new URLSearchParams();
-    params.append('client_id', c.env.GITHUB_CLIENT_ID);
-    params.append('client_secret', c.env.GITHUB_CLIENT_SECRET);
-    params.append('code', code);
-    params.append('redirect_uri', redirectUri);
+    params.append("client_id", c.env.GITHUB_CLIENT_ID);
+    params.append("client_secret", c.env.GITHUB_CLIENT_SECRET);
+    params.append("code", code);
+    params.append("redirect_uri", redirectUri);
 
-    const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
-      method: 'POST',
+    const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
+      method: "POST",
       headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: params.toString(),
     });
-
-    const tokenData = await tokenRes.json() as { access_token?: string; error?: string; error_description?: string };
-    const accessToken = tokenData.access_token;
-    if (!accessToken) {
-      console.error('Failed to get access token:', tokenData);
-      return c.json({ error: 'Failed to get access token', details: tokenData }, 400);
+    const tokenData = (await tokenRes.json()) as { access_token?: string; error?: string };
+    if (!tokenData.access_token) {
+      console.error("Failed to get access token:", tokenData);
+      return c.json({ error: "Failed to get access token", details: tokenData }, 400);
     }
 
-    // 获取 GitHub 用户信息
-    const userRes = await fetch('https://api.github.com/user', {
+    const userRes = await fetch("https://api.github.com/user", {
       headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'User-Agent': 'dev-toolkit-pro',
+        Authorization: `Bearer ${tokenData.access_token}`,
+        "User-Agent": "dev-toolkit-pro",
       },
     });
-
     if (!userRes.ok) {
-      const errorText = await userRes.text();
-      console.error('Failed to get user info:', errorText);
-      return c.json({ error: 'Failed to get user info' }, 400);
+      console.error("Failed to get user info:", await userRes.text());
+      return c.json({ error: "Failed to get user info" }, 400);
     }
-    const githubUser = await userRes.json() as any;
 
+    const githubUser = (await userRes.json()) as any;
     const userId = `github_${githubUser.id}`;
-
-    // 在 D1 中插入或更新用户记录
     await c.env.DB.prepare(
       `INSERT INTO users (id, github_id, username, name, avatar_url)
        VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(github_id) DO UPDATE SET
          username = excluded.username,
          name = excluded.name,
-         avatar_url = excluded.avatar_url`
+         avatar_url = excluded.avatar_url`,
     )
-      .bind(userId, githubUser.id, githubUser.login, githubUser.name || '', githubUser.avatar_url || '')
+      .bind(
+        userId,
+        githubUser.id,
+        githubUser.login,
+        githubUser.name || "",
+        githubUser.avatar_url || "",
+      )
       .run();
 
-    // 创建新 Session
     const sessionId = crypto.randomUUID();
-    const expiresAt = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30; // 30天后过期
+    const expiresAt = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30;
+    await c.env.DB.prepare(`INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)`)
+      .bind(sessionId, userId, expiresAt)
+      .run();
 
-    await c.env.DB.prepare(
-      `INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)`
-    ).bind(sessionId, userId, expiresAt).run();
-
-    // 设置会话 Cookie
-    setCookie(c, 'auth_session', sessionId, {
-      path: '/',
+    setCookie(c, "auth_session", sessionId, {
+      path: "/",
       httpOnly: true,
       secure: true,
-      sameSite: 'Lax',
+      sameSite: "Lax",
       maxAge: 60 * 60 * 24 * 30,
     });
 
-    console.log('Login success, redirecting home');
-    return c.redirect('/', 302);
-  } catch (e) {
-    console.error('Auth error:', e);
-    return c.text('Authentication failed', 500);
+    console.log("Login success, redirecting home");
+    return c.redirect("/", 302);
+  } catch (error) {
+    console.error("Auth error:", error);
+    return c.text("Authentication failed", 500);
   }
 });
 
-// 获取当前会话状态
-app.get('/api/auth/me', async (c) => {
-  const sessionId = getCookie(c, 'auth_session');
+app.get("/api/auth/me", async (c) => {
+  const sessionId = getCookie(c, "auth_session");
   if (!sessionId) return c.json({ user: null });
-
   try {
     const result = await c.env.DB.prepare(
-      `SELECT users.id, users.github_id, users.username, users.name, users.avatar_url 
+      `SELECT users.id, users.github_id, users.username, users.name, users.avatar_url
        FROM users
        JOIN sessions ON users.id = sessions.user_id
-       WHERE sessions.id = ? AND sessions.expires_at > ?`
-    ).bind(sessionId, Math.floor(Date.now() / 1000)).first();
-
+       WHERE sessions.id = ? AND sessions.expires_at > ?`,
+    )
+      .bind(sessionId, Math.floor(Date.now() / 1000))
+      .first();
     return c.json({ user: result || null });
-  } catch (e) {
+  } catch {
     return c.json({ user: null });
   }
 });
 
-// 登出处理
-app.post('/api/auth/logout', async (c) => {
-  const sessionId = getCookie(c, 'auth_session');
+app.post("/api/auth/logout", async (c) => {
+  const sessionId = getCookie(c, "auth_session");
   if (sessionId) {
     await c.env.DB.prepare(`DELETE FROM sessions WHERE id = ?`).bind(sessionId).run();
   }
-  deleteCookie(c, 'auth_session', { path: '/' });
+  deleteCookie(c, "auth_session", { path: "/" });
   return c.json({ success: true });
 });
 
-// --- End Auth Routes ---
+registerChainsRoutes(app);
+registerSnippetsRoutes(app);
+registerSearchEngineRoutes(app);
+registerOpenAiRoutes(app);
+registerShareRoutes(app);
 
-// --- Chain Routes ---
-const getUserFromSession = async (c: any) => {
-  const sessionId = getCookie(c, 'auth_session');
-  if (!sessionId) return null;
-  const result = await c.env.DB.prepare(
-    `SELECT users.id 
-     FROM users
-     JOIN sessions ON users.id = sessions.user_id
-     WHERE sessions.id = ? AND sessions.expires_at > ?`
-  ).bind(sessionId, Math.floor(Date.now() / 1000)).first();
-  return result ? (result.id as string) : null;
-};
-
-// 获取用户的处理链（包括系统级和用户级）
-app.get('/api/chains', async (c) => {
-  const userId = await getUserFromSession(c);
-
-  try {
-    let query = `
-      SELECT sc.id, sc.name, sc.is_favorite as isFavorite, sc.created_at as createdAt, cc.steps_json as steps
-      FROM saved_chains sc
-      JOIN chain_contents cc ON sc.content_md5 = cc.md5
-      WHERE sc.user_id = 'system'
-    `;
-    let params: any[] = [];
-
-    if (userId) {
-      query = `
-        SELECT sc.id, sc.name, sc.is_favorite as isFavorite, sc.created_at as createdAt, cc.steps_json as steps
-        FROM saved_chains sc
-        JOIN chain_contents cc ON sc.content_md5 = cc.md5
-        WHERE sc.user_id = 'system' OR sc.user_id = ?
-      `;
-      params.push(userId);
-    }
-
-    const result = await c.env.DB.prepare(query).bind(...params).all();
-
-    const chains = result.results.map((row: any) => ({
-      ...row,
-      isFavorite: !!row.isFavorite,
-      steps: JSON.parse(row.steps)
-    }));
-
-    // Sort logic to mirror frontend behavior if needed, but we can do it on frontend
-    return c.json({ success: true, data: chains });
-  } catch (e: any) {
-    console.error('Fetch chains err:', e);
-    return c.json({ success: false, error: 'Database error' }, 500);
-  }
-});
-
-// 保存处理链
-app.post('/api/chains', async (c) => {
-  const userId = await getUserFromSession(c);
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401);
-
-  try {
-    const body = await c.req.json();
-    const { name, steps } = body;
-    if (!name || !steps || !Array.isArray(steps)) return c.json({ error: '无效的处理链数据' }, 400);
-    if (name.length > 100) return c.json({ error: '名称过长' }, 400);
-    if (steps.length > 50) return c.json({ error: '处理步骤过多' }, 400);
-
-    const stepsJson = JSON.stringify(steps);
-
-    // Use SHA-256 for consistent representation as MD5 isn't fully supported in WebCrypto
-    const msgUint8 = new TextEncoder().encode(stepsJson);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const contentMd5 = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
-    // Upsert chain_contents
-    await c.env.DB.prepare(
-      `INSERT INTO chain_contents (md5, steps_json, created_at) VALUES (?, ?, ?) ON CONFLICT(md5) DO NOTHING`
-    ).bind(contentMd5, stepsJson, Date.now()).run();
-
-    let dbId: string = crypto.randomUUID();
-
-    const existResult = await c.env.DB.prepare(
-      `SELECT id FROM saved_chains WHERE user_id = ? AND content_md5 = ?`
-    ).bind(userId, contentMd5).first();
-
-    if (existResult) {
-      dbId = existResult.id as string;
-      await c.env.DB.prepare(
-        `UPDATE saved_chains SET name = ?, created_at = ? WHERE id = ?`
-      ).bind(name, Date.now(), dbId).run();
-    } else {
-      await c.env.DB.prepare(
-        `INSERT INTO saved_chains (id, user_id, name, content_md5, is_favorite, created_at) VALUES (?, ?, ?, ?, 0, ?)`
-      ).bind(dbId, userId, name, contentMd5, Date.now()).run();
-    }
-
-    return c.json({ success: true, id: dbId });
-  } catch (e: any) {
-    console.error('Save chain err:', e);
-    return c.json({ success: false, error: e.message }, 500);
-  }
-});
-
-// 删除处理链
-app.delete('/api/chains/:id', async (c) => {
-  const userId = await getUserFromSession(c);
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401);
-
-  const id = c.req.param('id');
-  try {
-    // Only delete their own chains
-    await c.env.DB.prepare(`DELETE FROM saved_chains WHERE id = ? AND user_id = ?`).bind(id, userId).run();
-    return c.json({ success: true });
-  } catch (e) {
-    return c.json({ success: false, error: 'Database error' }, 500);
-  }
-});
-
-// 收藏/取消收藏
-app.put('/api/chains/:id/favorite', async (c) => {
-  const userId = await getUserFromSession(c);
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401);
-
-  const id = c.req.param('id');
-  try {
-    const { isFavorite } = await c.req.json();
-    await c.env.DB.prepare(
-      `UPDATE saved_chains SET is_favorite = ? WHERE id = ? AND user_id = ?`
-    ).bind(isFavorite ? 1 : 0, id, userId).run();
-    return c.json({ success: true });
-  } catch (e) {
-    return c.json({ success: false, error: 'Database error' }, 500);
-  }
-});
-// --- End Chain Routes ---
-
-// --- Code Snippets Routes ---
-app.get('/api/snippets', async (c) => {
-  const userId = await getUserFromSession(c);
-  const url = new URL(c.req.url);
-  const language = url.searchParams.get('language');
-  const tag = url.searchParams.get('tag');
-  const search = url.searchParams.get('search');
-  const sort = url.searchParams.get('sort') || 'updated_at';
-  const order = url.searchParams.get('order') || 'desc';
-  let limit = parseInt(url.searchParams.get('limit') || '50');
-  let offset = parseInt(url.searchParams.get('offset') || '0');
-
-  if (limit > 100) limit = 100;
-  if (offset < 0) offset = 0;
-
-  try {
-    let query = `SELECT * FROM code_snippets WHERE (user_id = 'system' ${userId ? 'OR user_id = ?' : ''})`;
-    const params: any[] = [];
-    if (userId) {
-      params.push(userId);
-    }
-
-    const conditions = [];
-
-    if (language) {
-      conditions.push('language = ?');
-      params.push(language);
-    }
-    if (tag) {
-      conditions.push('tags LIKE ?');
-      params.push(`%"${tag}"%`);
-    }
-    if (search) {
-      conditions.push('(title LIKE ? OR code LIKE ? OR description LIKE ?)');
-      const p = `%${search}%`;
-      params.push(p, p, p);
-    }
-
-    if (conditions.length > 0) {
-      query += ' AND ' + conditions.join(' AND ');
-    }
-
-    const validSorts = ['copy_count', 'updated_at', 'created_at', 'title'];
-    const sortColumn = validSorts.includes(sort) ? sort : 'updated_at';
-    const sortOrder = order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
-
-    if (sortColumn === 'title') {
-      query += ` ORDER BY (CASE WHEN title IS NULL OR title = '' THEN 1 ELSE 0 END) ASC, title ${sortOrder} LIMIT ? OFFSET ?`;
-    } else {
-      query += ` ORDER BY ${sortColumn} ${sortOrder} LIMIT ? OFFSET ?`;
-    }
-    params.push(limit, offset);
-
-    const result = await c.env.DB.prepare(query).bind(...params).all();
-
-    let countQuery = `SELECT COUNT(*) as total FROM code_snippets WHERE (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''})`;
-    if (conditions.length > 0) {
-      countQuery += ' AND ' + conditions.join(' AND ');
-    }
-    const countResult = await c.env.DB.prepare(countQuery).bind(...params.slice(0, -2)).first();
-
-    const snippets = result.results.map((r: any) => ({
-      ...r,
-      tags: r.tags ? JSON.parse(r.tags) : []
-    }));
-
-    return c.json({
-      snippets,
-      total: countResult ? countResult.total : 0,
-      limit,
-      offset,
-    });
-  } catch (e: any) {
-    console.error('Fetch snippets err:', e);
-    return c.json({ success: false, error: 'Database error' }, 500);
-  }
-});
-
-app.get('/api/snippets/:id', async (c) => {
-  const userId = await getUserFromSession(c);
-  const id = c.req.param('id');
-  try {
-    const sql = `SELECT * FROM code_snippets WHERE id = ? AND (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''})`;
-    const stmt = userId ? c.env.DB.prepare(sql).bind(id, userId) : c.env.DB.prepare(sql).bind(id);
-    const result = await stmt.first();
-
-    if (!result) return c.json({ error: 'Snippet not found' }, 404);
-
-    return c.json({
-      ...result,
-      tags: result.tags ? JSON.parse(result.tags as string) : []
-    });
-  } catch (e: any) {
-    return c.json({ success: false, error: 'Database error' }, 500);
-  }
-});
-
-app.post('/api/snippets', async (c) => {
-  const userId = await getUserFromSession(c);
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401);
-
-  try {
-    const body = await c.req.json();
-    const { title = '', code, language = '', description = '', tags = [] } = body;
-
-    if (!code) return c.json({ error: 'Code is required' }, 400);
-
-    const tagsJson = JSON.stringify(tags);
-    const result = await c.env.DB.prepare(
-      'INSERT INTO code_snippets (user_id, title, code, language, description, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, datetime("now"), datetime("now"))'
-    ).bind(userId, title, code, language, description, tagsJson).run();
-
-    const newSnippet = await c.env.DB.prepare('SELECT * FROM code_snippets WHERE id = ?')
-      .bind(result.meta.last_row_id).first();
-
-    return c.json({
-      ...newSnippet,
-      tags: newSnippet?.tags ? JSON.parse(newSnippet.tags as string) : []
-    }, 201);
-  } catch (e: any) {
-    return c.json({ success: false, error: e.message }, 500);
-  }
-});
-
-app.put('/api/snippets/:id', async (c) => {
-  const userId = await getUserFromSession(c);
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401);
-
-  const id = c.req.param('id');
-  try {
-    const body = await c.req.json();
-    const { title, code, language, description, tags, copyCountsDelta } = body;
-
-    const existing = await c.env.DB.prepare('SELECT * FROM code_snippets WHERE id = ?').bind(id).first();
-    if (!existing) return c.json({ error: 'Snippet not found' }, 404);
-
-    // Allow user to edit their own snippets or system snippets if admin? We just allow user to edit their own.
-    if (existing.user_id !== userId && existing.user_id !== 'system') { // Actually, standard users shouldn't edit system snippets unless they are admin, but let's just check if it's theirs or if they are just incrementing copy count
-      if (!copyCountsDelta && title !== undefined) {
-        return c.json({ error: 'Forbidden' }, 403);
-      }
-    }
-
-    if (copyCountsDelta && copyCountsDelta[id]) {
-      await c.env.DB.prepare('UPDATE code_snippets SET copy_count = copy_count + ? WHERE id = ?').bind(copyCountsDelta[id], id).run();
-      // Return quickly if it's just a copy
-      if (title === undefined && code === undefined) return c.json({ success: true });
-    }
-
-    if (existing.user_id !== userId) return c.json({ error: 'Forbidden' }, 403);
-
-    const updates = [];
-    const params = [];
-
-    if (title !== undefined) { updates.push('title = ?'); params.push(title); }
-    if (code !== undefined) { updates.push('code = ?'); params.push(code); }
-    if (language !== undefined) { updates.push('language = ?'); params.push(language); }
-    if (description !== undefined) { updates.push('description = ?'); params.push(description); }
-    if (tags !== undefined) { updates.push('tags = ?'); params.push(JSON.stringify(tags)); }
-
-    if (updates.length > 0) {
-      updates.push('updated_at = datetime("now")');
-      params.push(id);
-      await c.env.DB.prepare(`UPDATE code_snippets SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`).bind(...params, userId).run();
-    }
-
-    const updated = await c.env.DB.prepare('SELECT * FROM code_snippets WHERE id = ?').bind(id).first();
-    return c.json({
-      ...updated,
-      tags: updated?.tags ? JSON.parse(updated.tags as string) : []
-    });
-  } catch (e: any) {
-    return c.json({ success: false, error: e.message }, 500);
-  }
-});
-
-app.delete('/api/snippets/:id', async (c) => {
-  const userId = await getUserFromSession(c);
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401);
-
-  const id = c.req.param('id');
-  try {
-    const result = await c.env.DB.prepare('DELETE FROM code_snippets WHERE id = ? AND user_id = ?').bind(id, userId).run();
-    if (result.meta.changes === 0) {
-      return c.json({ error: 'Snippet not found or unauthorized' }, 404);
-    }
-    return c.json({ success: true });
-  } catch (e: any) {
-    return c.json({ success: false, error: 'Database error' }, 500);
-  }
-});
-
-app.get('/api/snippets/data/languages', async (c) => {
-  const userId = await getUserFromSession(c);
-  try {
-    const sql = `SELECT DISTINCT language, COUNT(*) as count FROM code_snippets WHERE (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''}) AND language IS NOT NULL GROUP BY language ORDER BY count DESC`;
-    const stmt = userId ? c.env.DB.prepare(sql).bind(userId) : c.env.DB.prepare(sql);
-    const result = await stmt.all();
-    return c.json(result.results);
-  } catch (e: any) {
-    return c.json({ success: false, error: e?.message || 'Database error' }, 500);
-  }
-});
-
-app.get('/api/snippets/data/tags', async (c) => {
-  const userId = await getUserFromSession(c);
-  try {
-    const sql = `SELECT tags FROM code_snippets WHERE (user_id = 'system' OR user_id IS NULL ${userId ? 'OR user_id = ?' : ''})`;
-    const stmt = userId ? c.env.DB.prepare(sql).bind(userId) : c.env.DB.prepare(sql);
-    const result = await stmt.all();
-
-    const tagCounts: Record<string, number> = {};
-    result.results.forEach((row: any) => {
-      if (row.tags) {
-        const tags = JSON.parse(row.tags);
-        tags.forEach((tag: string) => {
-          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-        });
-      }
-    });
-    const tags = Object.entries(tagCounts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
-    return c.json(tags);
-  } catch (e: any) {
-    return c.json({ success: false, error: 'Database error' }, 500);
-  }
-});
-// --- End Code Snippets Routes ---
-
-// --- Search Engines Routes ---
-app.get('/api/search_engines', async (c) => {
-  const userId = await getUserFromSession(c);
-  if (!userId) {
-    return c.json({ success: true, data: [] });
-  }
-  try {
-    const res = await c.env.DB.prepare('SELECT * FROM search_engines WHERE user_id = ? ORDER BY sort_order ASC').bind(userId).all();
-    const engines = res.results.map((row: any) => ({
-      id: row.id,
-      name: row.name,
-      icon: row.icon,
-      url_template: row.url_template,
-      is_visible: row.is_visible === 1,
-      sort_order: row.sort_order
-    }));
-    return c.json({ success: true, data: engines });
-  } catch (e: any) {
-    return c.json({ success: false, error: e.message || 'Database error' }, 500);
-  }
-});
-
-app.post('/api/search_engines/batch', async (c) => {
-  const userId = await getUserFromSession(c);
-  if (!userId) return c.json({ error: 'Unauthorized' }, 401);
-  try {
-    const body = await c.req.json();
-    const engines = body.engines;
-    if (!Array.isArray(engines)) {
-      return c.json({ error: 'Invalid data format' }, 400);
-    }
-
-    const stmts: any[] = [];
-    stmts.push(c.env.DB.prepare('DELETE FROM search_engines WHERE user_id = ?').bind(userId));
-    
-    if (engines.length > 0) {
-      const insertStmt = c.env.DB.prepare(
-        'INSERT INTO search_engines (id, user_id, name, icon, url_template, is_visible, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      );
-      for (let i = 0; i < engines.length; i++) {
-        const e = engines[i];
-        stmts.push(insertStmt.bind(
-          e.id || crypto.randomUUID(),
-          userId,
-          e.name,
-          e.icon || null,
-          e.url_template,
-          e.is_visible ? 1 : 0,
-          i
-        ));
-      }
-    }
-    
-    await c.env.DB.batch(stmts);
-    return c.json({ success: true });
-  } catch (e: any) {
-    return c.json({ success: false, error: e.message || 'Database error' }, 500);
-  }
-});
-// --- End Search Engines Routes ---
-
-
-// 健康检查
-
-app.get('/api/health', (c) => {
-  return c.json({
-    status: 'ok',
+app.get("/api/health", (c) =>
+  c.json({
+    status: "ok",
     timestamp: new Date().toISOString(),
-    version: '1.0.0',
-  });
-});
+    version: "1.0.0",
+  }),
+);
 
-// 获取工具使用统计
-app.get('/api/tools/usage', async (c) => {
+app.get("/api/tools/usage", async (c) => {
   try {
     const result = await c.env.DB.prepare(
-      'SELECT tool_name, count, updated_at FROM tool_usage ORDER BY count DESC'
+      "SELECT tool_name, count, updated_at FROM tool_usage ORDER BY count DESC",
     ).all();
     return c.json({ success: true, data: result.results });
-  } catch (e) {
-    return c.json({ success: false, error: '数据库查询失败' }, 500);
+  } catch {
+    return c.json({ success: false, error: "数据库查询失败" }, 500);
   }
 });
 
-// 记录工具使用
-app.post('/api/tools/usage/:toolName', async (c) => {
-  const toolName = c.req.param('toolName');
+app.post("/api/tools/usage/:toolName", async (c) => {
   try {
     await c.env.DB.prepare(
       `INSERT INTO tool_usage (tool_name, count, updated_at)
        VALUES (?, 1, datetime('now'))
        ON CONFLICT(tool_name) DO UPDATE SET
          count = count + 1,
-         updated_at = datetime('now')`
+         updated_at = datetime('now')`,
     )
-      .bind(toolName)
+      .bind(c.req.param("toolName"))
       .run();
-    return c.json({ success: true, tool: toolName });
-  } catch (e) {
-    return c.json({ success: false, error: '记录使用失败' }, 500);
+    return c.json({ success: true, tool: c.req.param("toolName") });
+  } catch {
+    return c.json({ success: false, error: "记录使用失败" }, 500);
   }
 });
 
-// --- OpenAI API Tester Routes ---
-app.post('/api/openai/test', async (c) => {
-  try {
-    const body = await c.req.json() as {
-      url?: string;
-      token?: string;
-      endpoint?: string;
-      method?: string;
-      payload?: unknown;
-    };
-
-    const baseUrl = (body.url || '').trim();
-    const token = (body.token || '').trim();
-    const endpoint = (body.endpoint || '/models').trim();
-    const method = (body.method || 'GET').toUpperCase();
-
-    if (!baseUrl || !token) {
-      return c.json({ success: false, error: '缺少 API Base URL 或 Token' }, 400);
-    }
-
-    const finalBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-    const finalEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    const finalUrl = `${finalBaseUrl}${finalEndpoint}`;
-    const headers = new Headers({
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      'anthropic-version': '2023-06-01',
-    });
-
-    const init: RequestInit = { method, headers };
-    if (body.payload !== undefined && method !== 'GET' && method !== 'HEAD') {
-      headers.set('Content-Type', 'application/json');
-      init.body = JSON.stringify(body.payload);
-    }
-
-    const response = await fetch(finalUrl, init);
-    const contentType = response.headers.get('content-type') || '';
-    const responseText = await response.text();
-
-    let parsedData: unknown = responseText;
-    if (contentType.includes('application/json')) {
-      try {
-        parsedData = JSON.parse(responseText);
-      } catch {
-        parsedData = responseText;
-      }
-    }
-
-    if (!response.ok) {
-      return c.json({
-        success: false,
-        error: `接口返回异常：${response.status} ${response.statusText}`,
-        details: parsedData,
-        status: response.status,
-        url: finalUrl,
-      }, { status: response.status as any });
-    }
-
-    return c.json({
-      success: true,
-      data: parsedData,
-      status: response.status,
-      url: finalUrl,
-    });
-  } catch (error: any) {
-    return c.json({
-      success: false,
-      error: '代理请求失败',
-      details: error?.message || '未知错误',
-    }, { status: 500 });
-  }
-});
-// --- End OpenAI API Tester Routes ---
-
-// --- Cloud Share Routes ---
-
-const generateShareId = async (db: any) => {
-  for (let i = 0; i < 5; i++) {
-    const id = crypto.randomUUID().split('-')[0];
-    const exist = await db.prepare('SELECT id FROM shares WHERE id = ?').bind(id).first();
-    if (!exist) return id;
-  }
-  return crypto.randomUUID().split('-')[0];
-};
-
-// 获取所有分享内容列表
-app.get('/api/shares', async (c) => {
-  const userId = await getUserFromSession(c);
-  if (!userId) return c.json({ success: false, error: 'Unauthorized' }, 401);
-
-  try {
-    const results = await c.env.DB.prepare('SELECT * FROM shares WHERE user_id = ? ORDER BY created_at DESC').bind(userId).all();
-    const items = results.results.map((row: any) => ({
-      id: row.id,
-      type: row.type,
-      content: row.content,
-      files: row.files ? JSON.parse(row.files) : undefined,
-      totalSize: row.total_size,
-      name: row.name,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
-    return c.json({ success: true, data: items });
-  } catch (e: any) {
-    return c.json({ success: false, error: e.message || 'Failed to list shares' }, 500);
-  }
-});
-
-// 创建新文本分享
-app.post('/api/shares', async (c) => {
-  const userId = await getUserFromSession(c);
-  if (!userId) return c.json({ success: false, error: 'Unauthorized' }, 401);
-
-  try {
-    const body = await c.req.json() as { content: string; name?: string; sourceId?: string };
-    if (!body.content) return c.json({ success: false, error: '内容不能为空' }, 400);
-
-    // 如果提供了 sourceId，检查是否已经分享过
-    if (body.sourceId) {
-      const kvKey = `snippet_share:${userId}:${body.sourceId}`;
-      const existingId = await c.env.SHARE_KV.get(kvKey);
-      if (existingId) {
-        // 验证该分享是否依然存在且属于该用户
-        const exists = await c.env.DB.prepare('SELECT id FROM shares WHERE id = ? AND user_id = ?').bind(existingId, userId).first();
-        if (exists) {
-          return c.json({ success: true, alreadyExists: true, shareId: existingId });
-        }
-      }
-    }
-
-    const id = await generateShareId(c.env.DB);
-    const now = new Date().toISOString();
-
-    await c.env.DB.prepare(
-      'INSERT INTO shares (id, user_id, type, content, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).bind(id, userId, 'text', body.content, body.name || '未命名文本分享', now, now).run();
-
-    // 如果提供了 sourceId，记录对应关系
-    if (body.sourceId) {
-      const kvKey = `snippet_share:${userId}:${body.sourceId}`;
-      await c.env.SHARE_KV.put(kvKey, id);
-    }
-
-    const item = {
-      id,
-      type: 'text',
-      content: body.content,
-      name: body.name || '未命名文本分享',
-      createdAt: now,
-      updatedAt: now,
-    };
-    return c.json({ success: true, data: item });
-  } catch (e: any) {
-    return c.json({ success: false, error: e.message || 'Failed to create share' }, 500);
-  }
-});
-// 更新、删除单个分享内容
-app.put('/api/shares/:id', async (c) => {
-  const userId = await getUserFromSession(c);
-  if (!userId) return c.json({ success: false, error: 'Unauthorized' }, 401);
-
-  const id = c.req.param('id');
-  try {
-    const existing = await c.env.DB.prepare('SELECT * FROM shares WHERE id = ? AND user_id = ?').bind(id, userId).first();
-    if (!existing) return c.json({ success: false, error: '分享不存在或无权操作' }, 404);
-
-    const body = await c.req.json() as { content?: string; name?: string };
-    const now = new Date().toISOString();
-    
-    let newContent = existing.content;
-    let newName = existing.name;
-
-    if (existing.type === 'text' && body.content !== undefined) {
-      newContent = body.content;
-    }
-    if (body.name !== undefined) {
-      newName = body.name;
-    }
-
-    await c.env.DB.prepare(
-      'UPDATE shares SET content = ?, name = ?, updated_at = ? WHERE id = ?'
-    ).bind(newContent, newName, now, id).run();
-
-    const item = {
-      id,
-      type: existing.type,
-      content: newContent,
-      files: existing.files ? JSON.parse(existing.files as string) : undefined,
-      totalSize: existing.total_size,
-      name: newName,
-      createdAt: existing.created_at,
-      updatedAt: now,
-    };
-    return c.json({ success: true, data: item });
-  } catch (e: any) {
-    return c.json({ success: false, error: e.message }, 500);
-  }
-});
-
-app.delete('/api/shares/:id', async (c) => {
-  const userId = await getUserFromSession(c);
-  if (!userId) return c.json({ success: false, error: 'Unauthorized' }, 401);
-
-  const id = c.req.param('id');
-  try {
-    const existing = await c.env.DB.prepare('SELECT * FROM shares WHERE id = ? AND user_id = ?').bind(id, userId).first();
-    if (!existing) return c.json({ success: false, error: '分享不存在或无权操作' }, 404);
-
-    if (existing.type === 'file' && existing.files) {
-      const files = JSON.parse(existing.files as string);
-      // 后台异步删除 R2 文件
-      const deletePromises = files.map((file: any) => c.env.SHARE_R2.delete(file.key));
-      c.executionCtx.waitUntil(Promise.all(deletePromises));
-    }
-    
-    await c.env.DB.prepare('DELETE FROM shares WHERE id = ?').bind(id).run();
-    return c.json({ success: true });
-  } catch (e: any) {
-    return c.json({ success: false, error: e.message }, 500);
-  }
-});
-
-// 文件上传 (POST /api/files)
-app.post('/api/files', async (c) => {
-  const userId = await getUserFromSession(c);
-  if (!userId) return c.json({ success: false, error: 'Unauthorized' }, 401);
-
-  try {
-    const formData = await c.req.formData();
-    const files = formData.getAll('files') as File[];
-    const shareName = formData.get('name') as string || '';
-    
-    if (!files || files.length === 0) {
-      return c.json({ success: false, error: '没有提供文件' }, 400);
-    }
-
-    const id = await generateShareId(c.env.DB);
-    const now = new Date().toISOString();
-    const fileItems = [];
-    let totalSize = 0;
-
-    for (const file of files) {
-      const relativePath = file.name; 
-      const r2Key = `${id}/${relativePath}`;
-      
-      await c.env.SHARE_R2.put(r2Key, file.stream(), {
-        httpMetadata: {
-          contentType: file.type || 'application/octet-stream',
-        },
-        customMetadata: {
-          fileName: file.name,
-          filePath: relativePath,
-          shareId: id,
-        },
-      });
-
-      fileItems.push({
-        key: r2Key,
-        name: file.name.split('/').pop() || file.name,
-        path: relativePath,
-        size: file.size,
-        mimeType: file.type || 'application/octet-stream',
-      });
-      totalSize += file.size;
-    }
-
-    await c.env.DB.prepare(
-      'INSERT INTO shares (id, user_id, type, files, total_size, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    ).bind(id, userId, 'file', JSON.stringify(fileItems), totalSize, shareName || fileItems[0].name, now, now).run();
-
-    const item = {
-      id,
-      type: 'file',
-      files: fileItems,
-      totalSize,
-      name: shareName || fileItems[0].name,
-      createdAt: now,
-      updatedAt: now,
-    };
-    return c.json({ success: true, data: item });
-  } catch (e: any) {
-    return c.json({ success: false, error: e.message || 'Upload failed' }, 500);
-  }
-});
-
-// --- 公开 API (无需认证，用于预览页) ---
-
-// 获取分享信息
-app.get('/api/public/share/:id', async (c) => {
-  const id = c.req.param('id');
-  const existing = await c.env.DB.prepare('SELECT * FROM shares WHERE id = ?').bind(id).first();
-  if (!existing) return c.json({ success: false, error: '分享不存在' }, 404);
-  
-  return c.json({ 
-    success: true, 
-    data: {
-      id: existing.id,
-      type: existing.type,
-      name: existing.name,
-      files: existing.files ? JSON.parse(existing.files as string) : undefined,
-      totalSize: existing.total_size,
-      createdAt: existing.created_at,
-    }
-  });
-});
-
-// 下载单个文件
-app.get('/api/public/download/:id/:path{.+}', async (c) => {
-  const id = c.req.param('id');
-  const filePath = c.req.param('path');
-  const r2Key = `${id}/${filePath}`;
-
-  const object = await c.env.SHARE_R2.get(r2Key);
-  if (!object) return c.json({ success: false, error: '文件不存在' }, 404);
-
-  const headers = new Headers();
-  object.writeHttpMetadata(headers);
-  headers.set('etag', object.httpEtag);
-  const fileName = filePath.split('/').pop() || 'file';
-  headers.set('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
-
-  return new Response(object.body, { headers });
-});
-
-// 打包下载所有文件 (ZIP)
-app.get('/api/public/download/:id', async (c) => {
-  const id = c.req.param('id');
-  const existing = await c.env.DB.prepare('SELECT * FROM shares WHERE id = ?').bind(id).first();
-  if (!existing) return c.json({ success: false, error: '分享不存在' }, 404);
-
-  if (existing.type !== 'file' || !existing.files) {
-    return c.json({ success: false, error: '没有可下载的文件' }, 404);
-  }
-
-  const files = JSON.parse(existing.files as string);
-  if (files.length === 0) {
-    return c.json({ success: false, error: '没有可下载的文件' }, 404);
-  }
-
-  // ZIP 大小限制
-  if ((existing.total_size as number) > 50 * 1024 * 1024) {
-    return c.json({ success: false, error: '打包文件总大小超过 50MB 限制，请使用其他工具或单独下载' }, 400);
-  }
-
-  try {
-    const zipData: { [path: string]: Uint8Array } = {};
-    for (const file of files) {
-      const object = await c.env.SHARE_R2.get(file.key);
-      if (object) {
-        zipData[file.path] = new Uint8Array(await object.arrayBuffer());
-      }
-    }
-
-    const zipped = zipSync(zipData, { level: 6 });
-    const zipName = `${existing.name || id}.zip`;
-    
-    return new Response(zipped as any, {
-      headers: {
-        'Content-Type': 'application/zip',
-        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(zipName)}`,
-        'Content-Length': zipped.length.toString(),
-      },
-    });
-  } catch (e: any) {
-    return c.json({ success: false, error: '打包失败: ' + e.message }, 500);
-  }
-});
-
-// 公开预览/访问路径 /s/:id
-app.get('/s/:id', async (c) => {
-  const id = c.req.param('id');
-  const existing = await c.env.DB.prepare('SELECT * FROM shares WHERE id = ?').bind(id).first();
-  if (!existing) return c.text('分享不存在或已过期', 404);
-
-  if (existing.type === 'text') {
-    c.header('Content-Type', 'text/plain; charset=utf-8');
-    return c.text((existing.content as string) || '');
-  }
-  
-  const frontendUrl = c.env.FRONTEND_URL || 'https://www.928496.xyz';
-  return c.redirect(`${frontendUrl}/share-preview/${id}`, 302);
-});
-
-// --- End Cloud Share Routes ---
-
-// SPA 路由支持：对于所有不匹配 API 或静态资源的请求，返回 index.html
-app.get('*', async (c) => {
+app.get("*", async (c) => {
   const url = new URL(c.req.url);
-  // 排除 API 请求和核心预览路由
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/s/')) {
-    return c.notFound();
-  }
-
-  // 尝试从 ASSETS 绑定中获取
+  if (url.pathname.startsWith("/api/") || url.pathname.startsWith("/s/")) return c.notFound();
   try {
-    const res = await c.env.ASSETS.fetch(c.req.raw);
-    if (res.status === 404) {
-      // 如果 404，说明可能是 SPA 路由，返回 index.html
-      return c.env.ASSETS.fetch(new Request(`${url.origin}/index.html`, c.req.raw));
-    }
-    return res;
-  } catch (e) {
-    // 降级处理
-    console.error('Asset fetch error:', e);
+    const response = await c.env.ASSETS.fetch(c.req.raw);
+    if (response.status !== 404) return response;
+    return c.env.ASSETS.fetch(new Request(`${url.origin}/index.html`, c.req.raw));
+  } catch (error) {
+    console.error("Asset fetch error:", error);
     return c.notFound();
   }
 });
@@ -1070,46 +201,40 @@ app.get('*', async (c) => {
 export default {
   async fetch(request: Request, env: Bindings, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
-    const path = url.pathname;
-    console.log('>>> [WORKER_FETCH_START]', path, request.method);
-    
-    // ==========================================
-    // 强制优先级：核心分享拦截 (直连文本或重定向到预览)
-    // ==========================================
-    const shareMatch = path.match(/^\/s\/([a-z0-9]{6,12})\/?$/i);
-    if (shareMatch && request.method === 'GET') {
-      const id = shareMatch[1];
+    const match = url.pathname.match(/^\/s\/([a-z0-9]{6,12})\/?$/i);
+    console.log(">>> [WORKER_FETCH_START]", url.pathname, request.method);
+
+    if (match && request.method === "GET") {
       try {
-        const existing = await env.DB.prepare('SELECT * FROM shares WHERE id = ?').bind(id).first();
-        if (existing) {
-          const isText = existing.type === 'text';
-          
-          if (isText) {
-            return new Response((existing.content as string) || '', {
-              status: 200,
-              headers: {
-                'Content-Type': 'text/plain; charset=utf-8',
-                'X-Content-Type-Options': 'nosniff',
-                'Cache-Control': 'no-store, no-cache, must-revalidate',
-                'Access-Control-Allow-Origin': '*'
-              },
-            });
-          } else {
-            const frontendUrl = env.FRONTEND_URL || url.origin;
-            return Response.redirect(`${frontendUrl}/share-preview/${id}`, 302);
-          }
+        const existing = await env.DB.prepare("SELECT * FROM shares WHERE id = ?")
+          .bind(match[1])
+          .first();
+        if (!existing) {
+          return new Response("Content Lost or Invalid ID", {
+            status: 404,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+          });
         }
-        return new Response('Content Lost or Invalid ID', { 
-          status: 404, 
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' } 
-        });
-      } catch (e) {
-        console.error('CRITICAL: Share system failure:', e);
+        if (existing.type === "text") {
+          return new Response((existing.content as string) || "", {
+            status: 200,
+            headers: {
+              "Content-Type": "text/plain; charset=utf-8",
+              "X-Content-Type-Options": "nosniff",
+              "Cache-Control": "no-store, no-cache, must-revalidate",
+              "Access-Control-Allow-Origin": "*",
+            },
+          });
+        }
+        return Response.redirect(
+          `${env.FRONTEND_URL || url.origin}/share-preview/${match[1]}`,
+          302,
+        );
+      } catch (error) {
+        console.error("CRITICAL: Share system failure:", error);
       }
     }
-    // ==========================================
 
-    // 其他所有请求（API, 静态资源, SPA 首页等）交给 Hono 处理
     return app.fetch(request, env, ctx);
   },
 };

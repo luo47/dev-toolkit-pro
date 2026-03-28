@@ -1,679 +1,431 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, Plus, Copy, Check, Trash2, Edit2, Code2, Save, X, ArrowUpDown, Tag, Share2 } from 'lucide-react';
-import { useAppStore } from '../store';
-import hljs from 'highlight.js/lib/core';
-import javascript from 'highlight.js/lib/languages/javascript';
-import typescript from 'highlight.js/lib/languages/typescript';
-import python from 'highlight.js/lib/languages/python';
-import xml from 'highlight.js/lib/languages/xml'; // html
-import css from 'highlight.js/lib/languages/css';
-import sql from 'highlight.js/lib/languages/sql';
-import json from 'highlight.js/lib/languages/json';
-import yaml from 'highlight.js/lib/languages/yaml';
-import markdown from 'highlight.js/lib/languages/markdown';
-import bash from 'highlight.js/lib/languages/bash';
-import c from 'highlight.js/lib/languages/c';
-import cpp from 'highlight.js/lib/languages/cpp';
-import java from 'highlight.js/lib/languages/java';
-import go from 'highlight.js/lib/languages/go';
-import rust from 'highlight.js/lib/languages/rust';
-import php from 'highlight.js/lib/languages/php';
-import csharp from 'highlight.js/lib/languages/csharp';
-import ruby from 'highlight.js/lib/languages/ruby';
-import shell from 'highlight.js/lib/languages/shell';
-import dockerfile from 'highlight.js/lib/languages/dockerfile';
-import makefile from 'highlight.js/lib/languages/makefile';
-import ini from 'highlight.js/lib/languages/ini';
-import properties from 'highlight.js/lib/languages/properties';
-import toml from 'highlight.js/lib/languages/ini'; 
-import diff from 'highlight.js/lib/languages/diff';
-
-// 注册常用语言
-hljs.registerLanguage('javascript', javascript);
-hljs.registerLanguage('typescript', typescript);
-hljs.registerLanguage('python', python);
-hljs.registerLanguage('html', xml);
-hljs.registerLanguage('css', css);
-hljs.registerLanguage('sql', sql);
-hljs.registerLanguage('json', json);
-hljs.registerLanguage('yaml', yaml);
-hljs.registerLanguage('markdown', markdown);
-hljs.registerLanguage('bash', bash);
-hljs.registerLanguage('c', c);
-hljs.registerLanguage('cpp', cpp);
-hljs.registerLanguage('java', java);
-hljs.registerLanguage('go', go);
-hljs.registerLanguage('rust', rust);
-hljs.registerLanguage('php', php);
-hljs.registerLanguage('csharp', csharp);
-hljs.registerLanguage('ruby', ruby);
-hljs.registerLanguage('shell', shell);
-hljs.registerLanguage('dockerfile', dockerfile);
-hljs.registerLanguage('makefile', makefile);
-hljs.registerLanguage('ini', ini);
-hljs.registerLanguage('properties', properties);
-hljs.registerLanguage('toml', toml);
-hljs.registerLanguage('diff', diff);
-hljs.registerLanguage('plaintext', () => ({ name: 'plaintext', contains: [] }));
-
-const SORT_OPTIONS = [
-    { value: 'updated_at:desc', label: '最新修改' },
-    { value: 'copy_count:desc', label: '复制次数' },
-    { value: 'created_at:desc', label: '最新创建' },
-    { value: 'title:asc', label: '标题排序' },
-];
-
-const LANGUAGE_GROUPS = [
-    {
-        label: '网页前端',
-        options: [
-            { value: 'html', label: 'html (xml)' },
-            { value: 'css', label: 'css' },
-            { value: 'javascript', label: 'javascript (js)' },
-            { value: 'typescript', label: 'typescript (ts)' },
-            { value: 'json', label: 'json' },
-        ]
-    },
-    {
-        label: '后端/通用',
-        options: [
-            { value: 'java', label: 'java' },
-            { value: 'python', label: 'python (py)' },
-            { value: 'php', label: 'php' },
-            { value: 'c', label: 'c' },
-            { value: 'cpp', label: 'cpp (c++)' },
-            { value: 'csharp', label: 'csharp (cs)' },
-            { value: 'go', label: 'go' },
-            { value: 'rust', label: 'rust' },
-            { value: 'ruby', label: 'ruby' },
-        ]
-    },
-    {
-        label: '脚本/运维',
-        options: [
-            { value: 'bash', label: 'bash (sh)' },
-            { value: 'shell', label: 'shell' },
-            { value: 'yaml', label: 'yaml (yml)' },
-            { value: 'toml', label: 'toml' },
-            { value: 'dockerfile', label: 'dockerfile' },
-            { value: 'makefile', label: 'makefile' },
-            { value: 'ini', label: 'ini' },
-            { value: 'properties', label: 'properties' },
-        ]
-    },
-    {
-        label: '数据/文档',
-        options: [
-            { value: 'sql', label: 'sql' },
-            { value: 'markdown', label: 'markdown (md)' },
-            { value: 'diff', label: 'diff' },
-            { value: 'plaintext', label: 'plaintext (text)' },
-        ]
-    }
-];
-
-const PRESET_LANGUAGES: Record<string, string> = {
-    'javascript': 'js',
-    'typescript': 'ts',
-    'python': 'py',
-    'html': 'html',
-    'css': 'css',
-    'json': 'json',
-    'java': 'java',
-    'php': 'php',
-    'c': 'c',
-    'cpp': 'cpp',
-    'csharp': 'cs',
-    'go': 'go',
-    'rust': 'rust',
-    'ruby': 'ruby',
-    'bash': 'sh',
-    'shell': 'sh',
-    'yaml': 'yml',
-    'sql': 'sql',
-    'markdown': 'md',
-    'dockerfile': 'docker',
-    'makefile': 'make',
-    'ini': 'ini',
-    'properties': 'prop',
-    'toml': 'toml',
-    'diff': 'diff',
-    'plaintext': 'txt'
-};
-
-const LS_SORT = 'cs_filter_sort';
+import "./code-snippets/highlight";
+import { ArrowUpDown, Code2, Plus, Search, Tag, X } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useAppStore } from "../store";
+import {
+  collectLanguages,
+  collectTags,
+  createSharePayload,
+  createUpdateSharePayload,
+  getLanguageLabel,
+  highlightSnippetCode,
+  LS_SORT,
+  type SnippetItem,
+  SORT_OPTIONS,
+  sortSnippets,
+} from "./code-snippets/helpers";
+import ShareConfirmDialog from "./code-snippets/ShareConfirmDialog";
+import SnippetCard from "./code-snippets/SnippetCard";
+import SnippetEditorModal from "./code-snippets/SnippetEditorModal";
 
 export default function CodeSnippetsTool() {
-    const { isDarkMode, showToast } = useAppStore();
-    const [allSnippets, setAllSnippets] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState('');
-    const [languageFilter, setLanguageFilter] = useState('');
-    const [sortValue, setSortValue] = useState(() => localStorage.getItem(LS_SORT) || 'updated_at:desc');
-    const [activeTag, setActiveTag] = useState('');
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [isCreating, setIsCreating] = useState(false);
-    const [formData, setFormData] = useState({ title: '', code: '', language: 'plaintext', tags: '' });
-    const [langSearch, setLangSearch] = useState('');
-    const [isLangOpen, setIsLangOpen] = useState(false);
-    const langRef = useRef<HTMLDivElement>(null);
-    const codeRefs = useRef<{ [key: string]: HTMLElement | null }>({});
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const [copiedId, setCopiedId] = useState<string | null>(null);
-    const [sharingId, setSharingId] = useState<string | null>(null);
-    const [shareConfirmData, setShareConfirmData] = useState<{ snippet: any, shareId: string } | null>(null);
+  const { isDarkMode, showToast } = useAppStore();
+  const [allSnippets, setAllSnippets] = useState<SnippetItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [languageFilter, setLanguageFilter] = useState("");
+  const [sortValue, setSortValue] = useState(
+    () => localStorage.getItem(LS_SORT) || "updated_at:desc",
+  );
+  const [activeTag, setActiveTag] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    code: "",
+    language: "plaintext",
+    tags: "",
+  });
+  const [langSearch, setLangSearch] = useState("");
+  const [isLangOpen, setIsLangOpen] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [sharingId, setSharingId] = useState<string | null>(null);
+  const [shareConfirmData, setShareConfirmData] = useState<{
+    snippet: SnippetItem;
+    shareId: string;
+  } | null>(null);
 
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            if (langRef.current && !langRef.current.contains(e.target as Node)) {
-                setIsLangOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+  const langRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const codeRefs = useRef<Record<string, HTMLElement | null>>({});
 
-    const handleShare = async (snippet: any, forceUpdate = false) => {
-        if (sharingId) return;
-        
-        // 如果不是强制更新，先尝试创建（后端会检查是否存在）
-        if (!forceUpdate) {
-            setSharingId(snippet.id);
-            try {
-                const res = await fetch('/api/shares', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        content: snippet.code, 
-                        name: snippet.title || '代码片段分享',
-                        sourceId: snippet.id 
-                    })
-                });
-                
-                if (res.ok) {
-                    const data = await res.json() as { success: boolean; alreadyExists?: boolean; shareId?: string; data?: any; error?: string };
-                    if (data.success) {
-                        if (data.alreadyExists && data.shareId) {
-                            setShareConfirmData({ snippet, shareId: data.shareId });
-                            return;
-                        }
-                        
-                        showToast('已保存到云分享', 'success');
-                        const shareId = data.data?.id;
-                        window.history.pushState(null, '', `/cloud-share${shareId ? `?highlight=${shareId}` : ''}`);
-                        window.dispatchEvent(new PopStateEvent('popstate'));
-                    } else {
-                        showToast(data.error || '分享失败', 'error');
-                    }
-                } else {
-                    showToast('分享失败，请重试', 'error');
-                }
-            } catch {
-                showToast('网络错误，无法分享', 'error');
-            } finally {
-                setSharingId(null);
-            }
-        } else {
-            // 强制更新逻辑
-            setSharingId(snippet.id);
-            const shareId = shareConfirmData?.shareId;
-            setShareConfirmData(null); // 立即关闭对话框
-            
-            if (!shareId) {
-                showToast('无法定位原分享记录', 'error');
-                setSharingId(null);
-                return;
-            }
-
-            try {
-                const res = await fetch(`/api/shares/${shareId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        content: snippet.code,
-                        name: snippet.title || '代码片段分享'
-                    })
-                });
-
-                if (res.ok) {
-                    showToast('分享内容已更新', 'success');
-                    window.history.pushState(null, '', `/cloud-share?highlight=${shareId}`);
-                    window.dispatchEvent(new PopStateEvent('popstate'));
-                } else {
-                    showToast('更新失败', 'error');
-                }
-            } catch {
-                showToast('更新出错', 'error');
-            } finally {
-                setSharingId(null);
-            }
-        }
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(event.target as Node)) {
+        setIsLangOpen(false);
+      }
     };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-    const copyShareLink = (shareId: string) => {
-        const link = `${window.location.origin}/s/${shareId}`;
-        navigator.clipboard.writeText(link).then(() => {
-            showToast('分享链接已复制', 'success');
-            setShareConfirmData(null);
-        });
-    };
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/snippets?limit=2000");
+      if (response.ok) {
+        const data = (await response.json()) as { snippets: SnippetItem[] };
+        setAllSnippets(data.snippets || []);
+      }
+    } catch {}
+    setLoading(false);
+  }, []);
 
-    const filteredGroups = LANGUAGE_GROUPS.map(group => ({
-        ...group,
-        options: group.options.filter(opt => 
-            opt.label.toLowerCase().includes(langSearch.toLowerCase()) || 
-            opt.value.toLowerCase().includes(langSearch.toLowerCase())
-        )
-    })).filter(group => group.options.length > 0);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-    const getLanguageLabel = (lang: string) => {
-        return PRESET_LANGUAGES[lang] || lang;
-    };
+  const snippets = React.useMemo(
+    () => sortSnippets([...allSnippets], search, languageFilter, activeTag, sortValue),
+    [activeTag, allSnippets, languageFilter, search, sortValue],
+  );
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
-        try {
-            const res = await fetch('/api/snippets?limit=2000');
-            if (res.ok) {
-                const data = await res.json() as { snippets: any[] };
-                setAllSnippets(data.snippets || []);
-            }
-        } catch { }
-        setLoading(false);
-    }, []);
+  const allTags = React.useMemo(
+    () => collectTags(allSnippets, search, languageFilter),
+    [allSnippets, languageFilter, search],
+  );
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
+  const languages = React.useMemo(
+    () => collectLanguages(allSnippets, search, activeTag),
+    [activeTag, allSnippets, search],
+  );
 
-    const snippets = React.useMemo(() => {
-        let result = [...allSnippets];
-        if (search) {
-            const s = search.toLowerCase();
-            result = result.filter(item => 
-                (item.title || '').toLowerCase().includes(s) || 
-                (item.code || '').toLowerCase().includes(s)
-            );
-        }
-        if (languageFilter) {
-            result = result.filter(item => item.language === languageFilter);
-        }
-        if (activeTag) {
-            result = result.filter(item => item.tags && item.tags.includes(activeTag));
-        }
-        const [field, order] = sortValue.split(':');
-        result.sort((a, b) => {
-            let v1 = a[field];
-            let v2 = b[field];
-            if (field === 'title') {
-                v1 = v1 || '';
-                v2 = v2 || '';
-            }
-            if (order === 'desc') {
-                return v1 < v2 ? 1 : v1 > v2 ? -1 : 0;
-            } else {
-                return v1 > v2 ? 1 : v1 < v2 ? -1 : 0;
-            }
-        });
-        return result;
-    }, [allSnippets, search, languageFilter, activeTag, sortValue]);
+  useEffect(() => {
+    highlightSnippetCode(codeRefs.current, snippets);
+  }, [snippets]);
 
-    const allTags = React.useMemo(() => {
-        const counts: Record<string, number> = {};
-        const sFilter = search.toLowerCase();
-        allSnippets.forEach(s => {
-            if (languageFilter && s.language !== languageFilter) return;
-            if (search && !(
-                (s.title || '').toLowerCase().includes(sFilter) || 
-                (s.code || '').toLowerCase().includes(sFilter)
-            )) return;
-            if (Array.isArray(s.tags)) {
-                s.tags.forEach(tag => {
-                    counts[tag] = (counts[tag] || 0) + 1;
-                });
-            }
-        });
-        return Object.entries(counts)
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count);
-    }, [allSnippets, languageFilter, search]);
+  const handleSortChange = (value: string) => {
+    setSortValue(value);
+    localStorage.setItem(LS_SORT, value);
+  };
 
-    const languages = React.useMemo(() => {
-        const counts: Record<string, number> = {};
-        const sFilter = search.toLowerCase();
-        allSnippets.forEach(s => {
-            if (activeTag && !(Array.isArray(s.tags) && s.tags.includes(activeTag))) return;
-            if (search && !(
-                (s.title || '').toLowerCase().includes(sFilter) || 
-                (s.code || '').toLowerCase().includes(sFilter)
-            )) return;
-            if (s.language) {
-                counts[s.language] = (counts[s.language] || 0) + 1;
-            }
-        });
-        return Object.entries(counts)
-            .map(([language, count]) => ({ language, count }))
-            .sort((a, b) => b.count - a.count);
-    }, [allSnippets, activeTag, search]);
+  const handleLanguageChange = (value: string) => {
+    setLanguageFilter((prev) => (prev === value ? "" : value));
+  };
 
-    useEffect(() => {
-        snippets.forEach(snippet => {
-            const block = codeRefs.current[snippet.id];
-            if (block) {
-                try {
-                    const lang = snippet.language && snippet.language !== 'plaintext' ? snippet.language.toLowerCase() : undefined;
-                    const highlighted = lang ? hljs.highlight(snippet.code, { language: lang, ignoreIllegals: true }) : hljs.highlightAuto(snippet.code);
-                    block.innerHTML = highlighted.value;
-                } catch {
-                    if (block) block.textContent = snippet.code;
-                }
-            }
-        });
-    }, [snippets]);
+  const handleTagClick = (tag: string) => {
+    setActiveTag((prev) => (prev === tag ? "" : tag));
+  };
 
-    const handleSortChange = (val: string) => {
-        setSortValue(val);
-        localStorage.setItem(LS_SORT, val);
-    };
-    const handleLanguageChange = (val: string) => {
-        setLanguageFilter(prev => prev === val ? '' : val);
-    };
-    const handleTagClick = (tag: string) => {
-        setActiveTag(prev => prev === tag ? '' : tag);
-    };
-
-    const handleCopy = async (id: string, code: string) => {
-        await navigator.clipboard.writeText(code);
-        setCopiedId(id);
-        setTimeout(() => setCopiedId(null), 2000);
-        fetch(`/api/snippets/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ copyCountsDelta: { [id]: 1 } })
-        });
-        setAllSnippets(prev => prev.map(s => s.id === id ? { ...s, copy_count: (s.copy_count || 0) + 1 } : s));
-    };
-
-    const handleDelete = async (id: string) => {
-        if (!confirm('确定删除此代码片段吗？')) return;
-        const res = await fetch(`/api/snippets/${id}`, { method: 'DELETE' });
-        if (res.ok) {
-            setAllSnippets(prev => prev.filter(s => s.id !== id));
-        } else alert('无法删除');
-    };
-
-    const startEdit = (snippet: any) => {
-        setEditingId(snippet.id);
-        setIsCreating(false);
-        setFormData({
-            title: snippet.title,
-            code: snippet.code,
-            language: snippet.language || 'plaintext',
-            tags: Array.isArray(snippet.tags) ? snippet.tags.join(', ') : ''
-        });
-        setTimeout(() => textareaRef.current?.focus(), 100);
-    };
-
-    const startCreate = () => {
-        setIsCreating(true);
-        setEditingId(null);
-        setFormData({ title: '', code: '', language: 'plaintext', tags: '' });
-        setTimeout(() => textareaRef.current?.focus(), 100);
-    };
-
-    const cancelEdit = () => { setEditingId(null); setIsCreating(false); };
-
-    const saveSnippet = async () => {
-        if (!formData.code) { alert('代码不能为空'); return; }
-        const payload = { ...formData, tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean) };
-        try {
-            if (isCreating) {
-                const res = await fetch('/api/snippets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (res.ok) { 
-                    const newSnippet = await res.json();
-                    setAllSnippets([newSnippet, ...allSnippets]); 
-                    setIsCreating(false); 
-                }
-                else alert('保存失败');
-            } else if (editingId) {
-                const res = await fetch(`/api/snippets/${editingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                if (res.ok) { 
-                    setAllSnippets(prev => prev.map(s => s.id === editingId ? { ...s, ...payload } : s)); 
-                    setEditingId(null); 
-                }
-                else alert('更新失败');
-            }
-        } catch { alert('网络错误'); }
-    };
-
-    return (
-        <div className="flex flex-col h-full gap-1.5">
-            {/* ── 工具栏 ── */}
-            <div className="flex items-center gap-1.5 bg-[var(--bg-surface)] px-1.5 py-1 rounded-xl border border-[var(--border-color)]">
-                <div className="relative flex-1 min-w-0">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-4 text-[var(--text-secondary)] pointer-events-none" />
-                    <input
-                        type="text"
-                        placeholder="搜索片段..."
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        className="w-full pl-7 pr-2 py-1 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg text-sm outline-none focus:ring-2 focus:ring-[var(--accent-color)]/50 transition-all placeholder:text-xs"
-                    />
-                </div>
-                <div className="relative shrink-0">
-                    <ArrowUpDown className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--text-secondary)] pointer-events-none" />
-                    <select
-                        value={sortValue}
-                        onChange={e => handleSortChange(e.target.value)}
-                        className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg pl-6 pr-2 py-1 text-xs outline-none cursor-pointer hover:border-[var(--text-secondary)] transition-colors min-w-[90px]"
-                    >
-                        {SORT_OPTIONS.map(o => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                    </select>
-                </div>
-                <button
-                    onClick={startCreate}
-                    className="flex items-center justify-center p-1.5 bg-[var(--accent-color)] text-white rounded-lg hover:opacity-90 transition-opacity shrink-0"
-                >
-                    <Plus className="w-4 h-4" />
-                </button>
-            </div>
-
-            {/* ── 语言/标签导航 ── */}
-            <div className="flex flex-col gap-1 shrink-0">
-                <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 px-0.5 min-h-[26px]">
-                    {languageFilter ? (
-                        <button onClick={() => handleLanguageChange('')} className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm transition-all flex items-center gap-1">
-                            <X className="w-2.5 h-2.5" />{getLanguageLabel(languageFilter)}
-                        </button>
-                    ) : (
-                        languages.filter(opt => opt.language !== '').map(opt => (
-                            <button key={opt.language} onClick={() => handleLanguageChange(opt.language)} className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)] transition-all">
-                                {getLanguageLabel(opt.language)}<span className="ml-1 opacity-60">{opt.count}</span>
-                            </button>
-                        ))
-                    )}
-                </div>
-                {allTags.length > 0 && (
-                    <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 min-h-[26px]">
-                        <Tag className="w-3 h-3 text-[var(--text-secondary)] shrink-0 ml-0.5" />
-                        {activeTag ? (
-                            <button onClick={() => setActiveTag('')} className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm transition-all flex items-center gap-1">
-                                <X className="w-2.5 h-2.5" />{activeTag}
-                            </button>
-                        ) : (
-                            allTags.map(tag => (
-                                <button key={tag.name} onClick={() => handleTagClick(tag.name)} className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)] transition-all">
-                                    {tag.name}<span className="ml-1 opacity-60">{tag.count}</span>
-                                </button>
-                            ))
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {/* ── 编辑/新建弹窗 (全量重构) ── */}
-            {(isCreating || editingId) && (
-                <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 animate-in fade-in duration-300">
-                    <div className={`absolute inset-0 backdrop-blur-sm ${isDarkMode ? 'bg-black/80' : 'bg-black/20'}`} onClick={cancelEdit} />
-                    <div className="relative w-full max-w-[800px] h-[95vh] md:h-auto max-h-[95vh] bg-[var(--bg-surface)] rounded-t-[32px] md:rounded-[28px] border border-[var(--border-color)] shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-10 md:slide-in-from-bottom-4">
-                        <div className="flex justify-between items-center px-6 py-5 border-b border-[var(--border-color)] shrink-0">
-                            <h3 className="text-xl font-bold">{isCreating ? '新建代码片段' : '编辑代码片段'}</h3>
-                            <button onClick={cancelEdit} className="p-2 hover:bg-[var(--hover-color)] rounded-xl text-[var(--text-secondary)]"><X size={24} /></button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1">片段标题</label>
-                                    <input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="w-full h-12 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl px-4 text-sm outline-none focus:ring-2 focus:ring-blue-500/30 transition-all" />
-                                </div>
-                                <div className="space-y-1 relative z-[60]">
-                                    <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1">语言</label>
-                                    <div className="relative" ref={langRef}>
-                                        <div onClick={() => setIsLangOpen(!isLangOpen)} className="w-full h-12 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl px-4 text-sm outline-none cursor-pointer flex justify-between items-center">
-                                            <span className="font-bold text-blue-500 uppercase">{formData.language}</span>
-                                            <ArrowUpDown className="w-4 h-4 opacity-50" />
-                                        </div>
-                                        {isLangOpen && (
-                                            <div className="absolute top-full left-0 w-full mt-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl shadow-2xl z-[150] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                                                <div className="p-3 border-b border-[var(--border-color)] bg-[var(--bg-main)]/50">
-                                                    <input 
-                                                        autoFocus 
-                                                        placeholder="搜索语言..." 
-                                                        value={langSearch} 
-                                                        onChange={e => setLangSearch(e.target.value)} 
-                                                        className="w-full h-10 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl px-4 text-xs outline-none focus:ring-2 focus:ring-blue-500/30 transition-all" 
-                                                    />
-                                                </div>
-                                                <div className="max-h-[280px] overflow-y-auto custom-scrollbar p-1">
-                                                    {filteredGroups.length === 0 ? (
-                                                        <div className="py-10 text-center text-xs text-[var(--text-secondary)] italic">未找到匹配项</div>
-                                                    ) : (
-                                                        filteredGroups.map(group => (
-                                                            <div key={group.label} className="mb-2 last:mb-0">
-                                                                <div className="px-3 py-1 text-[9px] font-black opacity-30 uppercase tracking-widest">{group.label}</div>
-                                                                {group.options.map(opt => (
-                                                                    <div 
-                                                                        key={opt.value} 
-                                                                        onClick={() => { 
-                                                                            setFormData({...formData, language: opt.value}); 
-                                                                            setIsLangOpen(false); 
-                                                                            setLangSearch('');
-                                                                        }} 
-                                                                        className={`mx-1 px-3 py-2 text-xs rounded-xl cursor-pointer transition-all flex items-center justify-between group/lang ${formData.language === opt.value ? 'bg-[var(--accent-color)] text-white font-bold shadow-lg shadow-[var(--accent-color)]/20' : 'hover:bg-[var(--hover-color)] text-[var(--text-primary)]'}`}
-                                                                    >
-                                                                        <span className="uppercase">{opt.label}</span>
-                                                                        {formData.language === opt.value && <Check size={12} />}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="space-y-1 relative z-[10]">
-                                <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1">代码内容 *</label>
-                                <textarea ref={textareaRef} value={formData.code} onChange={e => setFormData({...formData, code: e.target.value})} className="w-full h-[40vh] md:h-64 font-mono text-sm bg-[var(--code-bg)] text-[var(--code-text)] border border-[var(--border-color)] rounded-2xl px-5 py-4 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none shadow-inner z-[10]" />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1">标签 (逗号分隔)</label>
-                                <input value={formData.tags} onChange={e => setFormData({...formData, tags: e.target.value})} className="w-full h-12 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl px-4 text-sm outline-none" />
-                            </div>
-                        </div>
-                        <div className="p-6 border-t border-[var(--border-color)] flex gap-3 shrink-0">
-                            <button onClick={cancelEdit} className="flex-1 h-14 bg-[var(--hover-color)] rounded-2xl text-sm font-bold text-[var(--text-secondary)]">取消</button>
-                            <button onClick={saveSnippet} className="flex-[2] h-14 bg-[var(--accent-color)] text-white rounded-2xl text-sm font-black uppercase tracking-wider flex items-center justify-center gap-3 shadow-xl shadow-[var(--accent-color)]/20"><Save size={20} />保存变更</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ── 列表区域 ── */}
-            {loading ? (
-                <div className="flex-1 flex items-center justify-center"><div className="w-8 h-8 border-4 border-[var(--border-color)] border-t-[var(--accent-color)] rounded-full animate-spin" /></div>
-            ) : snippets.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] p-8 border border-dashed border-[var(--border-color)] rounded-3xl bg-[var(--bg-surface)]">
-                    <Code2 className="w-12 h-12 opacity-20" /><p className="text-sm">没有找到匹配的代码片段</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-1.5 overflow-y-auto custom-scrollbar pb-1">
-                    {snippets.map(snippet => (
-                        <div key={snippet.id} className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl flex flex-col overflow-hidden hover:border-[var(--text-secondary)] transition-colors group">
-                            <div className="flex items-center justify-between px-2.5 py-1.5 bg-[var(--bg-main)] border-b border-[var(--border-color)]">
-                                <div className="flex items-center gap-2 overflow-hidden min-w-0">
-                                    <Code2 className="w-3.5 h-3.5 text-[var(--accent-color)] shrink-0" />
-                                    <div className="overflow-hidden">
-                                        <div className="text-xs font-medium truncate leading-tight">{snippet.title || ""}</div>
-                                        {snippet.language && <span className="text-[9px] px-1.5 py-0 bg-[var(--accent-color)]/10 text-[var(--accent-color)] border border-[var(--accent-color)]/20 rounded-full font-medium uppercase tracking-wider">{snippet.language}</span>}
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-0.5 shrink-0">
-                                    <span className="text-[9px] text-[var(--text-secondary)] mr-1">{snippet.copy_count || 0}</span>
-                                    <button onClick={() => handleCopy(snippet.id, snippet.code)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]" title="复制">{copiedId === snippet.id ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}</button>
-                                    <button onClick={() => handleShare(snippet)} disabled={sharingId === snippet.id} className={`p-1.5 rounded-md text-[var(--text-secondary)] ${sharingId === snippet.id ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[var(--hover-color)] hover:text-blue-500'}`} title="分享到云端"><Share2 size={14} className={sharingId === snippet.id ? "animate-pulse" : ""} /></button>
-                                    <button onClick={() => startEdit(snippet)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]" title="编辑"><Edit2 size={14} /></button>
-                                    <button onClick={() => handleDelete(snippet.id)} className="p-1.5 hover:bg-[var(--hover-color)] rounded-md hover:text-red-400 text-[var(--text-secondary)]" title="删除"><Trash2 size={14} /></button>
-                                </div>
-                            </div>
-                            <div className="bg-[var(--code-bg)] flex-1 overflow-hidden flex flex-col min-h-[60px]">
-                                <div className="flex-1 overflow-auto custom-scrollbar-thin max-h-40">
-                                    <pre className="text-xs p-3 font-mono text-[var(--code-text)]">
-                                        <code ref={el => { codeRefs.current[snippet.id] = el; }} className={`language-${snippet.language || 'plaintext'}`}>{snippet.code}</code>
-                                    </pre>
-                                </div>
-                            </div>
-                            {snippet.tags && snippet.tags.length > 0 && (
-                                <div className="px-2.5 py-1.5 flex items-center gap-1 flex-wrap border-t border-[var(--border-color)] bg-[var(--bg-main)]">
-                                    {snippet.tags.map((tag: any, i: number) => (
-                                        <button key={i} onClick={() => handleTagClick(tag)} className={`text-[9px] px-1.5 py-0.5 rounded transition-colors ${activeTag === tag ? 'bg-[var(--accent-color)] text-white shadow-sm' : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-color)] hover:border-[var(--text-secondary)]'}`}>{tag}</button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* ── 分享确认对话框 ── */}
-            {shareConfirmData && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 animate-in fade-in duration-200">
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShareConfirmData(null)} />
-                    <div className="relative w-full max-w-sm bg-[var(--bg-surface)] rounded-[24px] border border-[var(--border-color)] shadow-2xl p-6 flex flex-col items-center text-center gap-4 animate-in zoom-in-95 duration-200">
-                        <div className="w-12 h-12 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mb-1">
-                            <Share2 size={24} />
-                        </div>
-                        <div>
-                            <h4 className="text-base font-bold text-[var(--text-primary)] mb-1">该片段已分享过</h4>
-                            <p className="text-xs text-[var(--text-secondary)]">您可以选择更新云端内容，或者仅复制现有链接。</p>
-                        </div>
-                        <div className="flex flex-col w-full gap-2 mt-2">
-                            <button 
-                                onClick={() => handleShare(shareConfirmData.snippet, true)}
-                                className="w-full py-3 bg-[var(--accent-color)] text-white text-sm font-bold rounded-xl hover:opacity-90 transition-opacity"
-                            >
-                                更新内容并跳转
-                            </button>
-                            <button 
-                                onClick={() => copyShareLink(shareConfirmData.shareId)}
-                                className="w-full py-3 bg-[var(--bg-main)] border border-[var(--border-color)] text-[var(--text-primary)] text-sm font-bold rounded-xl hover:bg-[var(--hover-color)] transition-colors"
-                            >
-                                仅复制分享链接
-                            </button>
-                            <button 
-                                onClick={() => setShareConfirmData(null)}
-                                className="w-full py-2 text-[var(--text-secondary)] text-xs font-medium hover:text-[var(--text-primary)] transition-colors"
-                            >
-                                取消
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+  const handleCopy = async (id: string, code: string) => {
+    await navigator.clipboard.writeText(code);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
+    fetch(`/api/snippets/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ copyCountsDelta: { [id]: 1 } }),
+    });
+    setAllSnippets((prev) =>
+      prev.map((snippet) =>
+        snippet.id === id ? { ...snippet, copy_count: (snippet.copy_count || 0) + 1 } : snippet,
+      ),
     );
+  };
+
+  const createShare = async (snippet: SnippetItem) => {
+    const response = await fetch("/api/shares", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(createSharePayload(snippet)),
+    });
+    if (!response.ok) {
+      showToast("分享失败，请重试", "error");
+      return;
+    }
+
+    const data = (await response.json()) as {
+      success: boolean;
+      alreadyExists?: boolean;
+      shareId?: string;
+      data?: { id?: string };
+      error?: string;
+    };
+    if (!data.success) {
+      showToast(data.error || "分享失败", "error");
+      return;
+    }
+    if (data.alreadyExists && data.shareId) {
+      setShareConfirmData({ snippet, shareId: data.shareId });
+      return;
+    }
+
+    showToast("已保存到云分享", "success");
+    const shareId = data.data?.id;
+    window.history.pushState(null, "", `/cloud-share${shareId ? `?highlight=${shareId}` : ""}`);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  };
+
+  const updateShare = async (snippet: SnippetItem, shareId: string) => {
+    const response = await fetch(`/api/shares/${shareId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(createUpdateSharePayload(snippet)),
+    });
+    if (response.ok) {
+      showToast("分享内容已更新", "success");
+      window.history.pushState(null, "", `/cloud-share?highlight=${shareId}`);
+      window.dispatchEvent(new PopStateEvent("popstate"));
+      return;
+    }
+    showToast("更新失败", "error");
+  };
+
+  const handleShare = async (snippet: SnippetItem, forceUpdate = false) => {
+    if (sharingId) return;
+    setSharingId(snippet.id);
+    try {
+      if (forceUpdate) {
+        const shareId = shareConfirmData?.shareId;
+        setShareConfirmData(null);
+        if (!shareId) {
+          showToast("无法定位原分享记录", "error");
+          return;
+        }
+        await updateShare(snippet, shareId);
+        return;
+      }
+      await createShare(snippet);
+    } catch {
+      showToast(forceUpdate ? "更新出错" : "网络错误，无法分享", "error");
+    } finally {
+      setSharingId(null);
+    }
+  };
+
+  const copyShareLink = (shareId: string) => {
+    const link = `${window.location.origin}/s/${shareId}`;
+    navigator.clipboard.writeText(link).then(() => {
+      showToast("分享链接已复制", "success");
+      setShareConfirmData(null);
+    });
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("确定删除此代码片段吗？")) return;
+    const response = await fetch(`/api/snippets/${id}`, { method: "DELETE" });
+    if (response.ok) {
+      setAllSnippets((prev) => prev.filter((snippet) => snippet.id !== id));
+      return;
+    }
+    alert("无法删除");
+  };
+
+  const startEdit = (snippet: SnippetItem) => {
+    setEditingId(snippet.id);
+    setIsCreating(false);
+    setFormData({
+      title: snippet.title,
+      code: snippet.code,
+      language: snippet.language || "plaintext",
+      tags: Array.isArray(snippet.tags) ? snippet.tags.join(", ") : "",
+    });
+    setTimeout(() => textareaRef.current?.focus(), 100);
+  };
+
+  const startCreate = () => {
+    setIsCreating(true);
+    setEditingId(null);
+    setFormData({ title: "", code: "", language: "plaintext", tags: "" });
+    setTimeout(() => textareaRef.current?.focus(), 100);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setIsCreating(false);
+  };
+
+  const saveSnippet = async () => {
+    if (!formData.code) {
+      alert("代码不能为空");
+      return;
+    }
+
+    const payload = {
+      ...formData,
+      tags: formData.tags
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    };
+
+    try {
+      if (isCreating) {
+        const response = await fetch("/api/snippets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (response.ok) {
+          const newSnippet = (await response.json()) as SnippetItem;
+          setAllSnippets([newSnippet, ...allSnippets]);
+          setIsCreating(false);
+        } else {
+          alert("保存失败");
+        }
+        return;
+      }
+
+      if (!editingId) return;
+      const response = await fetch(`/api/snippets/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (response.ok) {
+        setAllSnippets((prev) =>
+          prev.map((snippet) => (snippet.id === editingId ? { ...snippet, ...payload } : snippet)),
+        );
+        setEditingId(null);
+      } else {
+        alert("更新失败");
+      }
+    } catch {
+      alert("网络错误");
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-full gap-1.5">
+      <div className="flex items-center gap-1.5 bg-[var(--bg-surface)] px-1.5 py-1 rounded-xl border border-[var(--border-color)]">
+        <div className="relative flex-1 min-w-0">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-4 text-[var(--text-secondary)] pointer-events-none" />
+          <input
+            type="text"
+            placeholder="搜索片段..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-7 pr-2 py-1 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg text-sm outline-none focus:ring-2 focus:ring-[var(--accent-color)]/50 transition-all placeholder:text-xs"
+          />
+        </div>
+        <div className="relative shrink-0">
+          <ArrowUpDown className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--text-secondary)] pointer-events-none" />
+          <select
+            value={sortValue}
+            onChange={(e) => handleSortChange(e.target.value)}
+            className="bg-[var(--bg-main)] border border-[var(--border-color)] rounded-lg pl-6 pr-2 py-1 text-xs outline-none cursor-pointer hover:border-[var(--text-secondary)] transition-colors min-w-[90px]"
+          >
+            {SORT_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          onClick={startCreate}
+          className="flex items-center justify-center p-1.5 bg-[var(--accent-color)] text-white rounded-lg hover:opacity-90 transition-opacity shrink-0"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-1 shrink-0">
+        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 px-0.5 min-h-[26px]">
+          {languageFilter ? (
+            <button
+              onClick={() => handleLanguageChange("")}
+              className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm transition-all flex items-center gap-1"
+            >
+              <X className="w-2.5 h-2.5" />
+              {getLanguageLabel(languageFilter)}
+            </button>
+          ) : (
+            languages
+              .filter((option) => option.language !== "")
+              .map((option) => (
+                <button
+                  key={option.language}
+                  onClick={() => handleLanguageChange(option.language)}
+                  className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)] transition-all"
+                >
+                  {getLanguageLabel(option.language)}
+                  <span className="ml-1 opacity-60">{option.count}</span>
+                </button>
+              ))
+          )}
+        </div>
+        {allTags.length > 0 && (
+          <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 min-h-[26px]">
+            <Tag className="w-3 h-3 text-[var(--text-secondary)] shrink-0 ml-0.5" />
+            {activeTag ? (
+              <button
+                onClick={() => setActiveTag("")}
+                className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm transition-all flex items-center gap-1"
+              >
+                <X className="w-2.5 h-2.5" />
+                {activeTag}
+              </button>
+            ) : (
+              allTags.map((tag) => (
+                <button
+                  key={tag.name}
+                  onClick={() => handleTagClick(tag.name)}
+                  className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)] transition-all"
+                >
+                  {tag.name}
+                  <span className="ml-1 opacity-60">{tag.count}</span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      {(isCreating || editingId) && (
+        <SnippetEditorModal
+          formData={formData}
+          isCreating={isCreating}
+          isDarkMode={isDarkMode}
+          isLangOpen={isLangOpen}
+          langRef={langRef}
+          langSearch={langSearch}
+          textareaRef={textareaRef}
+          onCancel={cancelEdit}
+          onLangOpenChange={setIsLangOpen}
+          onLangSearchChange={setLangSearch}
+          onSave={saveSnippet}
+          onUpdateFormData={(updates) => setFormData((prev) => ({ ...prev, ...updates }))}
+        />
+      )}
+
+      {loading ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-[var(--border-color)] border-t-[var(--accent-color)] rounded-full animate-spin" />
+        </div>
+      ) : snippets.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-[var(--text-secondary)] p-8 border border-dashed border-[var(--border-color)] rounded-3xl bg-[var(--bg-surface)]">
+          <Code2 className="w-12 h-12 opacity-20" />
+          <p className="text-sm">没有找到匹配的代码片段</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-1.5 overflow-y-auto custom-scrollbar pb-1">
+          {snippets.map((snippet) => (
+            <SnippetCard
+              key={snippet.id}
+              activeTag={activeTag}
+              codeRefs={codeRefs}
+              copiedId={copiedId}
+              sharingId={sharingId}
+              snippet={snippet}
+              onCopy={handleCopy}
+              onDelete={handleDelete}
+              onEdit={startEdit}
+              onShare={handleShare}
+              onTagClick={handleTagClick}
+            />
+          ))}
+        </div>
+      )}
+
+      {shareConfirmData && (
+        <ShareConfirmDialog
+          shareConfirmData={shareConfirmData}
+          onCancel={() => setShareConfirmData(null)}
+          onCopyLink={copyShareLink}
+          onUpdateShare={(snippet) => handleShare(snippet, true)}
+        />
+      )}
+    </div>
+  );
 }

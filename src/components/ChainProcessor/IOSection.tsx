@@ -1,14 +1,5 @@
-import React from 'react';
-import { 
-  Trash2, 
-  Upload, 
-  Play, 
-  Download, 
-  Copy, 
-  Check, 
-  AlertCircle, 
-  Settings2 
-} from 'lucide-react';
+import { AlertCircle, Check, Copy, Download, Play, Settings2, Trash2, Upload } from "lucide-react";
+import type React from "react";
 
 interface IOSectionProps {
   input: string;
@@ -43,7 +34,7 @@ export default function IOSection({
   onPaste,
   onExportOutput,
   onCopyOutput,
-  children
+  children,
 }: IOSectionProps) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -62,7 +53,10 @@ export default function IOSection({
             >
               <Trash2 className="w-4 h-4" />
             </button>
-            <label className="p-1.5 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--accent-color)] transition-all cursor-pointer" title="上传文件">
+            <label
+              className="p-1.5 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--accent-color)] transition-all cursor-pointer"
+              title="上传文件"
+            >
               <Upload className="w-4 h-4" />
               <input
                 type="file"
@@ -70,14 +64,14 @@ export default function IOSection({
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) onFileUpload(file);
-                  e.target.value = '';
+                  e.target.value = "";
                 }}
               />
             </label>
           </div>
         </div>
         <div
-          className={`relative group flex-1 rounded-2xl transition-all ${isDragging ? 'ring-2 ring-[var(--accent-color)] ring-offset-2 ring-offset-[var(--bg-main)]' : ''}`}
+          className={`relative group flex-1 rounded-2xl transition-all ${isDragging ? "ring-2 ring-[var(--accent-color)] ring-offset-2 ring-offset-[var(--bg-main)]" : ""}`}
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
@@ -99,9 +93,7 @@ export default function IOSection({
       </div>
 
       {/* Column 2: Steps (Filled by parent) */}
-      <div className="flex flex-col gap-3 h-[calc(100vh-240px)] min-h-[450px]">
-        {children}
-      </div>
+      <div className="flex flex-col gap-3 h-[calc(100vh-240px)] min-h-[450px]">{children}</div>
 
       {/* Column 3: Output */}
       <div className="flex flex-col gap-3 h-[calc(100vh-240px)] min-h-[450px]">
@@ -123,13 +115,14 @@ export default function IOSection({
             <button
               onClick={onCopyOutput}
               disabled={!output}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${copied
-                ? 'bg-green-500/10 text-green-500'
-                : 'bg-[var(--hover-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50'
-                }`}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                copied
+                  ? "bg-green-500/10 text-green-500"
+                  : "bg-[var(--hover-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50"
+              }`}
             >
               {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              {copied ? '已复制' : '复制结果'}
+              {copied ? "已复制" : "复制结果"}
             </button>
           </div>
         </div>
@@ -139,7 +132,7 @@ export default function IOSection({
           placeholder="处理后的结果将显示在这里..."
           className="flex-1 w-full p-4 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-2xl text-sm font-mono outline-none resize-none custom-scrollbar"
         />
-        {error?.stepId === 'global' && (
+        {error?.stepId === "global" && (
           <div className="shrink-0 p-3 bg-[var(--error-color)]/10 border border-[var(--error-color)]/20 rounded-xl flex items-start gap-2">
             <AlertCircle className="w-4 h-4 text-[var(--error-color)] shrink-0 mt-0.5" />
             <p className="text-xs text-[var(--error-color)] leading-relaxed">{error.message}</p>
