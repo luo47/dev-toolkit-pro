@@ -5,12 +5,7 @@ interface LogoutConfirmPopupProps {
   source: "sidebar" | "topbar";
 }
 
-export default function LogoutConfirmPopup({
-  isSidebarOpen,
-  onCancel,
-  onConfirm,
-  source,
-}: LogoutConfirmPopupProps) {
+export default function LogoutConfirmPopup({ isSidebarOpen, onCancel, onConfirm, source }: LogoutConfirmPopupProps) {
   const positionClass =
     source === "sidebar"
       ? `bottom-full left-0 mb-2 ${!isSidebarOpen ? "left-1/2 -translate-x-1/2 w-48" : "w-full"}`

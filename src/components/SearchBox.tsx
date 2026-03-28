@@ -70,9 +70,7 @@ export default function SearchBox() {
           const data = (await res.json()) as SearchEnginesResponse;
           if (data.success && data.data && data.data.length > 0) {
             setEngines(data.data);
-            setSelectedEngineId(
-              data.data.find((engine) => engine.is_visible)?.id || data.data[0].id,
-            );
+            setSelectedEngineId(data.data.find((engine) => engine.is_visible)?.id || data.data[0].id);
           } else {
             // 没有数据则使用默认
             setEngines(DEFAULT_ENGINES);
@@ -103,9 +101,7 @@ export default function SearchBox() {
     }
   };
 
-  const visibleEngines = engines
-    .filter((e) => e.is_visible)
-    .sort((a, b) => a.sort_order - b.sort_order);
+  const visibleEngines = engines.filter((e) => e.is_visible).sort((a, b) => a.sort_order - b.sort_order);
   const currentEngine = visibleEngines.find((e) => e.id === selectedEngineId) || visibleEngines[0];
 
   return (
@@ -134,11 +130,7 @@ export default function SearchBox() {
             title={`当前搜索引擎: ${currentEngine?.name || "搜索"}`}
           >
             {visibleEngines.map((e) => (
-              <option
-                key={e.id}
-                value={e.id}
-                className="bg-[var(--bg-surface)] text-[var(--text-primary)]"
-              >
+              <option key={e.id} value={e.id} className="bg-[var(--bg-surface)] text-[var(--text-primary)]">
                 {e.name}
               </option>
             ))}
@@ -360,9 +352,7 @@ function SearchEngineSettingsModal({
 
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-[var(--text-primary)]">{item.name}</div>
-                      <div className="text-xs text-[var(--text-secondary)] truncate font-mono">
-                        {item.url_template}
-                      </div>
+                      <div className="text-xs text-[var(--text-secondary)] truncate font-mono">{item.url_template}</div>
                     </div>
 
                     <div className="flex items-center gap-2">

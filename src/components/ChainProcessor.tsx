@@ -27,6 +27,202 @@ const normalizeProcessError = (error: unknown) => {
   };
 };
 
+const FALLBACK_CHAINS: SavedChain[] = [
+  {
+    id: "def-proxy",
+    name: "代理列表转换",
+    isFavorite: true,
+    createdAt: Date.now(),
+    steps: DEFAULT_PROXY_STEPS,
+  },
+  {
+    id: "def-smb",
+    name: "SMB 路径互转",
+    isFavorite: true,
+    createdAt: Date.now() + 1,
+    steps: DEFAULT_SMB_STEPS,
+  },
+  {
+    id: "def-link",
+    name: "代理链接转换",
+    isFavorite: true,
+    createdAt: Date.now() + 2,
+    steps: DEFAULT_PROXY_LINK_STEPS,
+  },
+];
+
+const loadSavedChains = async () => {
+  try {
+    const baseUrl = import.meta.env.VITE_API_URL || "";
+    const res = await fetch(`${baseUrl}/api/chains`, { credentials: "include" });
+    if (!res.ok) return FALLBACK_CHAINS;
+
+    const data = (await res.json()) as { success: boolean; data: SavedChain[] };
+    if (data.success && data.data && data.data.length > 0) return data.data;
+  } catch (e) {
+    console.error("Failed to load chains:", e);
+  }
+
+  return FALLBACK_CHAINS;
+};
+
+const downloadTextFile = (content: string, filename: string) => {
+  const blob = new Blob([content], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+const downloadJsonFile = (content: unknown, filename: string) => {
+  const blob = new Blob([JSON.stringify(content, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+type ChainStepsPanelProps = {
+  steps: Step[];
+  error: { stepId: string; message: string } | null;
+  onAddStep: (type: StepType) => void;
+  onOpenSaveModal: () => void;
+  onUpdateStep: (id: string, updates: Partial<Step>) => void;
+  onRemoveStep: (id: string) => void;
+  onMoveStep: (index: number, direction: "up" | "down") => void;
+};
+
+const ChainStepsPanel = ({
+  steps,
+  error,
+  onAddStep,
+  onOpenSaveModal,
+  onUpdateStep,
+  onRemoveStep,
+  onMoveStep,
+}: ChainStepsPanelProps) => (
+  <>
+    <div className="flex items-center justify-between shrink-0">
+      <div className="text-sm font-medium text-[var(--text-secondary)] flex items-center gap-2">
+        <ArrowRight className="w-4 h-4" /> 处理链
+      </div>
+      <div className="relative group">
+        <button
+          type="button"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-color)] text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all"
+        >
+          <Plus className="w-3.5 h-3.5" /> 添加步骤
+        </button>
+        <div className="absolute right-0 top-full pt-2 z-50 hidden group-hover:block">
+          <div className="w-48 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl shadow-2xl p-1 max-h-80 overflow-y-auto custom-scrollbar">
+            {(Object.keys(STEP_CONFIG) as StepType[]).map((type) => (
+              <button
+                type="button"
+                key={type}
+                onClick={() => onAddStep(type)}
+                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[var(--hover-color)] rounded-lg text-left"
+              >
+                <span className="w-8 h-8 flex items-center justify-center bg-[var(--bg-main)] rounded text-[10px] font-bold text-[var(--accent-color)]">
+                  {STEP_CONFIG[type].icon}
+                </span>
+                <span className="text-xs text-[var(--text-primary)]">{STEP_CONFIG[type].label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onOpenSaveModal}
+        disabled={steps.length === 0}
+        className="p-1.5 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)] disabled:opacity-30"
+      >
+        <Save className="w-4 h-4" />
+      </button>
+    </div>
+    <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
+      {steps.length === 0 ? (
+        <div className="h-full border-2 border-dashed border-[var(--border-color)] rounded-2xl flex flex-col items-center justify-center text-[var(--text-secondary)]">
+          <Plus className="w-8 h-8 mb-2 opacity-20" />
+          <p className="text-sm">尚未添加处理步骤</p>
+        </div>
+      ) : (
+        steps.map((step, i) => (
+          <StepItem
+            key={step.id}
+            step={step}
+            index={i}
+            totalSteps={steps.length}
+            error={error}
+            onUpdate={onUpdateStep}
+            onRemove={onRemoveStep}
+            onMove={onMoveStep}
+          />
+        ))
+      )}
+    </div>
+  </>
+);
+
+type SaveChainModalProps = {
+  isDarkMode: boolean;
+  newChainName: string;
+  onClose: () => void;
+  onNameChange: (value: string) => void;
+  onSave: () => void;
+};
+
+const SaveChainModal = ({ isDarkMode, newChainName, onClose, onNameChange, onSave }: SaveChainModalProps) => (
+  <div
+    className={`fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-sm ${isDarkMode ? "bg-black/80" : "bg-black/20"}`}
+  >
+    <div className="w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-3xl p-6 space-y-4 shadow-2xl">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold text-[var(--text-primary)]">保存处理链</h3>
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-2 hover:bg-[var(--hover-color)] rounded-full transition-colors"
+        >
+          <X className="w-5 h-5 text-[var(--text-secondary)]" />
+        </button>
+      </div>
+      <div className="space-y-2">
+        <label htmlFor="new-chain-name" className="text-xs font-medium text-[var(--text-secondary)]">
+          名称
+        </label>
+        <input
+          id="new-chain-name"
+          value={newChainName}
+          onChange={(e) => onNameChange(e.target.value)}
+          placeholder="例如：提取代理列表..."
+          className="w-full px-4 py-3 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-2xl outline-none focus:ring-2 focus:ring-[var(--accent-color)]/50 transition-all text-[var(--text-primary)]"
+        />
+      </div>
+      <div className="flex gap-3 pt-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-1 py-3 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-2xl font-bold text-[var(--text-secondary)] hover:bg-[var(--hover-color)] transition-all"
+        >
+          取消
+        </button>
+        <button
+          type="button"
+          onClick={onSave}
+          className="flex-1 py-3 bg-[var(--accent-color)] text-white rounded-2xl font-bold shadow-lg shadow-[var(--accent-color)]/20 hover:opacity-90 transition-all"
+        >
+          保存
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
 export default function ChainProcessor() {
   const { isDarkMode } = useAppStore();
   const [input, setInput] = useState("");
@@ -67,52 +263,11 @@ export default function ChainProcessor() {
   }, [processChain]);
 
   useEffect(() => {
-    const fetchChains = async () => {
-      try {
-        const baseUrl = import.meta.env.VITE_API_URL || "";
-        const res = await fetch(`${baseUrl}/api/chains`, { credentials: "include" });
-        if (res.ok) {
-          const data = (await res.json()) as { success: boolean; data: SavedChain[] };
-          if (data.success && data.data && data.data.length > 0) {
-            setSavedChains(data.data);
-            return;
-          }
-        }
-      } catch (e) {
-        console.error("Failed to load chains:", e);
-      }
-      setSavedChains([
-        {
-          id: "def-proxy",
-          name: "代理列表转换",
-          isFavorite: true,
-          createdAt: Date.now(),
-          steps: DEFAULT_PROXY_STEPS,
-        },
-        {
-          id: "def-smb",
-          name: "SMB 路径互转",
-          isFavorite: true,
-          createdAt: Date.now() + 1,
-          steps: DEFAULT_SMB_STEPS,
-        },
-        {
-          id: "def-link",
-          name: "代理链接转换",
-          isFavorite: true,
-          createdAt: Date.now() + 2,
-          steps: DEFAULT_PROXY_LINK_STEPS,
-        },
-      ]);
-    };
-    fetchChains();
+    loadSavedChains().then(setSavedChains);
   }, []);
 
   const addStep = (type: StepType) =>
-    setSteps([
-      ...steps,
-      { id: Math.random().toString(36).substr(2, 9), type, value: "", active: true },
-    ]);
+    setSteps([...steps, { id: Math.random().toString(36).substr(2, 9), type, value: "", active: true }]);
   const removeStep = (id: string) => setSteps(steps.filter((s) => s.id !== id));
   const updateStep = (id: string, updates: Partial<Step>) =>
     setSteps(steps.map((s) => (s.id === id ? { ...s, ...updates } : s)));
@@ -149,6 +304,14 @@ export default function ChainProcessor() {
     setIsSaveModalOpen(false);
   };
 
+  const handleExportOutput = () => {
+    downloadTextFile(output, `result-${Date.now()}.txt`);
+  };
+
+  const handleExportChains = () => {
+    downloadJsonFile(savedChains, `chains-${Date.now()}.json`);
+  };
+
   return (
     <div className="space-y-6">
       <IOSection
@@ -181,82 +344,24 @@ export default function ChainProcessor() {
             }
           }
         }}
-        onExportOutput={() => {
-          const blob = new Blob([output], { type: "text/plain" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `result-${Date.now()}.txt`;
-          a.click();
-          URL.revokeObjectURL(url);
-        }}
+        onExportOutput={handleExportOutput}
         onCopyOutput={() => {
           navigator.clipboard.writeText(output);
           setCopied(true);
           setTimeout(() => setCopied(false), 2000);
         }}
+        inputId="chain-processor-input"
+        outputId="chain-processor-output"
       >
-        <div className="flex items-center justify-between shrink-0">
-          <label className="text-sm font-medium text-[var(--text-secondary)] flex items-center gap-2">
-            <ArrowRight className="w-4 h-4" /> 处理链
-          </label>
-          <div className="relative group">
-            <button
-              type="button"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-color)] text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all"
-            >
-              <Plus className="w-3.5 h-3.5" /> 添加步骤
-            </button>
-            <div className="absolute right-0 top-full pt-2 z-50 hidden group-hover:block">
-              <div className="w-48 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl shadow-2xl p-1 max-h-80 overflow-y-auto custom-scrollbar">
-                {(Object.keys(STEP_CONFIG) as StepType[]).map((type) => (
-                  <button
-                    type="button"
-                    key={type}
-                    onClick={() => addStep(type)}
-                    className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[var(--hover-color)] rounded-lg text-left"
-                  >
-                    <span className="w-8 h-8 flex items-center justify-center bg-[var(--bg-main)] rounded text-[10px] font-bold text-[var(--accent-color)]">
-                      {STEP_CONFIG[type].icon}
-                    </span>
-                    <span className="text-xs text-[var(--text-primary)]">
-                      {STEP_CONFIG[type].label}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsSaveModalOpen(true)}
-            disabled={steps.length === 0}
-            className="p-1.5 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)] disabled:opacity-30"
-          >
-            <Save className="w-4 h-4" />
-          </button>
-        </div>
-        <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
-          {steps.length === 0 ? (
-            <div className="h-full border-2 border-dashed border-[var(--border-color)] rounded-2xl flex flex-col items-center justify-center text-[var(--text-secondary)]">
-              <Plus className="w-8 h-8 mb-2 opacity-20" />
-              <p className="text-sm">尚未添加处理步骤</p>
-            </div>
-          ) : (
-            steps.map((step, i) => (
-              <StepItem
-                key={step.id}
-                step={step}
-                index={i}
-                totalSteps={steps.length}
-                error={error}
-                onUpdate={updateStep}
-                onRemove={removeStep}
-                onMove={moveStep}
-              />
-            ))
-          )}
-        </div>
+        <ChainStepsPanel
+          steps={steps}
+          error={error}
+          onAddStep={addStep}
+          onOpenSaveModal={() => setIsSaveModalOpen(true)}
+          onUpdateStep={updateStep}
+          onRemoveStep={removeStep}
+          onMoveStep={moveStep}
+        />
       </IOSection>
 
       <ChainLibrary
@@ -280,17 +385,7 @@ export default function ChainProcessor() {
             body: JSON.stringify({ isFavorite: newFav }),
           });
         }}
-        onExport={() => {
-          const blob = new Blob([JSON.stringify(savedChains, null, 2)], {
-            type: "application/json",
-          });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = `chains-${Date.now()}.json`;
-          a.click();
-          URL.revokeObjectURL(url);
-        }}
+        onExport={handleExportChains}
         onImport={(e) => {
           const f = e.target.files?.[0];
           if (!f) return;
@@ -309,47 +404,13 @@ export default function ChainProcessor() {
       />
 
       {isSaveModalOpen && (
-        <div
-          className={`fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-sm ${isDarkMode ? "bg-black/80" : "bg-black/20"}`}
-        >
-          <div className="w-full max-w-md bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-3xl p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-[var(--text-primary)]">保存处理链</h3>
-              <button
-                type="button"
-                onClick={() => setIsSaveModalOpen(false)}
-                className="p-2 hover:bg-[var(--hover-color)] rounded-full transition-colors"
-              >
-                <X className="w-5 h-5 text-[var(--text-secondary)]" />
-              </button>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-medium text-[var(--text-secondary)]">名称</label>
-              <input
-                value={newChainName}
-                onChange={(e) => setNewChainName(e.target.value)}
-                placeholder="例如：提取代理列表..."
-                className="w-full px-4 py-3 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-2xl outline-none focus:ring-2 focus:ring-[var(--accent-color)]/50 transition-all text-[var(--text-primary)]"
-              />
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsSaveModalOpen(false)}
-                className="flex-1 py-3 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-2xl font-bold text-[var(--text-secondary)] hover:bg-[var(--hover-color)] transition-all"
-              >
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveChain}
-                className="flex-1 py-3 bg-[var(--accent-color)] text-white rounded-2xl font-bold shadow-lg shadow-[var(--accent-color)]/20 hover:opacity-90 transition-all"
-              >
-                保存
-              </button>
-            </div>
-          </div>
-        </div>
+        <SaveChainModal
+          isDarkMode={isDarkMode}
+          newChainName={newChainName}
+          onClose={() => setIsSaveModalOpen(false)}
+          onNameChange={setNewChainName}
+          onSave={handleSaveChain}
+        />
       )}
     </div>
   );

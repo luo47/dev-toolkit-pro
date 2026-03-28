@@ -21,25 +21,15 @@ interface AppSidebarProps {
   onCloseLogoutConfirm: () => void;
 }
 
-function SidebarHeader({
-  isSidebarOpen,
-  onToggleSidebar,
-}: {
-  isSidebarOpen: boolean;
-  onToggleSidebar: () => void;
-}) {
+function SidebarHeader({ isSidebarOpen, onToggleSidebar }: { isSidebarOpen: boolean; onToggleSidebar: () => void }) {
   return (
-    <div
-      className={`p-4 flex items-center ${isSidebarOpen ? "justify-between" : "justify-center"}`}
-    >
+    <div className={`p-4 flex items-center ${isSidebarOpen ? "justify-between" : "justify-center"}`}>
       {isSidebarOpen && (
         <div className="flex items-center gap-2 lg:hidden">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#4285f4] to-[#9b72cb] flex items-center justify-center text-white shadow-lg shadow-blue-500/10">
             <Cloud className="w-5 h-5" />
           </div>
-          <span className="text-sm font-bold tracking-tight text-[var(--text-primary)]">
-            浮云工具箱
-          </span>
+          <span className="text-sm font-bold tracking-tight text-[var(--text-primary)]">浮云工具箱</span>
         </div>
       )}
       <button
@@ -49,9 +39,7 @@ function SidebarHeader({
         title={isSidebarOpen ? "收起菜单" : "展开菜单"}
       >
         {isSidebarOpen ? <X className="w-6 h-6 text-[var(--text-secondary)] lg:hidden" /> : null}
-        <Menu
-          className={`w-6 h-6 text-[var(--text-secondary)] ${isSidebarOpen ? "hidden lg:block" : ""}`}
-        />
+        <Menu className={`w-6 h-6 text-[var(--text-secondary)] ${isSidebarOpen ? "hidden lg:block" : ""}`} />
       </button>
     </div>
   );
@@ -253,11 +241,7 @@ function SidebarLoggedInAccount({
         className={`flex items-center gap-3 w-full h-12 rounded-full hover:bg-[var(--hover-color)] transition-colors ${isSidebarOpen ? "px-4" : "justify-center"} ${showLogoutConfirm && logoutConfirmSource === "sidebar" ? "bg-[var(--hover-color)]" : ""}`}
       >
         {user.avatar_url ? (
-          <img
-            src={user.avatar_url}
-            alt="avatar"
-            className="w-8 h-8 rounded-full border border-white/10 shrink-0"
-          />
+          <img src={user.avatar_url} alt="avatar" className="w-8 h-8 rounded-full border border-white/10 shrink-0" />
         ) : (
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4285f4] to-[#9b72cb] flex items-center justify-center text-white text-xs font-bold border border-white/10 shrink-0">
             {(user.name || user.username).charAt(0).toUpperCase()}
@@ -265,9 +249,7 @@ function SidebarLoggedInAccount({
         )}
         {isSidebarOpen && (
           <div className="flex flex-col items-start overflow-hidden">
-            <span className="text-sm font-medium truncate w-full">
-              {user.name || user.username} (退出)
-            </span>
+            <span className="text-sm font-medium truncate w-full">{user.name || user.username} (退出)</span>
           </div>
         )}
       </button>
@@ -275,13 +257,7 @@ function SidebarLoggedInAccount({
   );
 }
 
-function SidebarLoggedOutAccount({
-  isSidebarOpen,
-  onOpenLogin,
-}: {
-  isSidebarOpen: boolean;
-  onOpenLogin: () => void;
-}) {
+function SidebarLoggedOutAccount({ isSidebarOpen, onOpenLogin }: { isSidebarOpen: boolean; onOpenLogin: () => void }) {
   return (
     <button
       type="button"

@@ -1,13 +1,4 @@
-import {
-  ArrowRight,
-  Code,
-  FileSearch,
-  Lock,
-  PlugZap,
-  QrCode,
-  Server,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, Code, FileSearch, Lock, PlugZap, QrCode, Server, Sparkles } from "lucide-react";
 import SearchBox from "./SearchBox";
 
 interface HomeProps {
@@ -17,57 +8,55 @@ interface HomeProps {
   searchQuery?: string;
 }
 
-export default function Home({
-  onSelectTool,
-  isLoggedIn,
-  onOpenLogin,
-  searchQuery = "",
-}: HomeProps) {
-  const allTools = [
-    {
-      id: "cloud-share",
-      name: "云分享",
-      icon: Server,
-      description: "极简且高效的云端资产同步工具，支持文本片段与多文件包分享。",
-      isPremium: false,
-    },
-    {
-      id: "openai-api-tester",
-      name: "OPENAI-API测试",
-      icon: PlugZap,
-      description: "检测 OpenAI 及兼容接口的模型列表、Chat Completions 与 Responses 可用性。",
-      isPremium: false,
-    },
-    {
-      id: "code-snippets",
-      name: "代码片段",
-      icon: Code,
-      description: "代码片段管理工具，带有标签过滤和一键复制功能。",
-      isPremium: true,
-    },
-    {
-      id: "chain-processor",
-      name: "链式文本处理",
-      icon: FileSearch,
-      description: "强大的链式文本处理引擎，支持 JS、JSONPath 等多种处理步骤。",
-      isPremium: true,
-    },
-    {
-      id: "qrcode",
-      name: "二维码",
-      icon: QrCode,
-      description: "二维码生成与识别，支持实时生成及图片识别。",
-      isPremium: false,
-    },
-  ];
+const HOME_TOOLS = [
+  {
+    id: "cloud-share",
+    name: "云分享",
+    icon: Server,
+    description: "极简且高效的云端资产同步工具，支持文本片段与多文件包分享。",
+    isPremium: false,
+  },
+  {
+    id: "openai-api-tester",
+    name: "OPENAI-API测试",
+    icon: PlugZap,
+    description: "检测 OpenAI 及兼容接口的模型列表、Chat Completions 与 Responses 可用性。",
+    isPremium: false,
+  },
+  {
+    id: "code-snippets",
+    name: "代码片段",
+    icon: Code,
+    description: "代码片段管理工具，带有标签过滤和一键复制功能。",
+    isPremium: true,
+  },
+  {
+    id: "chain-processor",
+    name: "链式文本处理",
+    icon: FileSearch,
+    description: "强大的链式文本处理引擎，支持 JS、JSONPath 等多种处理步骤。",
+    isPremium: true,
+  },
+  {
+    id: "qrcode",
+    name: "二维码",
+    icon: QrCode,
+    description: "二维码生成与识别，支持实时生成及图片识别。",
+    isPremium: false,
+  },
+] as const;
 
-  const tools = allTools.filter(
-    (t) =>
-      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.description.toLowerCase().includes(searchQuery.toLowerCase()),
+const filterHomeTools = (searchQuery: string) =>
+  HOME_TOOLS.filter(
+    (tool) =>
+      tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tool.description.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const handleToolClick = (tool: (typeof allTools)[number]) => {
+export default function Home({ onSelectTool, isLoggedIn, onOpenLogin, searchQuery = "" }: HomeProps) {
+  const tools = filterHomeTools(searchQuery);
+
+  const handleToolClick = (tool: (typeof HOME_TOOLS)[number]) => {
     if (tool.isPremium && !isLoggedIn) {
       onOpenLogin();
     } else {

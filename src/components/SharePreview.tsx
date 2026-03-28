@@ -127,11 +127,7 @@ const SharePreview: React.FC = () => {
     <div className="w-full mx-auto p-4 lg:p-6 space-y-8 animate-in fade-in zoom-in-95 duration-700">
       {/* 头部装饰 */}
       <div className="flex items-center gap-4 text-white/20">
-        <button
-          type="button"
-          onClick={goBack}
-          className="flex items-center gap-2 hover:text-white transition-colors"
-        >
+        <button type="button" onClick={goBack} className="flex items-center gap-2 hover:text-white transition-colors">
           <ArrowLeft size={16} />
           <span className="text-[10px] uppercase font-black">返回工具箱</span>
         </button>
@@ -162,9 +158,7 @@ const SharePreview: React.FC = () => {
                 <h1 className="text-3xl font-black italic tracking-tighter uppercase leading-none">
                   {data.name || "资产包"}
                 </h1>
-                <p className="text-[10px] font-mono text-white/30 uppercase mt-1">
-                  分享 ID: {data.id}
-                </p>
+                <p className="text-[10px] font-mono text-white/30 uppercase mt-1">分享 ID: {data.id}</p>
               </div>
             </div>
 
@@ -201,12 +195,8 @@ const SharePreview: React.FC = () => {
         className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-[32px] overflow-hidden shadow-xl"
       >
         <div className="p-6 bg-[var(--bg-main)]/50 border-b border-[var(--border-color)] flex justify-between items-center px-8">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">
-            文件系统结构
-          </span>
-          <span className="text-[10px] font-mono text-white/20">
-            {data.files?.length} 个项已验证
-          </span>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">文件系统结构</span>
+          <span className="text-[10px] font-mono text-white/20">{data.files?.length} 个项已验证</span>
         </div>
 
         <div className="grid grid-cols-1 divide-y divide-[var(--border-color)]">

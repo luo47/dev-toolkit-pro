@@ -8,6 +8,71 @@ import UploadModal from "./cloud-share/UploadModal";
 
 const readHighlightId = () => new URLSearchParams(window.location.search).get("highlight");
 
+const getFilteredShares = (shares: ShareContent[], searchQuery: string) => {
+  const keyword = searchQuery.toLowerCase();
+  return shares.filter(
+    (share) =>
+      share.id.toLowerCase().includes(keyword) ||
+      share.name?.toLowerCase().includes(keyword) ||
+      share.content?.toLowerCase().includes(keyword),
+  );
+};
+
+const ShareListState = ({
+  isLoading,
+  shares,
+  filteredShares,
+  onClearSearch,
+  highlightedId,
+  onCopyLink,
+  onDelete,
+  onEdit,
+}: {
+  isLoading: boolean;
+  shares: ShareContent[];
+  filteredShares: ShareContent[];
+  onClearSearch: () => void;
+  highlightedId: string | null;
+  onCopyLink: (id: string) => void;
+  onDelete: (id: string) => void;
+  onEdit: (share: ShareContent | null) => void;
+}) => {
+  if (isLoading && shares.length === 0) {
+    return (
+      <div className="bg-[var(--bg-surface)] rounded-[32px] border border-[var(--border-color)] p-32 text-center animate-pulse">
+        <Loader2 className="animate-spin mx-auto mb-4 text-blue-500" size={32} />
+        <p className="text-[var(--text-secondary)] text-sm italic font-mono uppercase tracking-widest">
+          正在同步数据...
+        </p>
+      </div>
+    );
+  }
+
+  if (filteredShares.length === 0) {
+    return (
+      <div className="bg-white/5 rounded-[32px] border border-white/5 p-32 text-center">
+        <AlertCircle className="mx-auto mb-4 text-white/10" size={48} />
+        <p className="text-white/30 font-medium">未找到匹配的分享项</p>
+        <button type="button" onClick={onClearSearch} className="mt-4 text-blue-500 text-sm underline">
+          清除搜索
+        </button>
+      </div>
+    );
+  }
+
+  return filteredShares.map((share, index) => (
+    <ShareCard
+      key={share.id}
+      highlighted={highlightedId === share.id}
+      index={index}
+      share={share}
+      onCopyLink={onCopyLink}
+      onDelete={onDelete}
+      onEdit={onEdit}
+    />
+  ));
+};
+
 export default function CloudShare() {
   const [shares, setShares] = useState<ShareContent[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -69,14 +134,7 @@ export default function CloudShare() {
     }
   };
 
-  const filteredShares = shares.filter((share) => {
-    const keyword = searchQuery.toLowerCase();
-    return (
-      share.id.toLowerCase().includes(keyword) ||
-      share.name?.toLowerCase().includes(keyword) ||
-      share.content?.toLowerCase().includes(keyword)
-    );
-  });
+  const filteredShares = getFilteredShares(shares, searchQuery);
 
   return (
     <div className="w-full max-w-[1400px] mx-auto min-h-[800px] pb-24 px-4 sm:px-6 lg:px-8 space-y-8">
@@ -110,38 +168,16 @@ export default function CloudShare() {
       </div>
 
       <div className="space-y-4">
-        {isLoading && shares.length === 0 ? (
-          <div className="bg-[var(--bg-surface)] rounded-[32px] border border-[var(--border-color)] p-32 text-center animate-pulse">
-            <Loader2 className="animate-spin mx-auto mb-4 text-blue-500" size={32} />
-            <p className="text-[var(--text-secondary)] text-sm italic font-mono uppercase tracking-widest">
-              正在同步数据...
-            </p>
-          </div>
-        ) : filteredShares.length === 0 ? (
-          <div className="bg-white/5 rounded-[32px] border border-white/5 p-32 text-center">
-            <AlertCircle className="mx-auto mb-4 text-white/10" size={48} />
-            <p className="text-white/30 font-medium">未找到匹配的分享项</p>
-            <button
-              type="button"
-              onClick={() => setSearchQuery("")}
-              className="mt-4 text-blue-500 text-sm underline"
-            >
-              清除搜索
-            </button>
-          </div>
-        ) : (
-          filteredShares.map((share, index) => (
-            <ShareCard
-              key={share.id}
-              highlighted={highlightedId === share.id}
-              index={index}
-              share={share}
-              onCopyLink={copyLink}
-              onDelete={deleteShare}
-              onEdit={setEditingShare}
-            />
-          ))
-        )}
+        <ShareListState
+          isLoading={isLoading}
+          shares={shares}
+          filteredShares={filteredShares}
+          onClearSearch={() => setSearchQuery("")}
+          highlightedId={highlightedId}
+          onCopyLink={copyLink}
+          onDelete={deleteShare}
+          onEdit={setEditingShare}
+        />
       </div>
 
       <AnimatePresence>

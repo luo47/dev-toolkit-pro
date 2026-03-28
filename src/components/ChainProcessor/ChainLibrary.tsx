@@ -85,9 +85,7 @@ export default function ChainLibrary({
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="text-sm font-bold text-[var(--text-primary)] truncate">
-                      {chain.name}
-                    </h4>
+                    <h4 className="text-sm font-bold text-[var(--text-primary)] truncate">{chain.name}</h4>
                   </div>
                   <p className="text-[10px] text-[var(--text-secondary)]">
                     {chain.steps.length} 个步骤 · {new Date(chain.createdAt).toLocaleString()}

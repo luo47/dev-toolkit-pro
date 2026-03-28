@@ -50,8 +50,7 @@ type TagRow = {
   tags: string | null;
 };
 
-const getErrorMessage = (error: unknown, fallback: string) =>
-  error instanceof Error ? error.message : fallback;
+const getErrorMessage = (error: unknown, fallback: string) => (error instanceof Error ? error.message : fallback);
 
 const getSnippetBaseQuery = (userId: string | null) =>
   `SELECT * FROM code_snippets WHERE (user_id = 'system' ${userId ? "OR user_id = ?" : ""})`;
@@ -158,7 +157,7 @@ const applyCopyCountDelta = async (c: AppContext, body: SnippetUpdateBody, id: s
   return body.title === undefined && body.code === undefined;
 };
 
-export const registerSnippetsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
+const registerSnippetCrudRoutes = (app: Hono<{ Bindings: Bindings }>) => {
   app.get("/api/snippets", async (c) => {
     const userId = await getUserFromSession(c);
     const url = new URL(c.req.url);
@@ -239,9 +238,7 @@ export const registerSnippetsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
     const id = c.req.param("id");
     try {
       const body = (await c.req.json()) as SnippetUpdateBody;
-      const existing = await c.env.DB.prepare("SELECT * FROM code_snippets WHERE id = ?")
-        .bind(id)
-        .first<SnippetRow>();
+      const existing = await c.env.DB.prepare("SELECT * FROM code_snippets WHERE id = ?").bind(id).first<SnippetRow>();
       if (!existing) return c.json({ error: "Snippet not found" }, 404);
 
       if (await applyCopyCountDelta(c, body, id)) return c.json({ success: true });
@@ -257,9 +254,7 @@ export const registerSnippetsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
           .run();
       }
 
-      const updated = await c.env.DB.prepare("SELECT * FROM code_snippets WHERE id = ?")
-        .bind(id)
-        .first<SnippetRow>();
+      const updated = await c.env.DB.prepare("SELECT * FROM code_snippets WHERE id = ?").bind(id).first<SnippetRow>();
       return c.json(parseSnippetRow(updated));
     } catch (error) {
       return c.json({ success: false, error: getErrorMessage(error, "Database error") }, 500);
@@ -271,19 +266,18 @@ export const registerSnippetsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
     if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
     try {
-      const result = await c.env.DB.prepare(
-        "DELETE FROM code_snippets WHERE id = ? AND user_id = ?",
-      )
+      const result = await c.env.DB.prepare("DELETE FROM code_snippets WHERE id = ? AND user_id = ?")
         .bind(c.req.param("id"), userId)
         .run();
-      if (result.meta.changes === 0)
-        return c.json({ error: "Snippet not found or unauthorized" }, 404);
+      if (result.meta.changes === 0) return c.json({ error: "Snippet not found or unauthorized" }, 404);
       return c.json({ success: true });
     } catch {
       return c.json({ success: false, error: "Database error" }, 500);
     }
   });
+};
 
+const registerSnippetMetadataRoutes = (app: Hono<{ Bindings: Bindings }>) => {
   app.get("/api/snippets/data/languages", async (c) => {
     const userId = await getUserFromSession(c);
     try {
@@ -318,4 +312,9 @@ export const registerSnippetsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
       return c.json({ success: false, error: "Database error" }, 500);
     }
   });
+};
+
+export const registerSnippetsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
+  registerSnippetCrudRoutes(app);
+  registerSnippetMetadataRoutes(app);
 };

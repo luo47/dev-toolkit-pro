@@ -92,13 +92,7 @@ app.get("/api/auth/github/callback", async (c) => {
          name = excluded.name,
          avatar_url = excluded.avatar_url`,
     )
-      .bind(
-        userId,
-        githubUser.id,
-        githubUser.login,
-        githubUser.name || "",
-        githubUser.avatar_url || "",
-      )
+      .bind(userId, githubUser.id, githubUser.login, githubUser.name || "", githubUser.avatar_url || "")
       .run();
 
     const sessionId = crypto.randomUUID();
@@ -213,9 +207,7 @@ export default {
 
     if (match && request.method === "GET") {
       try {
-        const existing = await env.DB.prepare("SELECT * FROM shares WHERE id = ?")
-          .bind(match[1])
-          .first();
+        const existing = await env.DB.prepare("SELECT * FROM shares WHERE id = ?").bind(match[1]).first();
         if (!existing) {
           return new Response("Content Lost or Invalid ID", {
             status: 404,
@@ -233,10 +225,7 @@ export default {
             },
           });
         }
-        return Response.redirect(
-          `${env.FRONTEND_URL || url.origin}/share-preview/${match[1]}`,
-          302,
-        );
+        return Response.redirect(`${env.FRONTEND_URL || url.origin}/share-preview/${match[1]}`, 302);
       } catch (error) {
         console.error("CRITICAL: Share system failure:", error);
       }

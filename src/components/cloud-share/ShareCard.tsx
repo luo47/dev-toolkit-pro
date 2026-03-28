@@ -25,14 +25,7 @@ const getShareTitle = (share: ShareContent) => {
   return share.content?.slice(0, 40) || "文本片段";
 };
 
-const ShareCard: React.FC<ShareCardProps> = ({
-  highlighted,
-  index,
-  share,
-  onCopyLink,
-  onDelete,
-  onEdit,
-}) => {
+const ShareCard: React.FC<ShareCardProps> = ({ highlighted, index, share, onCopyLink, onDelete, onEdit }) => {
   return (
     <motion.div
       key={share.id}

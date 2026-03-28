@@ -4,6 +4,8 @@ import type React from "react";
 interface IOSectionProps {
   input: string;
   output: string;
+  inputId: string;
+  outputId: string;
   error: { stepId: string; message: string } | null;
   isDragging: boolean;
   copied: boolean;
@@ -22,6 +24,8 @@ interface IOSectionProps {
 export default function IOSection({
   input,
   output,
+  inputId,
+  outputId,
   error,
   isDragging,
   copied,
@@ -36,15 +40,47 @@ export default function IOSection({
   onCopyOutput,
   children,
 }: IOSectionProps) {
+  const renderSectionLabel = (id: string, icon: React.ReactNode, label: string) => (
+    <label htmlFor={id} className="text-sm font-medium text-[var(--text-secondary)] flex items-center gap-2">
+      {icon}
+      {label}
+    </label>
+  );
+
+  const renderOutputActions = () => (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={onExportOutput}
+        disabled={!output}
+        className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--hover-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg text-xs font-medium transition-all disabled:opacity-50"
+        title="导出为文件"
+      >
+        <Download className="w-3.5 h-3.5" />
+        导出结果
+      </button>
+      <button
+        type="button"
+        onClick={onCopyOutput}
+        disabled={!output}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+          copied
+            ? "bg-green-500/10 text-green-500"
+            : "bg-[var(--hover-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50"
+        }`}
+      >
+        {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+        {copied ? "已复制" : "复制结果"}
+      </button>
+    </div>
+  );
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Column 1: Input */}
       <div className="flex flex-col gap-3 h-[calc(100vh-240px)] min-h-[450px]">
         <div className="flex items-center justify-between shrink-0">
-          <label className="text-sm font-medium text-[var(--text-secondary)] flex items-center gap-2">
-            <Settings2 className="w-4 h-4" />
-            原始输入
-          </label>
+          {renderSectionLabel(inputId, <Settings2 className="w-4 h-4" />, "原始输入")}
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -71,13 +107,15 @@ export default function IOSection({
             </label>
           </div>
         </div>
-        <div
+        <fieldset
           className={`relative group flex-1 rounded-2xl transition-all ${isDragging ? "ring-2 ring-[var(--accent-color)] ring-offset-2 ring-offset-[var(--bg-main)]" : ""}`}
           onDragOver={onDragOver}
           onDragLeave={onDragLeave}
           onDrop={onDrop}
+          aria-label="原始输入拖放区域"
         >
           <textarea
+            id={inputId}
             value={input}
             onChange={(e) => onInputChange(e.target.value)}
             onPaste={onPaste}
@@ -90,7 +128,7 @@ export default function IOSection({
               <p className="text-sm font-bold text-[var(--accent-color)]">松开鼠标以上传文件</p>
             </div>
           )}
-        </div>
+        </fieldset>
       </div>
 
       {/* Column 2: Steps (Filled by parent) */}
@@ -99,37 +137,11 @@ export default function IOSection({
       {/* Column 3: Output */}
       <div className="flex flex-col gap-3 h-[calc(100vh-240px)] min-h-[450px]">
         <div className="flex items-center justify-between shrink-0">
-          <label className="text-sm font-medium text-[var(--text-secondary)] flex items-center gap-2">
-            <Play className="w-4 h-4" />
-            处理结果
-          </label>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onExportOutput}
-              disabled={!output}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--hover-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg text-xs font-medium transition-all disabled:opacity-50"
-              title="导出为文件"
-            >
-              <Download className="w-3.5 h-3.5" />
-              导出结果
-            </button>
-            <button
-              type="button"
-              onClick={onCopyOutput}
-              disabled={!output}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                copied
-                  ? "bg-green-500/10 text-green-500"
-                  : "bg-[var(--hover-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] disabled:opacity-50"
-              }`}
-            >
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              {copied ? "已复制" : "复制结果"}
-            </button>
-          </div>
+          {renderSectionLabel(outputId, <Play className="w-4 h-4" />, "处理结果")}
+          {renderOutputActions()}
         </div>
         <textarea
+          id={outputId}
           readOnly
           value={output}
           placeholder="处理后的结果将显示在这里..."

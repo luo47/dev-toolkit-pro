@@ -17,6 +17,9 @@ export default function Login({ onLogin, onClose }: LoginProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [twoFactorCode, setTwoFactorCode] = useState("");
+  const usernameId = "login-username";
+  const passwordId = "login-password";
+  const twoFactorId = "login-2fa-code";
 
   const handleNextStep = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,9 +84,7 @@ export default function Login({ onLogin, onClose }: LoginProps) {
             {step === "credentials" ? "欢迎回来" : "安全验证"}
           </h2>
           <p className="text-[var(--text-secondary)] text-sm mt-2 text-center">
-            {step === "credentials"
-              ? "登录以解锁高级开发者工具和进阶功能。"
-              : "请输入发送至您设备的 6 位验证码。"}
+            {step === "credentials" ? "登录以解锁高级开发者工具和进阶功能。" : "请输入发送至您设备的 6 位验证码。"}
           </p>
         </div>
 
@@ -103,7 +104,7 @@ export default function Login({ onLogin, onClose }: LoginProps) {
                 onClick={() => handleSocialLogin("Google")}
                 className="flex items-center justify-center gap-2 bg-[var(--bg-input)] border border-[var(--border-color)] hover:bg-[var(--hover-color)] text-[var(--text-primary)] py-2.5 rounded-xl transition-all text-sm font-medium"
               >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <svg aria-hidden="true" focusable="false" className="w-4 h-4" viewBox="0 0 24 24">
                   <path
                     fill="currentColor"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -130,18 +131,20 @@ export default function Login({ onLogin, onClose }: LoginProps) {
                 <div className="w-full border-t border-[var(--border-color)]"></div>
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-[var(--bg-surface)] px-2 text-[var(--text-secondary)]">
-                  或使用账号登录
-                </span>
+                <span className="bg-[var(--bg-surface)] px-2 text-[var(--text-secondary)]">或使用账号登录</span>
               </div>
             </div>
 
             <form onSubmit={handleNextStep} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider mb-2">
+                <label
+                  htmlFor={usernameId}
+                  className="block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider mb-2"
+                >
                   用户名
                 </label>
                 <input
+                  id={usernameId}
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -152,11 +155,15 @@ export default function Login({ onLogin, onClose }: LoginProps) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider mb-2">
+                <label
+                  htmlFor={passwordId}
+                  className="block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider mb-2"
+                >
                   密码
                 </label>
                 <div className="relative">
                   <input
+                    id={passwordId}
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -180,11 +187,15 @@ export default function Login({ onLogin, onClose }: LoginProps) {
           <div className="animate-in fade-in slide-in-from-left-4 duration-300">
             <form onSubmit={handleFinalSubmit} className="space-y-6">
               <div>
-                <label className="block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider mb-4 text-center">
+                <label
+                  htmlFor={twoFactorId}
+                  className="block text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider mb-4 text-center"
+                >
                   双重身份验证 (2FA)
                 </label>
                 <div className="flex justify-center gap-2">
                   <input
+                    id={twoFactorId}
                     type="text"
                     maxLength={6}
                     value={twoFactorCode}
@@ -219,9 +230,7 @@ export default function Login({ onLogin, onClose }: LoginProps) {
         )}
 
         <div className="mt-8 text-center">
-          <p className="text-[var(--text-secondary)] text-[10px]">
-            登录即表示您同意我们的服务条款和隐私政策。
-          </p>
+          <p className="text-[var(--text-secondary)] text-[10px]">登录即表示您同意我们的服务条款和隐私政策。</p>
         </div>
       </div>
     </div>

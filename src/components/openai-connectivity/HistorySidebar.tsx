@@ -64,9 +64,7 @@ export default function HistorySidebar({
                   </p>
                   <div className="flex items-center justify-between">
                     <div className="flex flex-col gap-0.5">
-                      <span className="text-[9px] font-mono text-[var(--text-secondary)]">
-                        {maskToken(item.token)}
-                      </span>
+                      <span className="text-[9px] font-mono text-[var(--text-secondary)]">{maskToken(item.token)}</span>
                       {item.customModel && (
                         <div className="flex items-center gap-1 text-[8px] text-[var(--accent-color)] opacity-70 font-medium">
                           <Cpu className="w-2.5 h-2.5" />

@@ -37,6 +37,10 @@ export default function SnippetEditorModal({
   onUpdateFormData,
 }: SnippetEditorModalProps) {
   const filteredGroups = getFilteredGroups(langSearch);
+  const titleId = "snippet-editor-title";
+  const languageTriggerId = "snippet-editor-language";
+  const codeId = "snippet-editor-code";
+  const tagsId = "snippet-editor-tags";
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 animate-in fade-in duration-300">
@@ -60,21 +64,26 @@ export default function SnippetEditorModal({
         <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1">
+              <label htmlFor={titleId} className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1">
                 片段标题
               </label>
               <input
+                id={titleId}
                 value={formData.title}
                 onChange={(e) => onUpdateFormData({ title: e.target.value })}
                 className="w-full h-12 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl px-4 text-sm outline-none focus:ring-2 focus:ring-blue-500/30 transition-all"
               />
             </div>
             <div className="space-y-1 relative z-[60]">
-              <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1">
+              <label
+                htmlFor={languageTriggerId}
+                className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1"
+              >
                 语言
               </label>
               <div className="relative" ref={langRef}>
                 <button
+                  id={languageTriggerId}
                   type="button"
                   onClick={() => onLangOpenChange(!isLangOpen)}
                   className="w-full h-12 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl px-4 text-sm outline-none cursor-pointer flex justify-between items-center"
@@ -128,10 +137,11 @@ export default function SnippetEditorModal({
             </div>
           </div>
           <div className="space-y-1 relative z-[10]">
-            <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1">
+            <label htmlFor={codeId} className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1">
               代码内容 *
             </label>
             <textarea
+              id={codeId}
               ref={textareaRef}
               value={formData.code}
               onChange={(e) => onUpdateFormData({ code: e.target.value })}
@@ -139,10 +149,11 @@ export default function SnippetEditorModal({
             />
           </div>
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1">
+            <label htmlFor={tagsId} className="text-[10px] font-bold text-[var(--text-secondary)] uppercase px-1">
               标签 (逗号分隔)
             </label>
             <input
+              id={tagsId}
               value={formData.tags}
               onChange={(e) => onUpdateFormData({ tags: e.target.value })}
               className="w-full h-12 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl px-4 text-sm outline-none"

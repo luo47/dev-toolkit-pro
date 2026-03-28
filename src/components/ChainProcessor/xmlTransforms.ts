@@ -35,8 +35,7 @@ const parseMarkup = (input: string): ParsedMarkup => {
   return { document: parser.parseFromString(input, "text/html"), isHtml: true };
 };
 
-const getTagName = (element: Element, isHtml: boolean) =>
-  isHtml ? element.tagName.toLowerCase() : element.tagName;
+const getTagName = (element: Element, isHtml: boolean) => (isHtml ? element.tagName.toLowerCase() : element.tagName);
 
 const appendAttributes = (element: Element) =>
   Array.from(element.attributes)
@@ -69,11 +68,7 @@ const formatElementNode = (
   return `${startTag}>${children}${closing}`;
 };
 
-const serializeElementNode = (
-  element: Element,
-  isHtml: boolean,
-  serializeNode: (node: Node) => string,
-) => {
+const serializeElementNode = (element: Element, isHtml: boolean, serializeNode: (node: Node) => string) => {
   const tagName = getTagName(element, isHtml);
   const startTag = `<${tagName}${appendAttributes(element)}`;
   if (element.childNodes.length === 0) {
@@ -98,19 +93,13 @@ const formatMarkupNode = (node: Node, isHtml: boolean, level = 0): string => {
 
 const serializeMarkupNode = (node: Node, isHtml: boolean): string => {
   if (node.nodeType === Node.ELEMENT_NODE) {
-    return serializeElementNode(node as Element, isHtml, (child) =>
-      serializeMarkupNode(child, isHtml),
-    );
+    return serializeElementNode(node as Element, isHtml, (child) => serializeMarkupNode(child, isHtml));
   }
   if (node.nodeType === Node.TEXT_NODE) return formatTextNode(node);
   return "";
 };
 
-const serializeDocumentChildren = (
-  document: Document,
-  selector: "head" | "body",
-  formatter: (node: Node) => string,
-) =>
+const serializeDocumentChildren = (document: Document, selector: "head" | "body", formatter: (node: Node) => string) =>
   Array.from(document[selector]?.childNodes || [])
     .map((node) => formatter(node))
     .join("");
@@ -172,8 +161,7 @@ const parseJsonToXmlOptions = (value: string) => {
 const renderJsonValue = (name: string, value: JsonValue, level = 0): string => {
   const indent = "  ".repeat(level);
   if (typeof value !== "object" || value === null) return `${indent}<${name}>${value}</${name}>`;
-  if (Array.isArray(value))
-    return value.map((item) => renderJsonValue(name, item, level)).join("\n");
+  if (Array.isArray(value)) return value.map((item) => renderJsonValue(name, item, level)).join("\n");
 
   const attrs = Object.entries(value)
     .filter(([key]) => key.startsWith("@"))
@@ -209,11 +197,7 @@ export const xmlToJson = (input: string) => {
   const xmlDoc = parser.parseFromString(input, "application/xml");
   if (xmlDoc.getElementsByTagName("parsererror").length > 0) throw new Error("无效的 XML 格式");
   if (!xmlDoc.documentElement) return "{}";
-  return JSON.stringify(
-    { [xmlDoc.documentElement.tagName]: nodeToJsonValue(xmlDoc.documentElement) },
-    null,
-    2,
-  );
+  return JSON.stringify({ [xmlDoc.documentElement.tagName]: nodeToJsonValue(xmlDoc.documentElement) }, null, 2);
 };
 
 export const jsonToXml = (input: string, value: string) => {

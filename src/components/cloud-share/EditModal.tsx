@@ -55,9 +55,7 @@ export default function EditModal({ share, onClose, onSuccess }: EditModalProps)
           <h2 className="text-xl font-bold flex items-center gap-3">
             <Edit3 className="text-[var(--accent-color)]" size={20} />
             <span className="text-[var(--text-primary)]">编辑内容</span>
-            <code className="text-xs font-mono ml-2 text-[var(--text-secondary)] opacity-40">
-              ID: {share.id}
-            </code>
+            <code className="text-xs font-mono ml-2 text-[var(--text-secondary)] opacity-40">ID: {share.id}</code>
           </h2>
           <button
             type="button"

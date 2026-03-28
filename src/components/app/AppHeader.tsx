@@ -102,9 +102,7 @@ function HeaderSearch({
                         <tool.icon className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--accent-color)]" />
                       </div>
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-[var(--text-primary)]">
-                          {tool.name}
-                        </div>
+                        <div className="text-sm font-medium text-[var(--text-primary)]">{tool.name}</div>
                         <div className="text-[10px] text-[var(--text-secondary)]">点击立即使用</div>
                       </div>
                       {tool.isPremium && (
@@ -165,9 +163,7 @@ function HeaderUserArea({
       {user && (
         <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-[var(--accent-color)]/10 border border-[var(--accent-color)]/20 rounded-full">
           <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent-color)] animate-pulse" />
-          <span className="text-[10px] font-bold text-[var(--accent-color)] uppercase tracking-widest">
-            高级会员
-          </span>
+          <span className="text-[10px] font-bold text-[var(--accent-color)] uppercase tracking-widest">高级会员</span>
         </div>
       )}
       {user ? (
@@ -187,11 +183,7 @@ function HeaderUserArea({
             title={`${user.name || user.username} (退出)`}
           >
             {user.avatar_url ? (
-              <img
-                src={user.avatar_url}
-                alt="avatar"
-                className="w-8 h-8 rounded-full border border-white/20"
-              />
+              <img src={user.avatar_url} alt="avatar" className="w-8 h-8 rounded-full border border-white/20" />
             ) : (
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#4285f4] to-[#9b72cb] flex items-center justify-center text-white text-xs font-bold border border-white/20">
                 {(user.name || user.username).charAt(0).toUpperCase()}
@@ -230,9 +222,7 @@ export default function AppHeader(props: AppHeaderProps) {
       <MobileSidebarToggle isSidebarOpen={isSidebarOpen} onToggleSidebar={onToggleSidebar} />
 
       <div className="h-16 flex items-center border-b border-[var(--border-color)] sticky top-0 bg-[var(--bg-main)]/80 backdrop-blur-md z-30">
-        <div
-          className={`${titleClassName} mx-auto w-full px-4 lg:px-8 flex items-center justify-between`}
-        >
+        <div className={`${titleClassName} mx-auto w-full px-4 lg:px-8 flex items-center justify-between`}>
           <div className="flex items-center gap-4 lg:gap-8 flex-1 overflow-hidden">
             {!isSidebarOpen && <div className="w-10 lg:hidden shrink-0" />}
 
@@ -244,12 +234,8 @@ export default function AppHeader(props: AppHeaderProps) {
               <div className="hidden sm:flex w-8 h-8 rounded-lg bg-gradient-to-br from-[#4285f4] to-[#9b72cb] items-center justify-center text-white shadow-lg shadow-blue-500/10">
                 <Cloud className="w-5 h-5" />
               </div>
-              <span className="text-base lg:text-lg font-bold tracking-tight truncate">
-                浮云工具箱
-              </span>
-              <span className="hidden sm:inline text-[var(--text-secondary)] text-sm font-normal">
-                v1.0
-              </span>
+              <span className="text-base lg:text-lg font-bold tracking-tight truncate">浮云工具箱</span>
+              <span className="hidden sm:inline text-[var(--text-secondary)] text-sm font-normal">v1.0</span>
             </button>
 
             <HeaderSearch

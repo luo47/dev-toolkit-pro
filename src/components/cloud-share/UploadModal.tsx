@@ -42,10 +42,11 @@ function FileUploadArea({
   onFileInputChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
   return (
-    <div
+    <fieldset
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
+      aria-label="文件上传拖放区域"
       className={`min-h-[300px] border-2 border-dashed rounded-[32px] flex flex-col items-center justify-center p-8 transition-all ${isDragover ? "border-emerald-500 bg-emerald-500/5" : "border-[var(--border-color)] hover:border-emerald-500/30"}`}
     >
       {selectedFiles.length > 0 ? (
@@ -59,11 +60,7 @@ function FileUploadArea({
                 已选资产
               </p>
             </div>
-            <button
-              type="button"
-              onClick={onClearFiles}
-              className="text-xs font-bold text-red-500 underline"
-            >
+            <button type="button" onClick={onClearFiles} className="text-xs font-bold text-red-500 underline">
               清除
             </button>
           </div>
@@ -74,9 +71,7 @@ function FileUploadArea({
                 className="flex justify-between p-3 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl text-xs font-mono"
               >
                 <span className="truncate text-[var(--text-primary)] opacity-70">{file.path}</span>
-                <span className="text-[var(--text-secondary)] opacity-40 ml-4">
-                  {formatSize(file.size)}
-                </span>
+                <span className="text-[var(--text-secondary)] opacity-40 ml-4">{formatSize(file.size)}</span>
               </div>
             ))}
           </div>
@@ -84,9 +79,7 @@ function FileUploadArea({
       ) : (
         <>
           <Upload className="text-[var(--text-secondary)] opacity-20 mb-4" size={48} />
-          <p className="text-[var(--text-secondary)] opacity-60 text-sm mb-6">
-            释放资产以进行云同步
-          </p>
+          <p className="text-[var(--text-secondary)] opacity-60 text-sm mb-6">释放资产以进行云同步</p>
           <div className="flex gap-4">
             <button
               type="button"
@@ -105,13 +98,7 @@ function FileUploadArea({
           </div>
         </>
       )}
-      <input
-        type="file"
-        multiple
-        ref={fileInputRef}
-        onChange={onFileInputChange}
-        className="hidden"
-      />
+      <input type="file" multiple ref={fileInputRef} onChange={onFileInputChange} className="hidden" />
       <input
         type="file"
         multiple
@@ -120,7 +107,7 @@ function FileUploadArea({
         onChange={onFileInputChange}
         className="hidden"
       />
-    </div>
+    </fieldset>
   );
 }
 
@@ -175,7 +162,9 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
 
     const formData = new FormData();
     formData.append("name", shareName || selectedFiles[0].name);
-    selectedFiles.forEach((file) => formData.append("files", file.raw, file.path));
+    selectedFiles.forEach((file) => {
+      formData.append("files", file.raw, file.path);
+    });
 
     const xhr = new XMLHttpRequest();
     xhr.upload.onprogress = (event) => {

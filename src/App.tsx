@@ -22,12 +22,45 @@ const getToolIdFromLocation = () => {
   return (path === "" ? "home" : path) as ToolId;
 };
 
-const getContentWidthClass = (activeTool: ToolId) =>
-  WIDE_TOOLS.has(activeTool) ? "max-w-[1400px]" : "max-w-[840px]";
+const getContentWidthClass = (activeTool: ToolId) => (WIDE_TOOLS.has(activeTool) ? "max-w-[1400px]" : "max-w-[840px]");
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-20">
     <div className="w-10 h-10 border-4 border-[var(--accent-color)] border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
+
+const ToolContent = ({ activeTool }: { activeTool: ToolId }) => (
+  <Suspense fallback={<LoadingFallback />}>
+    {activeTool === "chain-processor" && <ChainProcessor />}
+    {activeTool === "qrcode" && <QRCodeTool />}
+    {activeTool === "code-snippets" && <CodeSnippetsTool />}
+    {activeTool === "cloud-share" && <CloudShare />}
+    {activeTool === "openai-api-tester" && <OpenAIConnectivityTool />}
+    {activeTool === "share-preview" && <SharePreview />}
+  </Suspense>
+);
+
+const AppFooter = () => (
+  <div className="py-2 bg-[var(--bg-main)]/80 backdrop-blur-md border-t border-[var(--border-color)] z-20">
+    <p className="text-center text-[10px] text-[var(--text-secondary)]">
+      浮云工具箱可以提供有用的工具，但某些高级功能可能需要登录。
+    </p>
+  </div>
+);
+
+const ActiveToolPanel = ({ activeTool }: { activeTool: ToolId }) => (
+  <div className="flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col">
+    <div className="mb-3 lg:mb-4">
+      <h2 className="text-xl md:text-2xl font-bold tracking-tight leading-tight">
+        {tools.find((tool) => tool.id === activeTool)?.name}
+      </h2>
+    </div>
+    <div
+      className={`flex-1 ${activeTool === "qrcode" || activeTool === "openai-api-tester" ? "" : "bg-[var(--bg-surface)] p-4 md:p-6 rounded-[24px] border border-[var(--border-color)] shadow-xl"}`}
+    >
+      <ToolContent activeTool={activeTool} />
+    </div>
   </div>
 );
 
@@ -75,9 +108,7 @@ export default function App() {
         : `浮云工具箱 - ${tools.find((tool) => tool.id === activeTool)?.name ?? "工具"}`;
   }, [activeTool]);
 
-  const filteredTools = tools.filter((tool) =>
-    tool.name.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const filteredTools = tools.filter((tool) => tool.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const closeLogoutConfirm = () => {
     setShowLogoutConfirm(false);
@@ -122,6 +153,23 @@ export default function App() {
   };
 
   const contentWidthClass = getContentWidthClass(activeTool);
+
+  const renderMainContent = () => {
+    if (activeTool === "home") {
+      return (
+        <div className="flex-1 flex flex-col pb-20">
+          <Home
+            onSelectTool={(id) => handleToolSelect(id as ToolId)}
+            isLoggedIn={!!user}
+            onOpenLogin={() => setShowLogin(true)}
+            searchQuery={searchQuery}
+          />
+        </div>
+      );
+    }
+
+    return <ActiveToolPanel activeTool={activeTool} />;
+  };
 
   return (
     <div className="min-h-screen bg-[var(--bg-main)] text-[var(--text-primary)] flex font-sans transition-colors duration-300">
@@ -183,47 +231,12 @@ export default function App() {
         />
 
         <div className="flex-1 overflow-y-auto w-full">
-          <div
-            className={`${contentWidthClass} mx-auto w-full px-4 lg:px-8 py-4 lg:py-6 flex flex-col min-h-full`}
-          >
-            {activeTool === "home" ? (
-              <div className="flex-1 flex flex-col pb-20">
-                <Home
-                  onSelectTool={(id) => handleToolSelect(id as ToolId)}
-                  isLoggedIn={!!user}
-                  onOpenLogin={() => setShowLogin(true)}
-                  searchQuery={searchQuery}
-                />
-              </div>
-            ) : (
-              <div className="flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col">
-                <div className="mb-3 lg:mb-4">
-                  <h2 className="text-xl md:text-2xl font-bold tracking-tight leading-tight">
-                    {tools.find((tool) => tool.id === activeTool)?.name}
-                  </h2>
-                </div>
-                <div
-                  className={`flex-1 ${activeTool === "qrcode" || activeTool === "openai-api-tester" ? "" : "bg-[var(--bg-surface)] p-4 md:p-6 rounded-[24px] border border-[var(--border-color)] shadow-xl"}`}
-                >
-                  <Suspense fallback={<LoadingFallback />}>
-                    {activeTool === "chain-processor" && <ChainProcessor />}
-                    {activeTool === "qrcode" && <QRCodeTool />}
-                    {activeTool === "code-snippets" && <CodeSnippetsTool />}
-                    {activeTool === "cloud-share" && <CloudShare />}
-                    {activeTool === "openai-api-tester" && <OpenAIConnectivityTool />}
-                    {activeTool === "share-preview" && <SharePreview />}
-                  </Suspense>
-                </div>
-              </div>
-            )}
+          <div className={`${contentWidthClass} mx-auto w-full px-4 lg:px-8 py-4 lg:py-6 flex flex-col min-h-full`}>
+            {renderMainContent()}
           </div>
         </div>
 
-        <div className="py-2 bg-[var(--bg-main)]/80 backdrop-blur-md border-t border-[var(--border-color)] z-20">
-          <p className="text-center text-[10px] text-[var(--text-secondary)]">
-            浮云工具箱可以提供有用的工具，但某些高级功能可能需要登录。
-          </p>
-        </div>
+        <AppFooter />
       </main>
 
       <AppOverlays loading={loading} toast={toast} />

@@ -31,9 +31,7 @@ export default function ShareConfirmDialog({
         </div>
         <div>
           <h4 className="text-base font-bold text-[var(--text-primary)] mb-1">该片段已分享过</h4>
-          <p className="text-xs text-[var(--text-secondary)]">
-            您可以选择更新云端内容，或者仅复制现有链接。
-          </p>
+          <p className="text-xs text-[var(--text-secondary)]">您可以选择更新云端内容，或者仅复制现有链接。</p>
         </div>
         <div className="flex flex-col w-full gap-2 mt-2">
           <button

@@ -48,14 +48,12 @@ export const createIdleState = (title: string): TestState => ({
   description: "",
 });
 
-export const maskToken = (token: string) =>
-  token.length <= 10 ? token : `${token.slice(0, 6)}...${token.slice(-4)}`;
+export const maskToken = (token: string) => (token.length <= 10 ? token : `${token.slice(0, 6)}...${token.slice(-4)}`);
 
 const asObject = (value: JsonValue | undefined): JsonObject | undefined =>
   value && typeof value === "object" && !Array.isArray(value) ? value : undefined;
 
-const asArray = (value: JsonValue | undefined): JsonValue[] | undefined =>
-  Array.isArray(value) ? value : undefined;
+const asArray = (value: JsonValue | undefined): JsonValue[] | undefined => (Array.isArray(value) ? value : undefined);
 
 const readObjectText = (value: JsonValue | undefined) => {
   const objectValue = asObject(value);
@@ -160,17 +158,10 @@ export const readHistory = () => {
   }
 };
 
-export const buildHistory = (
-  history: HistoryItem[],
-  url: string,
-  token: string,
-  customModel?: string,
-) =>
+export const buildHistory = (history: HistoryItem[], url: string, token: string, customModel?: string) =>
   [
     { url, token, customModel, timestamp: Date.now() },
-    ...history.filter(
-      (item) => item.url !== url || item.token !== token || item.customModel !== customModel,
-    ),
+    ...history.filter((item) => item.url !== url || item.token !== token || item.customModel !== customModel),
   ].slice(0, 10);
 
 export const persistHistory = (history: HistoryItem[]) => {
@@ -262,12 +253,7 @@ const buildErrorState = (
   requestedModel,
 });
 
-const buildChatState = async (
-  normalizedBase: string,
-  url: string,
-  token: string,
-  selectedModel: string,
-) => {
+const buildChatState = async (normalizedBase: string, url: string, token: string, selectedModel: string) => {
   const chatPayload = {
     model: selectedModel,
     messages: [{ role: "user", content: "你好" }],
@@ -291,12 +277,7 @@ const buildChatState = async (
       );
 };
 
-const buildResponsesState = async (
-  normalizedBase: string,
-  url: string,
-  token: string,
-  selectedModel: string,
-) => {
+const buildResponsesState = async (normalizedBase: string, url: string, token: string, selectedModel: string) => {
   const responsesPayload = {
     model: selectedModel,
     input: "你好",

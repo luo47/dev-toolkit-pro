@@ -44,6 +44,8 @@ export default function JsonCsvConverter() {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const [mode, setMode] = useState<"json-to-csv" | "csv-to-json">("json-to-csv");
+  const inputId = "json-csv-converter-input";
+  const outputId = "json-csv-converter-output";
 
   const flattenObject = (obj: JsonObject, prefix = ""): Record<string, JsonValue> => {
     return Object.keys(obj).reduce<Record<string, JsonValue>>((acc, k) => {
@@ -66,8 +68,7 @@ export default function JsonCsvConverter() {
     try {
       const json = JSON.parse(input) as JsonValue;
       let data = (Array.isArray(json) ? json : [json]).filter(
-        (item): item is JsonObject =>
-          typeof item === "object" && item !== null && !Array.isArray(item),
+        (item): item is JsonObject => typeof item === "object" && item !== null && !Array.isArray(item),
       );
 
       if (data.length === 0) {
@@ -211,7 +212,10 @@ export default function JsonCsvConverter() {
 
       <div className="space-y-2 relative group">
         <div className="flex items-center justify-between px-1">
-          <label className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
+          <label
+            htmlFor={inputId}
+            className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider"
+          >
             {mode === "json-to-csv" ? "输入 JSON (对象或数组)" : "输入 CSV 数据"}
           </label>
           <button
@@ -223,6 +227,7 @@ export default function JsonCsvConverter() {
           </button>
         </div>
         <textarea
+          id={inputId}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           className="w-full h-64 p-5 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-[24px] font-mono text-sm text-[var(--text-primary)] focus:ring-2 focus:ring-[var(--accent-color)] focus:border-transparent outline-none transition-all resize-none"
@@ -250,7 +255,10 @@ export default function JsonCsvConverter() {
       {output && (
         <div className="space-y-2">
           <div className="flex items-center justify-between px-1">
-            <label className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
+            <label
+              htmlFor={outputId}
+              className="text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider"
+            >
               {mode === "json-to-csv" ? "CSV 结果" : "JSON 结果"}
             </label>
             <div className="flex gap-2">
@@ -268,15 +276,14 @@ export default function JsonCsvConverter() {
                 className="p-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-full hover:bg-[var(--hover-color)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 title="复制到剪贴板"
               >
-                {copied ? (
-                  <Check className="w-4 h-4 text-green-400" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
+                {copied ? <Check className="w-4 h-4 text-green-400" /> : <Copy className="w-4 h-4" />}
               </button>
             </div>
           </div>
-          <pre className="p-5 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-[24px] font-mono text-sm text-[var(--text-primary)] overflow-x-auto custom-scrollbar">
+          <pre
+            id={outputId}
+            className="p-5 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-[24px] font-mono text-sm text-[var(--text-primary)] overflow-x-auto custom-scrollbar"
+          >
             {output}
           </pre>
         </div>

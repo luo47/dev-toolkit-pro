@@ -31,10 +31,9 @@ type ToggleFavoriteBody = {
   isFavorite?: boolean;
 };
 
-const getErrorMessage = (error: unknown, fallback: string) =>
-  error instanceof Error ? error.message : fallback;
+const getErrorMessage = (error: unknown, fallback: string) => (error instanceof Error ? error.message : fallback);
 
-export const registerChainsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
+const registerListChainsRoute = (app: Hono<{ Bindings: Bindings }>) => {
   app.get("/api/chains", async (c) => {
     const userId = await getUserFromSession(c);
 
@@ -74,7 +73,9 @@ export const registerChainsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
       return c.json({ success: false, error: "Database error" }, 500);
     }
   });
+};
 
+const registerCreateChainRoute = (app: Hono<{ Bindings: Bindings }>) => {
   app.post("/api/chains", async (c) => {
     const userId = await getUserFromSession(c);
     if (!userId) return c.json({ error: "Unauthorized" }, 401);
@@ -82,8 +83,7 @@ export const registerChainsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
     try {
       const body = (await c.req.json()) as SaveChainBody;
       const { name, steps } = body;
-      if (!name || !steps || !Array.isArray(steps))
-        return c.json({ error: "无效的处理链数据" }, 400);
+      if (!name || !steps || !Array.isArray(steps)) return c.json({ error: "无效的处理链数据" }, 400);
       if (name.length > 100) return c.json({ error: "名称过长" }, 400);
       if (steps.length > 50) return c.json({ error: "处理步骤过多" }, 400);
 
@@ -100,9 +100,7 @@ export const registerChainsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
         .run();
 
       let dbId: string = crypto.randomUUID();
-      const existing = await c.env.DB.prepare(
-        `SELECT id FROM saved_chains WHERE user_id = ? AND content_md5 = ?`,
-      )
+      const existing = await c.env.DB.prepare(`SELECT id FROM saved_chains WHERE user_id = ? AND content_md5 = ?`)
         .bind(userId, contentMd5)
         .first<ExistingChainRow>();
 
@@ -125,7 +123,9 @@ export const registerChainsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
       return c.json({ success: false, error: getErrorMessage(error, "保存处理链失败") }, 500);
     }
   });
+};
 
+const registerDeleteChainRoute = (app: Hono<{ Bindings: Bindings }>) => {
   app.delete("/api/chains/:id", async (c) => {
     const userId = await getUserFromSession(c);
     if (!userId) return c.json({ error: "Unauthorized" }, 401);
@@ -139,7 +139,9 @@ export const registerChainsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
       return c.json({ success: false, error: "Database error" }, 500);
     }
   });
+};
 
+const registerToggleFavoriteRoute = (app: Hono<{ Bindings: Bindings }>) => {
   app.put("/api/chains/:id/favorite", async (c) => {
     const userId = await getUserFromSession(c);
     if (!userId) return c.json({ error: "Unauthorized" }, 401);
@@ -154,4 +156,11 @@ export const registerChainsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
       return c.json({ success: false, error: "Database error" }, 500);
     }
   });
+};
+
+export const registerChainsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
+  registerListChainsRoute(app);
+  registerCreateChainRoute(app);
+  registerDeleteChainRoute(app);
+  registerToggleFavoriteRoute(app);
 };

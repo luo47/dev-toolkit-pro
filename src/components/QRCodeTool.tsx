@@ -72,9 +72,9 @@ export default function QRCodeTool() {
     }
   };
 
-  const [history, setHistory] = useState<
-    { id: number; type: "generate" | "scan"; content: string; date: string }[]
-  >([]);
+  const [history, setHistory] = useState<{ id: number; type: "generate" | "scan"; content: string; date: string }[]>(
+    [],
+  );
 
   useEffect(() => {
     const saved = localStorage.getItem("qr_history");
@@ -86,9 +86,7 @@ export default function QRCodeTool() {
   }, [history]);
 
   const addToHistory = (type: "generate" | "scan", content: string) => {
-    setHistory((prev) =>
-      [{ id: Date.now(), type, content, date: new Date().toLocaleString() }, ...prev].slice(0, 5),
-    );
+    setHistory((prev) => [{ id: Date.now(), type, content, date: new Date().toLocaleString() }, ...prev].slice(0, 5));
   };
 
   const removeFromHistory = (id: number) => {
@@ -133,18 +131,9 @@ export default function QRCodeTool() {
 
           <div className="flex justify-center p-6 bg-white rounded-2xl border border-[var(--border-color)] shadow-inner">
             {text ? (
-              <QRCodeSVG
-                value={text}
-                size={200}
-                level="H"
-                includeMargin={true}
-                fgColor="#000000"
-                bgColor="#ffffff"
-              />
+              <QRCodeSVG value={text} size={200} level="H" includeMargin={true} fgColor="#000000" bgColor="#ffffff" />
             ) : (
-              <div className="w-[200px] h-[200px] flex items-center justify-center text-gray-300">
-                等待输入...
-              </div>
+              <div className="w-[200px] h-[200px] flex items-center justify-center text-gray-300">等待输入...</div>
             )}
           </div>
         </div>
@@ -168,23 +157,11 @@ export default function QRCodeTool() {
               <p className="text-sm font-medium text-[var(--text-primary)]">点击或拖拽图片到此处</p>
               <p className="text-xs text-[var(--text-secondary)] mt-1">支持粘贴剪贴板图片</p>
             </div>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={onFileChange}
-              accept="image/*"
-              className="hidden"
-            />
+            <input type="file" ref={fileInputRef} onChange={onFileChange} accept="image/*" className="hidden" />
           </button>
 
           <div className="text-center text-sm text-[var(--text-secondary)]">
-            {error ? (
-              <span className="text-red-500">{error}</span>
-            ) : scanResult ? (
-              scanResult
-            ) : (
-              "等待上传图片..."
-            )}
+            {error ? <span className="text-red-500">{error}</span> : scanResult ? scanResult : "等待上传图片..."}
           </div>
         </div>
       </div>

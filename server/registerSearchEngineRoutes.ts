@@ -19,18 +19,15 @@ type SearchEngineInput = {
   is_visible: boolean;
 };
 
-const getErrorMessage = (error: unknown, fallback: string) =>
-  error instanceof Error ? error.message : fallback;
+const getErrorMessage = (error: unknown, fallback: string) => (error instanceof Error ? error.message : fallback);
 
-export const registerSearchEngineRoutes = (app: Hono<{ Bindings: Bindings }>) => {
+const registerListSearchEngineRoute = (app: Hono<{ Bindings: Bindings }>) => {
   app.get("/api/search_engines", async (c) => {
     const userId = await getUserFromSession(c);
     if (!userId) return c.json({ success: true, data: [] });
 
     try {
-      const result = await c.env.DB.prepare(
-        "SELECT * FROM search_engines WHERE user_id = ? ORDER BY sort_order ASC",
-      )
+      const result = await c.env.DB.prepare("SELECT * FROM search_engines WHERE user_id = ? ORDER BY sort_order ASC")
         .bind(userId)
         .all<SearchEngineRow>();
       return c.json({
@@ -48,7 +45,9 @@ export const registerSearchEngineRoutes = (app: Hono<{ Bindings: Bindings }>) =>
       return c.json({ success: false, error: getErrorMessage(error, "Database error") }, 500);
     }
   });
+};
 
+const registerBatchSearchEngineRoute = (app: Hono<{ Bindings: Bindings }>) => {
   app.post("/api/search_engines/batch", async (c) => {
     const userId = await getUserFromSession(c);
     if (!userId) return c.json({ error: "Unauthorized" }, 401);
@@ -85,4 +84,9 @@ export const registerSearchEngineRoutes = (app: Hono<{ Bindings: Bindings }>) =>
       return c.json({ success: false, error: getErrorMessage(error, "Database error") }, 500);
     }
   });
+};
+
+export const registerSearchEngineRoutes = (app: Hono<{ Bindings: Bindings }>) => {
+  registerListSearchEngineRoute(app);
+  registerBatchSearchEngineRoute(app);
 };

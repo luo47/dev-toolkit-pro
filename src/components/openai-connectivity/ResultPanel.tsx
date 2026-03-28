@@ -28,8 +28,7 @@ export default function ResultPanel({
 
   const toneClass = {
     idle: "bg-[var(--bg-surface)] border-[var(--border-color)] opacity-60 grayscale hover:grayscale-0 hover:opacity-100",
-    loading:
-      "bg-[var(--accent-color)]/5 border-[var(--accent-color)]/30 ring-4 ring-[var(--accent-color)]/5",
+    loading: "bg-[var(--accent-color)]/5 border-[var(--accent-color)]/30 ring-4 ring-[var(--accent-color)]/5",
     success: "bg-emerald-500/5 border-emerald-500/30 shadow-lg shadow-emerald-500/5",
     error: "bg-red-500/5 border-red-500/30 shadow-lg shadow-red-500/5",
     warning: "bg-amber-500/5 border-amber-500/30 shadow-lg shadow-amber-500/5",
@@ -44,9 +43,7 @@ export default function ResultPanel({
               {displayTitle}
             </h3>
             {state.description && (
-              <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 truncate opacity-70">
-                {state.description}
-              </p>
+              <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 truncate opacity-70">{state.description}</p>
             )}
           </div>
           <div className="shrink-0 scale-90">

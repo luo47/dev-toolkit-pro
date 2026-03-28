@@ -43,20 +43,14 @@ const SnippetCard: React.FC<SnippetCardProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
-          <span className="text-[9px] text-[var(--text-secondary)] mr-1">
-            {snippet.copy_count || 0}
-          </span>
+          <span className="text-[9px] text-[var(--text-secondary)] mr-1">{snippet.copy_count || 0}</span>
           <button
             type="button"
             onClick={() => onCopy(snippet.id, snippet.code)}
             className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]"
             title="复制"
           >
-            {copiedId === snippet.id ? (
-              <Check size={14} className="text-green-400" />
-            ) : (
-              <Copy size={14} />
-            )}
+            {copiedId === snippet.id ? <Check size={14} className="text-green-400" /> : <Copy size={14} />}
           </button>
           <button
             type="button"

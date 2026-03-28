@@ -120,9 +120,7 @@ const executeJavaScript = (value: string, current: string) => {
   const inputData = current === "undefined" ? undefined : parseJsonInput(current);
   const fn = new Function("input", value);
   const result = fn(inputData);
-  return typeof result === "object" && result !== null
-    ? JSON.stringify(result, null, 2)
-    : String(result);
+  return typeof result === "object" && result !== null ? JSON.stringify(result, null, 2) : String(result);
 };
 
 const executeRegexReplace = (value: string, current: string) => {
@@ -133,10 +131,7 @@ const executeRegexReplace = (value: string, current: string) => {
   if (!options.pattern) return current;
   try {
     const regex = new RegExp(options.pattern, options.flags);
-    const replacement = options.replacement
-      .replace(/\\n/g, "\n")
-      .replace(/\\t/g, "\t")
-      .replace(/\\r/g, "\r");
+    const replacement = options.replacement.replace(/\\n/g, "\n").replace(/\\t/g, "\t").replace(/\\r/g, "\r");
     return current.replace(regex, replacement);
   } catch (error) {
     throw new Error(`正则错误: ${error instanceof Error ? error.message : String(error)}`);
@@ -278,9 +273,7 @@ const runStep = (step: Step, current: string) => {
       try {
         return executeStepLogic(step.type, step.value, line);
       } catch (error) {
-        throw new Error(
-          `第 ${index + 1} 行处理失败: ${error instanceof Error ? error.message : String(error)}`,
-        );
+        throw new Error(`第 ${index + 1} 行处理失败: ${error instanceof Error ? error.message : String(error)}`);
       }
     })
     .join("\n");

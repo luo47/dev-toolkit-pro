@@ -17,9 +17,7 @@ export default function AppOverlays({ loading, toast }: AppOverlaysProps) {
             className="fixed inset-0 z-[100] bg-[var(--bg-main)] flex flex-col items-center justify-center gap-4"
           >
             <div className="w-12 h-12 border-4 border-[var(--accent-color)] border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm font-medium text-[var(--text-secondary)] animate-pulse">
-              正在初始化环境...
-            </p>
+            <p className="text-sm font-medium text-[var(--text-secondary)] animate-pulse">正在初始化环境...</p>
           </motion.div>
         )}
       </AnimatePresence>

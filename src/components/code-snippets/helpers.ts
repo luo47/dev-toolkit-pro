@@ -101,17 +101,10 @@ export type SnippetItem = {
 const matchesSearch = (snippet: SnippetItem, search: string) => {
   if (!search) return true;
   const keyword = search.toLowerCase();
-  return (
-    (snippet.title || "").toLowerCase().includes(keyword) ||
-    (snippet.code || "").toLowerCase().includes(keyword)
-  );
+  return (snippet.title || "").toLowerCase().includes(keyword) || (snippet.code || "").toLowerCase().includes(keyword);
 };
 
-const compareValues = (
-  left: string | number | undefined,
-  right: string | number | undefined,
-  order: string,
-) => {
+const compareValues = (left: string | number | undefined, right: string | number | undefined, order: string) => {
   const normalizedLeft = left ?? "";
   const normalizedRight = right ?? "";
   if (order === "desc") {
@@ -139,10 +132,7 @@ export const sortSnippets = (
   activeTag: string,
   sortValue: string,
 ) => {
-  const [field, order] = sortValue.split(":") as [
-    "updated_at" | "copy_count" | "created_at" | "title",
-    string,
-  ];
+  const [field, order] = sortValue.split(":") as ["updated_at" | "copy_count" | "created_at" | "title", string];
   return snippets
     .filter(
       (item) =>
@@ -160,10 +150,7 @@ export const sortSnippets = (
 export const collectTags = (snippets: SnippetItem[], search: string, languageFilter: string) => {
   const counts: Record<string, number> = {};
   snippets
-    .filter(
-      (snippet) =>
-        (!languageFilter || snippet.language === languageFilter) && matchesSearch(snippet, search),
-    )
+    .filter((snippet) => (!languageFilter || snippet.language === languageFilter) && matchesSearch(snippet, search))
     .forEach((snippet) => {
       snippet.tags?.forEach((tag) => {
         counts[tag] = (counts[tag] || 0) + 1;
@@ -177,10 +164,7 @@ export const collectTags = (snippets: SnippetItem[], search: string, languageFil
 export const collectLanguages = (snippets: SnippetItem[], search: string, activeTag: string) => {
   const counts: Record<string, number> = {};
   snippets
-    .filter(
-      (snippet) =>
-        (!activeTag || snippet.tags?.includes(activeTag)) && matchesSearch(snippet, search),
-    )
+    .filter((snippet) => (!activeTag || snippet.tags?.includes(activeTag)) && matchesSearch(snippet, search))
     .forEach((snippet) => {
       if (!snippet.language) return;
       counts[snippet.language] = (counts[snippet.language] || 0) + 1;
@@ -190,18 +174,13 @@ export const collectLanguages = (snippets: SnippetItem[], search: string, active
     .sort((a, b) => b.count - a.count);
 };
 
-export const highlightSnippetCode = (
-  codeRefs: Record<string, HTMLElement | null>,
-  snippets: SnippetItem[],
-) => {
+export const highlightSnippetCode = (codeRefs: Record<string, HTMLElement | null>, snippets: SnippetItem[]) => {
   snippets.forEach((snippet) => {
     const block = codeRefs[snippet.id];
     if (!block) return;
     try {
       const language =
-        snippet.language && snippet.language !== "plaintext"
-          ? snippet.language.toLowerCase()
-          : undefined;
+        snippet.language && snippet.language !== "plaintext" ? snippet.language.toLowerCase() : undefined;
       const highlighted = language
         ? hljs.highlight(snippet.code, { language, ignoreIllegals: true })
         : hljs.highlightAuto(snippet.code);

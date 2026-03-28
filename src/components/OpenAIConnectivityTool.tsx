@@ -104,9 +104,7 @@ function ConnectivityConfigPanel({
           </div>
 
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-main)] border border-[var(--border-color)]">
-            <div
-              className={`w-2 h-2 rounded-full ${isTesting ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`}
-            />
+            <div className={`w-2 h-2 rounded-full ${isTesting ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
             <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
               系统准备就绪
             </span>
@@ -192,9 +190,7 @@ function QuickConfig({ token, url }: { token: string; url: string }) {
 function QuickConfigCard({ label, onCopy }: { label: string; onCopy: () => void }) {
   return (
     <div className="group relative bg-[var(--bg-surface)] p-2.5 rounded-lg border border-[var(--border-color)] hover:border-[var(--accent-color)]/40 transition-all">
-      <div className="text-[9px] font-bold text-[var(--text-secondary)] mb-1 uppercase opacity-60">
-        {label}
-      </div>
+      <div className="text-[9px] font-bold text-[var(--text-secondary)] mb-1 uppercase opacity-60">{label}</div>
       <div className="text-[10px] font-mono truncate opacity-80 pr-8">
         &amp; ([scriptblock]::Create((irm '...'))) -BaseUrl "..." ...
       </div>
@@ -297,15 +293,7 @@ function ModelsPanel({
   );
 }
 
-function ResponsePreview({
-  state,
-  title,
-  visible,
-}: {
-  state: TestState;
-  title?: string;
-  visible: boolean;
-}) {
+function ResponsePreview({ state, title, visible }: { state: TestState; title?: string; visible: boolean }) {
   return (
     <ResultPanel title={title} state={state}>
       {visible && (
@@ -363,9 +351,7 @@ export default function OpenAIConnectivityTool() {
   const [showAllModels, setShowAllModels] = useState(false);
   const [modelsState, setModelsState] = useState<TestState>(createIdleState("模型列表检测"));
   const [chatState, setChatState] = useState<TestState>(createIdleState("Chat Completions 检测"));
-  const [responsesState, setResponsesState] = useState<TestState>(
-    createIdleState("Responses 检测"),
-  );
+  const [responsesState, setResponsesState] = useState<TestState>(createIdleState("Responses 检测"));
 
   useEffect(() => {
     setHistory(readHistory());
