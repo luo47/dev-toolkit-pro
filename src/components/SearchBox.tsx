@@ -12,6 +12,11 @@ export interface SearchEngine {
   sort_order: number;
 }
 
+type SearchEnginesResponse = {
+  success: boolean;
+  data?: SearchEngine[];
+};
+
 const DEFAULT_ENGINES: SearchEngine[] = [
   {
     id: "sys_google",
@@ -62,10 +67,12 @@ export default function SearchBox() {
       try {
         const res = await fetch("/api/search_engines");
         if (res.ok) {
-          const data: any = await res.json();
+          const data = (await res.json()) as SearchEnginesResponse;
           if (data.success && data.data && data.data.length > 0) {
             setEngines(data.data);
-            setSelectedEngineId(data.data.find((e: any) => e.is_visible)?.id || data.data[0].id);
+            setSelectedEngineId(
+              data.data.find((engine) => engine.is_visible)?.id || data.data[0].id,
+            );
           } else {
             // 没有数据则使用默认
             setEngines(DEFAULT_ENGINES);

@@ -1,3 +1,5 @@
+import type { Context } from "hono";
+
 export type FileItem = {
   key: string;
   name: string;
@@ -15,3 +17,5 @@ export type Bindings = {
   GITHUB_CLIENT_SECRET: string;
   FRONTEND_URL: string;
 };
+
+export type AppContext = Context<{ Bindings: Bindings }>;

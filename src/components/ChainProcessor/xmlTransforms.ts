@@ -20,6 +20,12 @@ type ParsedMarkup = {
   isHtml: boolean;
 };
 
+type JsonPrimitive = string | number | boolean | null;
+type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
+interface JsonObject {
+  [key: string]: JsonValue;
+}
+
 const parseMarkup = (input: string): ParsedMarkup => {
   const parser = new DOMParser();
   const xmlDoc = parser.parseFromString(input, "application/xml");
@@ -115,12 +121,12 @@ const getXmlDeclaration = (input: string, withNewline: boolean) => {
   return withNewline ? `${match[0]}\n` : match[0];
 };
 
-const nodeToJsonValue = (node: Node): any => {
+const nodeToJsonValue = (node: Node): JsonValue => {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent?.trim() || "";
   if (node.nodeType !== Node.ELEMENT_NODE) return null;
 
   const element = node as Element;
-  const result: Record<string, any> = {};
+  const result: JsonObject = {};
   Array.from(element.attributes).forEach((attr) => {
     result[`@${attr.name}`] = attr.value;
   });
@@ -163,7 +169,7 @@ const parseJsonToXmlOptions = (value: string) => {
   return defaults;
 };
 
-const renderJsonValue = (name: string, value: any, level = 0): string => {
+const renderJsonValue = (name: string, value: JsonValue, level = 0): string => {
   const indent = "  ".repeat(level);
   if (typeof value !== "object" || value === null) return `${indent}<${name}>${value}</${name}>`;
   if (Array.isArray(value))
@@ -211,7 +217,7 @@ export const xmlToJson = (input: string) => {
 };
 
 export const jsonToXml = (input: string, value: string) => {
-  const source = JSON.parse(input);
+  const source = JSON.parse(input) as JsonValue;
   const options = parseJsonToXmlOptions(value);
   const rootName = options.noRoot ? null : options.root.trim() || "root";
   const xmlHeader = options.noHeader ? "" : '<?xml version="1.0" encoding="UTF-8"?>\n';

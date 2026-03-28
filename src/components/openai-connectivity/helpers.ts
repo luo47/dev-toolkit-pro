@@ -1,5 +1,15 @@
 export type TestStatus = "idle" | "loading" | "success" | "error" | "warning";
 
+type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
+interface JsonObject {
+  [key: string]: JsonValue;
+}
+
+export type ModelItem = {
+  id: string;
+};
+
 export type HistoryItem = {
   url: string;
   token: string;
@@ -12,18 +22,18 @@ export type TestState = {
   title: string;
   description: string;
   url?: string;
-  data?: any;
+  data?: JsonValue;
   error?: string;
-  details?: any;
+  details?: JsonValue;
   requestedModel?: string;
-  requestBody?: any;
+  requestBody?: JsonValue;
 };
 
 export type ProxyResult = {
   success: boolean;
-  data?: any;
+  data?: JsonValue;
   error?: string;
-  details?: any;
+  details?: JsonValue;
   status?: number;
   url?: string;
 };
@@ -41,7 +51,23 @@ export const createIdleState = (title: string): TestState => ({
 export const maskToken = (token: string) =>
   token.length <= 10 ? token : `${token.slice(0, 6)}...${token.slice(-4)}`;
 
-const parsePossibleJson = (data: any) => {
+const asObject = (value: JsonValue | undefined): JsonObject | undefined =>
+  value && typeof value === "object" && !Array.isArray(value) ? value : undefined;
+
+const asArray = (value: JsonValue | undefined): JsonValue[] | undefined =>
+  Array.isArray(value) ? value : undefined;
+
+const readObjectText = (value: JsonValue | undefined) => {
+  const objectValue = asObject(value);
+  if (!objectValue) return "";
+  return (
+    (typeof objectValue.text === "string" ? objectValue.text : "") ||
+    (typeof objectValue.content === "string" ? objectValue.content : "") ||
+    ""
+  );
+};
+
+const parsePossibleJson = (data: JsonValue | undefined) => {
   if (typeof data !== "string") return data;
   if (!data.trim().startsWith("{") && !data.trim().startsWith("[")) return data;
   try {
@@ -51,50 +77,70 @@ const parsePossibleJson = (data: any) => {
   }
 };
 
-const extractOutputChunks = (output: any[]) =>
+const extractOutputChunks = (output: JsonValue[]) =>
   output
     .map((item) => {
       if (typeof item === "string") return item;
-      if (!Array.isArray(item?.content)) return item?.text || item?.content || "";
-      return item.content
-        .map((sub: any) => (typeof sub === "string" ? sub : sub?.text || sub?.content || ""))
+      const objectItem = asObject(item);
+      if (!objectItem) return "";
+      const content = objectItem.content;
+      if (!Array.isArray(content)) return readObjectText(item);
+      return content
+        .map((sub) => (typeof sub === "string" ? sub : readObjectText(sub)))
         .filter(Boolean)
         .join("");
     })
     .filter(Boolean);
 
-const readSimpleText = (target: any) =>
-  target?.choices?.[0]?.message?.content ||
-  target?.output_text ||
-  target?.text ||
-  target?.content ||
-  "";
+const readSimpleText = (target: JsonValue | undefined) => {
+  const targetObject = asObject(target);
+  if (!targetObject) return "";
 
-const readFallbackString = (data: any) => {
+  const choices = asArray(targetObject.choices);
+  const firstChoice = choices?.[0];
+  const firstChoiceObject = asObject(firstChoice);
+  const messageObject = asObject(firstChoiceObject?.message);
+
+  return (
+    (typeof messageObject?.content === "string" ? messageObject.content : "") ||
+    (typeof targetObject.output_text === "string" ? targetObject.output_text : "") ||
+    (typeof targetObject.text === "string" ? targetObject.text : "") ||
+    (typeof targetObject.content === "string" ? targetObject.content : "") ||
+    ""
+  );
+};
+
+const readFallbackString = (data: JsonValue | undefined) => {
   if (typeof data !== "string") return "";
   const match = data.match(/"content"\s*:\s*"([^"]+)"/);
   if (match?.[1]) return match[1].replace(/\\n/g, "\n").replace(/\\"/g, '"');
   return data;
 };
 
-export function extractTextFromResponse(data: any): string {
+export function extractTextFromResponse(data: JsonValue | undefined): string {
   if (!data) return "无响应数据";
   const target = parsePossibleJson(data);
-  const errorMessage = target?.error?.message || target?.error;
+  const targetObject = asObject(target);
+  const errorValue = targetObject?.error;
+  const errorObject = asObject(errorValue);
+  const errorMessage =
+    (typeof errorObject?.message === "string" ? errorObject.message : undefined) ||
+    (typeof errorValue === "string" ? errorValue : undefined);
   if (typeof errorMessage === "string" && errorMessage.trim()) return `Error: ${errorMessage}`;
 
   const simpleText = readSimpleText(target);
   if (typeof simpleText === "string" && simpleText.trim()) return simpleText;
 
-  if (Array.isArray(target.output)) {
-    const chunks = extractOutputChunks(target.output);
+  const output = asArray(targetObject?.output);
+  if (output) {
+    const chunks = extractOutputChunks(output);
     if (chunks.length > 0) return chunks.join("\n");
   }
 
   return readFallbackString(data) || "接口可用，但无法解析出文本内容（请检查原始报文）";
 }
 
-export const detectBestModel = (models: any[]): string => {
+export const detectBestModel = (models: ModelItem[]): string => {
   const ids = models.map((item) => item?.id).filter(Boolean);
   for (const preferred of PREFERRED_MODELS) {
     if (ids.includes(preferred)) return preferred;
@@ -186,9 +232,9 @@ const createWarningState = (title: string, error: string): TestState => ({
 const buildSuccessState = (
   title: string,
   url: string,
-  data: any,
+  data: JsonValue,
   requestedModel: string,
-  requestBody?: any,
+  requestBody?: JsonValue,
 ): TestState => ({
   ...createIdleState(title),
   status: "success",
@@ -202,9 +248,9 @@ const buildErrorState = (
   title: string,
   url: string,
   error: string,
-  details: any,
+  details: JsonValue,
   requestedModel?: string,
-  requestBody?: any,
+  requestBody?: JsonValue,
   warning = false,
 ): TestState => ({
   ...createIdleState(title),
@@ -302,7 +348,11 @@ export const executeConnectivityTests = async ({
     };
   }
 
-  const models = Array.isArray(modelsResult.data?.data) ? modelsResult.data.data : [];
+  const modelPayload = asObject(modelsResult.data);
+  const modelList = asArray(modelPayload?.data);
+  const models = (modelList?.filter(
+    (item): item is ModelItem => !!asObject(item)?.id && typeof asObject(item)?.id === "string",
+  ) || []) as ModelItem[];
   const selectedModel = customModel.trim() || detectBestModel(models);
 
   return {

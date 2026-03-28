@@ -2,12 +2,44 @@ import type { Hono } from "hono";
 import type { Bindings } from "./serverTypes";
 import { getUserFromSession } from "./serverUtils";
 
+type ChainStep = {
+  id: string;
+  type: string;
+  value: string;
+  active: boolean;
+  byline?: boolean;
+};
+
+type ChainRow = {
+  id: string;
+  name: string;
+  isFavorite: number;
+  createdAt: string;
+  steps: string;
+};
+
+type ExistingChainRow = {
+  id: string;
+};
+
+type SaveChainBody = {
+  name?: string;
+  steps?: ChainStep[];
+};
+
+type ToggleFavoriteBody = {
+  isFavorite?: boolean;
+};
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
 export const registerChainsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
   app.get("/api/chains", async (c) => {
     const userId = await getUserFromSession(c);
 
     try {
-      const params: any[] = [];
+      const params: string[] = [];
       let query = `
         SELECT sc.id, sc.name, sc.is_favorite as isFavorite, sc.created_at as createdAt, cc.steps_json as steps
         FROM saved_chains sc
@@ -27,17 +59,17 @@ export const registerChainsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
 
       const result = await c.env.DB.prepare(query)
         .bind(...params)
-        .all();
+        .all<ChainRow>();
 
       return c.json({
         success: true,
-        data: result.results.map((row: any) => ({
+        data: result.results.map((row) => ({
           ...row,
           isFavorite: !!row.isFavorite,
-          steps: JSON.parse(row.steps),
+          steps: JSON.parse(row.steps) as ChainStep[],
         })),
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Fetch chains err:", error);
       return c.json({ success: false, error: "Database error" }, 500);
     }
@@ -48,7 +80,7 @@ export const registerChainsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
     if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
     try {
-      const body = await c.req.json();
+      const body = (await c.req.json()) as SaveChainBody;
       const { name, steps } = body;
       if (!name || !steps || !Array.isArray(steps))
         return c.json({ error: "无效的处理链数据" }, 400);
@@ -72,10 +104,10 @@ export const registerChainsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
         `SELECT id FROM saved_chains WHERE user_id = ? AND content_md5 = ?`,
       )
         .bind(userId, contentMd5)
-        .first();
+        .first<ExistingChainRow>();
 
       if (existing) {
-        dbId = existing.id as string;
+        dbId = existing.id;
         await c.env.DB.prepare(`UPDATE saved_chains SET name = ?, created_at = ? WHERE id = ?`)
           .bind(name, Date.now(), dbId)
           .run();
@@ -88,9 +120,9 @@ export const registerChainsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
       }
 
       return c.json({ success: true, id: dbId });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Save chain err:", error);
-      return c.json({ success: false, error: error.message }, 500);
+      return c.json({ success: false, error: getErrorMessage(error, "保存处理链失败") }, 500);
     }
   });
 
@@ -113,7 +145,7 @@ export const registerChainsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
     if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
     try {
-      const { isFavorite } = await c.req.json();
+      const { isFavorite } = (await c.req.json()) as ToggleFavoriteBody;
       await c.env.DB.prepare(`UPDATE saved_chains SET is_favorite = ? WHERE id = ? AND user_id = ?`)
         .bind(isFavorite ? 1 : 0, c.req.param("id"), userId)
         .run();

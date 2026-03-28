@@ -16,6 +16,17 @@ import IOSection from "./ChainProcessor/IOSection";
 import StepItem from "./ChainProcessor/StepItem";
 import { processChainSteps } from "./ChainProcessor/stepExecution";
 
+const normalizeProcessError = (error: unknown) => {
+  if (!error || typeof error !== "object" || !("message" in error)) {
+    return { stepId: "global", message: "处理失败" };
+  }
+
+  return {
+    stepId: "stepId" in error && typeof error.stepId === "string" ? error.stepId : "global",
+    message: typeof error.message === "string" ? error.message : "处理失败",
+  };
+};
+
 export default function ChainProcessor() {
   const { isDarkMode } = useAppStore();
   const [input, setInput] = useState("");
@@ -45,8 +56,8 @@ export default function ChainProcessor() {
     }
     try {
       setOutput(processChainSteps(input, steps));
-    } catch (e: any) {
-      setError({ stepId: e.stepId || "global", message: e.message });
+    } catch (e) {
+      setError(normalizeProcessError(e));
       setOutput("");
     }
   }, [input, steps]);
@@ -130,8 +141,9 @@ export default function ChainProcessor() {
         const fetchData = (await fetchRes.json()) as { success: boolean; data: SavedChain[] };
         if (fetchData.success) setSavedChains(fetchData.data);
       } else throw new Error(data.error);
-    } catch (e: any) {
-      window.showToast?.(`保存失败: ${e.message}`, "error");
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "保存失败";
+      window.showToast?.(`保存失败: ${message}`, "error");
     }
     setNewChainName("");
     setIsSaveModalOpen(false);

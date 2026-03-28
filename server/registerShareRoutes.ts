@@ -1,35 +1,66 @@
 import { zipSync } from "fflate";
 import type { Hono } from "hono";
-import type { Bindings, FileItem } from "./serverTypes";
+import type { AppContext, Bindings, FileItem } from "./serverTypes";
 import { generateShareId, getUserFromSession } from "./serverUtils";
 
-const parseShareItem = (row: any) => ({
+type ShareRow = {
+  id: string;
+  user_id: string;
+  type: "text" | "file";
+  content: string | null;
+  files: string | null;
+  total_size: number | null;
+  name: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ShareFile = FileItem;
+
+type TextShareBody = {
+  content: string;
+  name?: string;
+  sourceId?: string;
+};
+
+type ShareUpdateBody = {
+  content?: string;
+  name?: string;
+};
+
+type ShareLookupRow = {
+  id: string;
+};
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
+const parseShareFiles = (files: string | null): ShareFile[] | undefined =>
+  files ? (JSON.parse(files) as ShareFile[]) : undefined;
+
+const parseShareItem = (row: ShareRow) => ({
   id: row.id,
   type: row.type,
   content: row.content,
-  files: row.files ? JSON.parse(row.files) : undefined,
+  files: parseShareFiles(row.files),
   totalSize: row.total_size,
   name: row.name,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
 
-const findExistingSharedSnippet = async (c: any, userId: string, sourceId?: string) => {
+const findExistingSharedSnippet = async (c: AppContext, userId: string, sourceId?: string) => {
   if (!sourceId) return null;
   const kvKey = `snippet_share:${userId}:${sourceId}`;
   const existingId = await c.env.SHARE_KV.get(kvKey);
   if (!existingId) return null;
   const exists = await c.env.DB.prepare("SELECT id FROM shares WHERE id = ? AND user_id = ?")
     .bind(existingId, userId)
-    .first();
+    .first<ShareLookupRow>();
   return exists ? existingId : null;
 };
 
-const createTextShareRecord = async (
-  c: any,
-  userId: string,
-  body: { content: string; name?: string; sourceId?: string },
-) => {
+const createTextShareRecord = async (c: AppContext, userId: string, body: TextShareBody) => {
   const id = await generateShareId(c.env.DB);
   const now = new Date().toISOString();
   await c.env.DB.prepare(
@@ -50,26 +81,30 @@ const createTextShareRecord = async (
   };
 };
 
-const canDownloadShare = (existing: any) => {
+const canDownloadShare = (existing: ShareRow | null) => {
   if (!existing) return { error: "分享不存在", status: 404 };
   if (existing.type !== "file" || !existing.files)
     return { error: "没有可下载的文件", status: 404 };
-  const files = JSON.parse(existing.files as string);
+  const files = parseShareFiles(existing.files) || [];
   if (files.length === 0) return { error: "没有可下载的文件", status: 404 };
-  if ((existing.total_size as number) > 50 * 1024 * 1024) {
+  if ((existing.total_size || 0) > 50 * 1024 * 1024) {
     return { error: "打包文件总大小超过 50MB 限制，请使用其他工具或单独下载", status: 400 };
   }
   return { files, status: 200 };
 };
 
-const buildZipResponse = async (bucket: R2Bucket, files: any[], zipName: string) => {
+const buildZipResponse = async (bucket: R2Bucket, files: ShareFile[], zipName: string) => {
   const zipData: Record<string, Uint8Array> = {};
   for (const file of files) {
     const object = await bucket.get(file.key);
     if (object) zipData[file.path] = new Uint8Array(await object.arrayBuffer());
   }
   const zipped = zipSync(zipData, { level: 6 });
-  return new Response(zipped as any, {
+  const zipBuffer = zipped.buffer.slice(
+    zipped.byteOffset,
+    zipped.byteOffset + zipped.byteLength,
+  ) as ArrayBuffer;
+  return new Response(zipBuffer, {
     headers: {
       "Content-Type": "application/zip",
       "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(zipName)}`,
@@ -87,10 +122,13 @@ export const registerShareRoutes = (app: Hono<{ Bindings: Bindings }>) => {
         "SELECT * FROM shares WHERE user_id = ? ORDER BY created_at DESC",
       )
         .bind(userId)
-        .all();
+        .all<ShareRow>();
       return c.json({ success: true, data: results.results.map(parseShareItem) });
-    } catch (error: any) {
-      return c.json({ success: false, error: error.message || "Failed to list shares" }, 500);
+    } catch (error) {
+      return c.json(
+        { success: false, error: getErrorMessage(error, "Failed to list shares") },
+        500,
+      );
     }
   });
 
@@ -99,13 +137,16 @@ export const registerShareRoutes = (app: Hono<{ Bindings: Bindings }>) => {
     if (!userId) return c.json({ success: false, error: "Unauthorized" }, 401);
 
     try {
-      const body = (await c.req.json()) as { content: string; name?: string; sourceId?: string };
+      const body = (await c.req.json()) as TextShareBody;
       if (!body.content) return c.json({ success: false, error: "内容不能为空" }, 400);
       const existingId = await findExistingSharedSnippet(c, userId, body.sourceId);
       if (existingId) return c.json({ success: true, alreadyExists: true, shareId: existingId });
       return c.json({ success: true, data: await createTextShareRecord(c, userId, body) });
-    } catch (error: any) {
-      return c.json({ success: false, error: error.message || "Failed to create share" }, 500);
+    } catch (error) {
+      return c.json(
+        { success: false, error: getErrorMessage(error, "Failed to create share") },
+        500,
+      );
     }
   });
 
@@ -116,10 +157,10 @@ export const registerShareRoutes = (app: Hono<{ Bindings: Bindings }>) => {
     try {
       const existing = await c.env.DB.prepare("SELECT * FROM shares WHERE id = ? AND user_id = ?")
         .bind(c.req.param("id"), userId)
-        .first();
+        .first<ShareRow>();
       if (!existing) return c.json({ success: false, error: "分享不存在或无权操作" }, 404);
 
-      const body = (await c.req.json()) as { content?: string; name?: string };
+      const body = (await c.req.json()) as ShareUpdateBody;
       const now = new Date().toISOString();
       const newContent =
         existing.type === "text" && body.content !== undefined ? body.content : existing.content;
@@ -138,8 +179,8 @@ export const registerShareRoutes = (app: Hono<{ Bindings: Bindings }>) => {
           updatedAt: now,
         },
       });
-    } catch (error: any) {
-      return c.json({ success: false, error: error.message }, 500);
+    } catch (error) {
+      return c.json({ success: false, error: getErrorMessage(error, "更新分享失败") }, 500);
     }
   });
 
@@ -150,20 +191,18 @@ export const registerShareRoutes = (app: Hono<{ Bindings: Bindings }>) => {
     try {
       const existing = await c.env.DB.prepare("SELECT * FROM shares WHERE id = ? AND user_id = ?")
         .bind(c.req.param("id"), userId)
-        .first();
+        .first<ShareRow>();
       if (!existing) return c.json({ success: false, error: "分享不存在或无权操作" }, 404);
 
       if (existing.type === "file" && existing.files) {
-        const files = JSON.parse(existing.files as string);
-        c.executionCtx.waitUntil(
-          Promise.all(files.map((file: any) => c.env.SHARE_R2.delete(file.key))),
-        );
+        const files = parseShareFiles(existing.files) || [];
+        c.executionCtx.waitUntil(Promise.all(files.map((file) => c.env.SHARE_R2.delete(file.key))));
       }
 
       await c.env.DB.prepare("DELETE FROM shares WHERE id = ?").bind(c.req.param("id")).run();
       return c.json({ success: true });
-    } catch (error: any) {
-      return c.json({ success: false, error: error.message }, 500);
+    } catch (error) {
+      return c.json({ success: false, error: getErrorMessage(error, "删除分享失败") }, 500);
     }
   });
 
@@ -230,15 +269,15 @@ export const registerShareRoutes = (app: Hono<{ Bindings: Bindings }>) => {
           updatedAt: now,
         },
       });
-    } catch (error: any) {
-      return c.json({ success: false, error: error.message || "Upload failed" }, 500);
+    } catch (error) {
+      return c.json({ success: false, error: getErrorMessage(error, "Upload failed") }, 500);
     }
   });
 
   app.get("/api/public/share/:id", async (c) => {
     const existing = await c.env.DB.prepare("SELECT * FROM shares WHERE id = ?")
       .bind(c.req.param("id"))
-      .first();
+      .first<ShareRow>();
     if (!existing) return c.json({ success: false, error: "分享不存在" }, 404);
     return c.json({
       success: true,
@@ -246,7 +285,7 @@ export const registerShareRoutes = (app: Hono<{ Bindings: Bindings }>) => {
         id: existing.id,
         type: existing.type,
         name: existing.name,
-        files: existing.files ? JSON.parse(existing.files as string) : undefined,
+        files: parseShareFiles(existing.files),
         totalSize: existing.total_size,
         createdAt: existing.created_at,
       },
@@ -271,7 +310,7 @@ export const registerShareRoutes = (app: Hono<{ Bindings: Bindings }>) => {
   app.get("/api/public/download/:id", async (c) => {
     const existing = await c.env.DB.prepare("SELECT * FROM shares WHERE id = ?")
       .bind(c.req.param("id"))
-      .first();
+      .first<ShareRow>();
     const downloadable = canDownloadShare(existing);
     if ("error" in downloadable) {
       return c.json(
@@ -286,15 +325,18 @@ export const registerShareRoutes = (app: Hono<{ Bindings: Bindings }>) => {
         downloadable.files,
         `${existing.name || c.req.param("id")}.zip`,
       );
-    } catch (error: any) {
-      return c.json({ success: false, error: `打包失败: ${error.message}` }, 500);
+    } catch (error) {
+      return c.json(
+        { success: false, error: `打包失败: ${getErrorMessage(error, "未知错误")}` },
+        500,
+      );
     }
   });
 
   app.get("/s/:id", async (c) => {
     const existing = await c.env.DB.prepare("SELECT * FROM shares WHERE id = ?")
       .bind(c.req.param("id"))
-      .first();
+      .first<ShareRow>();
     if (!existing) return c.text("分享不存在或已过期", 404);
     if (existing.type === "text") {
       c.header("Content-Type", "text/plain; charset=utf-8");

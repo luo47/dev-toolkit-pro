@@ -70,8 +70,8 @@ const SharePreview: React.FC = () => {
         } else {
           throw new Error(json.error || "获取数据失败");
         }
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "获取数据失败");
       } finally {
         setLoading(false);
       }

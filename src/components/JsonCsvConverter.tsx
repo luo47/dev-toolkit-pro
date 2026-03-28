@@ -1,6 +1,12 @@
 import { ArrowLeftRight, Check, Code, Copy, Download, FileText } from "lucide-react";
 import { useState } from "react";
 
+type JsonPrimitive = string | number | boolean | null;
+type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
+interface JsonObject {
+  [key: string]: JsonValue;
+}
+
 const parseCsvLine = (line: string) => {
   const result: string[] = [];
   let cur = "";
@@ -39,13 +45,14 @@ export default function JsonCsvConverter() {
   const [copied, setCopied] = useState(false);
   const [mode, setMode] = useState<"json-to-csv" | "csv-to-json">("json-to-csv");
 
-  const flattenObject = (obj: any, prefix = ""): any => {
-    return Object.keys(obj).reduce((acc: any, k) => {
+  const flattenObject = (obj: JsonObject, prefix = ""): Record<string, JsonValue> => {
+    return Object.keys(obj).reduce<Record<string, JsonValue>>((acc, k) => {
       const pre = prefix.length ? `${prefix}.` : "";
-      if (typeof obj[k] === "object" && obj[k] !== null && !Array.isArray(obj[k])) {
-        Object.assign(acc, flattenObject(obj[k], pre + k));
+      const value = obj[k];
+      if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        Object.assign(acc, flattenObject(value as JsonObject, pre + k));
       } else {
-        acc[pre + k] = obj[k];
+        acc[pre + k] = value;
       }
       return acc;
     }, {});
@@ -57,8 +64,11 @@ export default function JsonCsvConverter() {
     if (!input.trim()) return;
 
     try {
-      const json = JSON.parse(input);
-      let data = Array.isArray(json) ? json : [json];
+      const json = JSON.parse(input) as JsonValue;
+      let data = (Array.isArray(json) ? json : [json]).filter(
+        (item): item is JsonObject =>
+          typeof item === "object" && item !== null && !Array.isArray(item),
+      );
 
       if (data.length === 0) {
         setError("JSON array is empty");

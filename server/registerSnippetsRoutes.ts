@@ -1,6 +1,57 @@
 import type { Hono } from "hono";
-import type { Bindings } from "./serverTypes";
+import type { AppContext, Bindings } from "./serverTypes";
 import { getUserFromSession } from "./serverUtils";
+
+type SnippetRow = {
+  id: string;
+  user_id: string | null;
+  title: string;
+  code: string;
+  language: string | null;
+  description: string | null;
+  tags: string | null;
+  copy_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type SnippetFilterResult = {
+  conditions: string[];
+  params: Array<string>;
+};
+
+type SnippetUpdateBody = {
+  title?: string;
+  code?: string;
+  language?: string;
+  description?: string;
+  tags?: string[];
+  copyCountsDelta?: Record<string, number>;
+};
+
+type SnippetCreateBody = {
+  title?: string;
+  code?: string;
+  language?: string;
+  description?: string;
+  tags?: string[];
+};
+
+type CountRow = {
+  total: number;
+};
+
+type LanguageCountRow = {
+  language: string | null;
+  count: number;
+};
+
+type TagRow = {
+  tags: string | null;
+};
+
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
 
 const getSnippetBaseQuery = (userId: string | null) =>
   `SELECT * FROM code_snippets WHERE (user_id = 'system' ${userId ? "OR user_id = ?" : ""})`;
@@ -13,9 +64,9 @@ const buildSnippetFilters = ({
   language: string | null;
   search: string | null;
   tag: string | null;
-}) => {
+}): SnippetFilterResult => {
   const conditions: string[] = [];
-  const params: any[] = [];
+  const params: string[] = [];
   if (language) {
     conditions.push("language = ?");
     params.push(language);
@@ -42,14 +93,14 @@ const applySortAndPaging = (query: string, sort: string, order: string) => {
   return `${query} ORDER BY ${sortColumn} ${sortOrder} LIMIT ? OFFSET ?`;
 };
 
-const parseSnippetRow = (row: any) => ({
+const parseSnippetRow = (row: SnippetRow) => ({
   ...row,
   tags: row.tags ? JSON.parse(row.tags) : [],
 });
 
-const buildSnippetUpdates = (body: any) => {
+const buildSnippetUpdates = (body: SnippetUpdateBody) => {
   const updates: string[] = [];
-  const params: any[] = [];
+  const params: Array<string> = [];
   [
     ["title", body.title],
     ["code", body.code],
@@ -69,9 +120,9 @@ const buildSnippetUpdates = (body: any) => {
 };
 
 const getSnippetListPayload = async (
-  c: any,
+  c: AppContext,
   userId: string | null,
-  filters: { conditions: string[]; params: any[] },
+  filters: SnippetFilterResult,
   sort: string,
   order: string,
   limit: number,
@@ -83,13 +134,13 @@ const getSnippetListPayload = async (
 
   const result = await c.env.DB.prepare(applySortAndPaging(query, sort, order))
     .bind(...params, limit, offset)
-    .all();
+    .all<SnippetRow>();
 
   let countQuery = `SELECT COUNT(*) as total FROM code_snippets WHERE (user_id = 'system' OR user_id IS NULL ${userId ? "OR user_id = ?" : ""})`;
   if (filters.conditions.length > 0) countQuery += ` AND ${filters.conditions.join(" AND ")}`;
   const countResult = await c.env.DB.prepare(countQuery)
     .bind(...params)
-    .first();
+    .first<CountRow>();
 
   return {
     snippets: result.results.map(parseSnippetRow),
@@ -99,7 +150,7 @@ const getSnippetListPayload = async (
   };
 };
 
-const applyCopyCountDelta = async (c: any, body: any, id: string) => {
+const applyCopyCountDelta = async (c: AppContext, body: SnippetUpdateBody, id: string) => {
   if (!body.copyCountsDelta?.[id]) return false;
   await c.env.DB.prepare("UPDATE code_snippets SET copy_count = copy_count + ? WHERE id = ?")
     .bind(body.copyCountsDelta[id], id)
@@ -131,7 +182,7 @@ export const registerSnippetsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
           offset,
         ),
       );
-    } catch (error: any) {
+    } catch (error) {
       console.error("Fetch snippets err:", error);
       return c.json({ success: false, error: "Database error" }, 500);
     }
@@ -144,7 +195,7 @@ export const registerSnippetsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
       const statement = userId
         ? c.env.DB.prepare(sql).bind(c.req.param("id"), userId)
         : c.env.DB.prepare(sql).bind(c.req.param("id"));
-      const result = await statement.first();
+      const result = await statement.first<SnippetRow>();
       if (!result) return c.json({ error: "Snippet not found" }, 404);
       return c.json(parseSnippetRow(result));
     } catch {
@@ -157,7 +208,13 @@ export const registerSnippetsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
     if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
     try {
-      const { title = "", code, language = "", description = "", tags = [] } = await c.req.json();
+      const {
+        title = "",
+        code,
+        language = "",
+        description = "",
+        tags = [],
+      } = (await c.req.json()) as SnippetCreateBody;
       if (!code) return c.json({ error: "Code is required" }, 400);
 
       const result = await c.env.DB.prepare(
@@ -168,10 +225,10 @@ export const registerSnippetsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
 
       const newSnippet = await c.env.DB.prepare("SELECT * FROM code_snippets WHERE id = ?")
         .bind(result.meta.last_row_id)
-        .first();
+        .first<SnippetRow>();
       return c.json(parseSnippetRow(newSnippet), 201);
-    } catch (error: any) {
-      return c.json({ success: false, error: error.message }, 500);
+    } catch (error) {
+      return c.json({ success: false, error: getErrorMessage(error, "Database error") }, 500);
     }
   });
 
@@ -181,10 +238,10 @@ export const registerSnippetsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
 
     const id = c.req.param("id");
     try {
-      const body = await c.req.json();
+      const body = (await c.req.json()) as SnippetUpdateBody;
       const existing = await c.env.DB.prepare("SELECT * FROM code_snippets WHERE id = ?")
         .bind(id)
-        .first();
+        .first<SnippetRow>();
       if (!existing) return c.json({ error: "Snippet not found" }, 404);
 
       if (await applyCopyCountDelta(c, body, id)) return c.json({ success: true });
@@ -202,10 +259,10 @@ export const registerSnippetsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
 
       const updated = await c.env.DB.prepare("SELECT * FROM code_snippets WHERE id = ?")
         .bind(id)
-        .first();
+        .first<SnippetRow>();
       return c.json(parseSnippetRow(updated));
-    } catch (error: any) {
-      return c.json({ success: false, error: error.message }, 500);
+    } catch (error) {
+      return c.json({ success: false, error: getErrorMessage(error, "Database error") }, 500);
     }
   });
 
@@ -232,10 +289,10 @@ export const registerSnippetsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
     try {
       const sql = `SELECT DISTINCT language, COUNT(*) as count FROM code_snippets WHERE (user_id = 'system' OR user_id IS NULL ${userId ? "OR user_id = ?" : ""}) AND language IS NOT NULL GROUP BY language ORDER BY count DESC`;
       const statement = userId ? c.env.DB.prepare(sql).bind(userId) : c.env.DB.prepare(sql);
-      const result = await statement.all();
+      const result = await statement.all<LanguageCountRow>();
       return c.json(result.results);
-    } catch (error: any) {
-      return c.json({ success: false, error: error?.message || "Database error" }, 500);
+    } catch (error) {
+      return c.json({ success: false, error: getErrorMessage(error, "Database error") }, 500);
     }
   });
 
@@ -244,9 +301,9 @@ export const registerSnippetsRoutes = (app: Hono<{ Bindings: Bindings }>) => {
     try {
       const sql = `SELECT tags FROM code_snippets WHERE (user_id = 'system' OR user_id IS NULL ${userId ? "OR user_id = ?" : ""})`;
       const statement = userId ? c.env.DB.prepare(sql).bind(userId) : c.env.DB.prepare(sql);
-      const result = await statement.all();
+      const result = await statement.all<TagRow>();
       const tagCounts: Record<string, number> = {};
-      result.results.forEach((row: any) => {
+      result.results.forEach((row) => {
         if (!row.tags) return;
         JSON.parse(row.tags).forEach((tag: string) => {
           tagCounts[tag] = (tagCounts[tag] || 0) + 1;

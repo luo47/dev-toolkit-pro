@@ -8,6 +8,14 @@ export type Bindings = {
   FRONTEND_URL: string;
 };
 
+type GitHubUser = {
+  id: number;
+  login: string;
+  name?: string | null;
+  avatar_url?: string | null;
+  created_at: string;
+};
+
 const auth = new Hono<{ Bindings: Bindings }>();
 
 // 重定向到 GitHub 登录
@@ -50,7 +58,7 @@ auth.get("/github/callback", async (c) => {
   });
 
   if (!userRes.ok) return c.json({ error: "Failed to get user info" }, 400);
-  const githubUser = (await userRes.json()) as any;
+  const githubUser = (await userRes.json()) as GitHubUser;
 
   // 检查注册时间是否大于 7 天
   const createdAt = new Date(githubUser.created_at).getTime();

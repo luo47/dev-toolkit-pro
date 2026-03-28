@@ -1,6 +1,14 @@
 import type { Hono } from "hono";
 import type { Bindings } from "./serverTypes";
 
+type ProxyRequestBody = {
+  url?: string;
+  token?: string;
+  endpoint?: string;
+  method?: string;
+  payload?: unknown;
+};
+
 const buildProxyRequest = (body: {
   url?: string;
   token?: string;
@@ -32,13 +40,7 @@ const buildProxyRequest = (body: {
 export const registerOpenAiRoutes = (app: Hono<{ Bindings: Bindings }>) => {
   app.post("/api/openai/test", async (c) => {
     try {
-      const body = (await c.req.json()) as {
-        url?: string;
-        token?: string;
-        endpoint?: string;
-        method?: string;
-        payload?: unknown;
-      };
+      const body = (await c.req.json()) as ProxyRequestBody;
 
       const proxyRequest = buildProxyRequest(body);
       if (!proxyRequest) {
@@ -67,7 +69,7 @@ export const registerOpenAiRoutes = (app: Hono<{ Bindings: Bindings }>) => {
             status: response.status,
             url: proxyRequest.finalUrl,
           },
-          { status: response.status as any },
+          response.status as 400 | 401 | 403 | 404 | 405 | 429 | 500,
         );
       }
 
@@ -77,12 +79,12 @@ export const registerOpenAiRoutes = (app: Hono<{ Bindings: Bindings }>) => {
         status: response.status,
         url: proxyRequest.finalUrl,
       });
-    } catch (error: any) {
+    } catch (error) {
       return c.json(
         {
           success: false,
           error: "代理请求失败",
-          details: error?.message || "未知错误",
+          details: error instanceof Error ? error.message : "未知错误",
         },
         { status: 500 },
       );

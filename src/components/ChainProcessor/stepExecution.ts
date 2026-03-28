@@ -31,7 +31,10 @@ const parseJsonInput = (current: string) => {
   }
 };
 
-const findJsonPathValue = (paths: string[], json: any) => {
+const findJsonPathValue = (
+  paths: string[],
+  json: string | number | boolean | Record<string, unknown> | unknown[] | null,
+) => {
   for (const path of paths) {
     const searchResult = JSONPath({ path, json, wrap: false });
     if (searchResult !== undefined && searchResult !== null) {
@@ -135,8 +138,8 @@ const executeRegexReplace = (value: string, current: string) => {
       .replace(/\\t/g, "\t")
       .replace(/\\r/g, "\r");
     return current.replace(regex, replacement);
-  } catch (error: any) {
-    throw new Error(`正则错误: ${error.message}`);
+  } catch (error) {
+    throw new Error(`正则错误: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
@@ -274,8 +277,10 @@ const runStep = (step: Step, current: string) => {
     .map((line, index) => {
       try {
         return executeStepLogic(step.type, step.value, line);
-      } catch (error: any) {
-        throw new Error(`第 ${index + 1} 行处理失败: ${error.message}`);
+      } catch (error) {
+        throw new Error(
+          `第 ${index + 1} 行处理失败: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     })
     .join("\n");
@@ -287,8 +292,11 @@ export const processChainSteps = (input: string, steps: Step[]) => {
     if (!step.active) continue;
     try {
       current = runStep(step, current);
-    } catch (error: any) {
-      throw { message: error.message, stepId: step.id };
+    } catch (error) {
+      throw {
+        message: error instanceof Error ? error.message : String(error),
+        stepId: step.id,
+      };
     }
   }
   return current;

@@ -8,6 +8,13 @@ import { registerShareRoutes } from "./registerShareRoutes";
 import { registerSnippetsRoutes } from "./registerSnippetsRoutes";
 import type { Bindings } from "./serverTypes";
 
+type GitHubUser = {
+  id: number;
+  login: string;
+  name?: string | null;
+  avatar_url?: string | null;
+};
+
 const app = new Hono<{ Bindings: Bindings }>();
 
 app.use("*", async (c, next) => {
@@ -75,7 +82,7 @@ app.get("/api/auth/github/callback", async (c) => {
       return c.json({ error: "Failed to get user info" }, 400);
     }
 
-    const githubUser = (await userRes.json()) as any;
+    const githubUser = (await userRes.json()) as GitHubUser;
     const userId = `github_${githubUser.id}`;
     await c.env.DB.prepare(
       `INSERT INTO users (id, github_id, username, name, avatar_url)

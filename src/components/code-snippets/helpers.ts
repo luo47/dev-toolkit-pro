@@ -96,7 +96,6 @@ export type SnippetItem = {
   copy_count?: number;
   created_at?: string;
   updated_at?: string;
-  [key: string]: any;
 };
 
 const matchesSearch = (snippet: SnippetItem, search: string) => {
@@ -108,11 +107,17 @@ const matchesSearch = (snippet: SnippetItem, search: string) => {
   );
 };
 
-const compareValues = (left: any, right: any, order: string) => {
+const compareValues = (
+  left: string | number | undefined,
+  right: string | number | undefined,
+  order: string,
+) => {
+  const normalizedLeft = left ?? "";
+  const normalizedRight = right ?? "";
   if (order === "desc") {
-    return left < right ? 1 : left > right ? -1 : 0;
+    return normalizedLeft < normalizedRight ? 1 : normalizedLeft > normalizedRight ? -1 : 0;
   }
-  return left > right ? 1 : left < right ? -1 : 0;
+  return normalizedLeft > normalizedRight ? 1 : normalizedLeft < normalizedRight ? -1 : 0;
 };
 
 export const getLanguageLabel = (lang: string) => PRESET_LANGUAGES[lang] || lang;
@@ -134,7 +139,10 @@ export const sortSnippets = (
   activeTag: string,
   sortValue: string,
 ) => {
-  const [field, order] = sortValue.split(":");
+  const [field, order] = sortValue.split(":") as [
+    "updated_at" | "copy_count" | "created_at" | "title",
+    string,
+  ];
   return snippets
     .filter(
       (item) =>

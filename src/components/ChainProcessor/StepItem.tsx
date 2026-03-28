@@ -2,6 +2,18 @@ import { AlertCircle, Check, ChevronDown, ChevronUp, Trash2 } from "lucide-react
 import type React from "react";
 import { STEP_CONFIG, type Step } from "./ChainTypes";
 
+type RegexReplaceOptions = {
+  pattern: string;
+  flags: string;
+  replacement: string;
+};
+
+type JsonToXmlOptions = {
+  root: string;
+  noRoot: boolean;
+  noHeader: boolean;
+};
+
 export interface StepItemProps {
   step: Step;
   index: number;
@@ -92,14 +104,17 @@ const StepItem: React.FC<StepItemProps> = ({
 
       {step.type === "regex-replace" &&
         (() => {
-          let options = { pattern: "", flags: "g", replacement: "" };
+          let options: RegexReplaceOptions = { pattern: "", flags: "g", replacement: "" };
           try {
             if (step.value.startsWith("{")) {
-              options = { ...options, ...JSON.parse(step.value) };
+              options = {
+                ...options,
+                ...(JSON.parse(step.value) as Partial<RegexReplaceOptions>),
+              };
             }
           } catch (_e) {}
 
-          const updateOptions = (updates: any) => {
+          const updateOptions = (updates: Partial<RegexReplaceOptions>) => {
             onUpdate(step.id, { value: JSON.stringify({ ...options, ...updates }) });
           };
 
@@ -207,10 +222,10 @@ const StepItem: React.FC<StepItemProps> = ({
 
       {step.type === "json-to-xml" &&
         (() => {
-          let options = { root: "root", noRoot: false, noHeader: false };
+          let options: JsonToXmlOptions = { root: "root", noRoot: false, noHeader: false };
           try {
             if (step.value.startsWith("{")) {
-              const parsed = JSON.parse(step.value);
+              const parsed = JSON.parse(step.value) as Partial<JsonToXmlOptions>;
               options = { ...options, ...parsed };
             } else if (step.value === "__none__") {
               options.noRoot = true;
@@ -220,7 +235,7 @@ const StepItem: React.FC<StepItemProps> = ({
             }
           } catch (_e) {}
 
-          const updateOptions = (updates: any) => {
+          const updateOptions = (updates: Partial<JsonToXmlOptions>) => {
             onUpdate(step.id, { value: JSON.stringify({ ...options, ...updates }) });
           };
 

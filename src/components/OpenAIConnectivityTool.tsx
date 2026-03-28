@@ -10,6 +10,8 @@ import {
   extractTextFromResponse,
   HISTORY_KEY,
   type HistoryItem,
+  type JsonValue,
+  type ModelItem,
   persistHistory,
   readHistory,
   type TestState,
@@ -204,13 +206,23 @@ function QuickConfigCard({ label, onCopy }: { label: string; onCopy: () => void 
   );
 }
 
+const getModelsFromState = (data: JsonValue | undefined): ModelItem[] => {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return [];
+  const models = data.data;
+  if (!Array.isArray(models)) return [];
+  return models.filter(
+    (item): item is ModelItem =>
+      !!item && typeof item === "object" && !Array.isArray(item) && typeof item.id === "string",
+  );
+};
+
 function ModelsPanel({
   allModels,
   modelsState,
   onToggleShowAll,
   showAllModels,
 }: {
-  allModels: any[];
+  allModels: ModelItem[];
   modelsState: TestState;
   onToggleShowAll: () => void;
   showAllModels: boolean;
@@ -236,7 +248,7 @@ function ModelsPanel({
               <button
                 onClick={() =>
                   navigator.clipboard
-                    .writeText(allModels.map((item: any) => item.id).join("\n"))
+                    .writeText(allModels.map((item) => item.id).join("\n"))
                     .then(() => window.showToast?.("已全部复制", "success"))
                 }
                 title="复制全部模型 ID"
@@ -249,7 +261,7 @@ function ModelsPanel({
           <div
             className={`flex flex-wrap gap-1.5 transition-all duration-300 ${showAllModels ? "max-h-[300px]" : "max-h-24"} overflow-y-auto custom-scrollbar p-0.5`}
           >
-            {displayedModels.map((item: any) => (
+            {displayedModels.map((item) => (
               <button
                 key={item.id}
                 onClick={() =>
@@ -316,7 +328,7 @@ function ResultsGrid({
   showAllModels: boolean;
   toggleShowAllModels: () => void;
 }) {
-  const allModels = modelsState.data?.data || [];
+  const allModels = getModelsFromState(modelsState.data);
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
       <ModelsPanel
@@ -384,8 +396,8 @@ export default function OpenAIConnectivityTool() {
         persistHistory(nextHistory);
       }
       window.showToast?.("OPENAI-API 测试已完成", "success");
-    } catch (error: any) {
-      const message = error?.message || "测试过程中发生未知错误";
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "测试过程中发生未知错误";
       window.showToast?.(message, "error");
       setModelsState((prev) => ({ ...prev, status: "error", error: message }));
     } finally {

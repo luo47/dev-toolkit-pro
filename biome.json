@@ -14,9 +14,9 @@
       "vite.config.js",
       "vitest.config.ts",
       "vitest.config.js",
-      "!**/dist",
-      "!**/node_modules",
-      "!**/.wrangler"
+      "!!dist",
+      "!!node_modules",
+      "!!.wrangler"
     ]
   },
   "formatter": {
@@ -59,7 +59,7 @@
       },
       "suspicious": {
         "noArrayIndexKey": "off",
-        "noExplicitAny": "off",
+        "noExplicitAny": "warn",
         "useIterableCallbackReturn": "off"
       },
       "nursery": {

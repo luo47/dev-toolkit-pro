@@ -1,6 +1,11 @@
 import { getCookie } from "hono/cookie";
+import type { AppContext } from "./serverTypes";
 
-export const getUserFromSession = async (c: any) => {
+type SessionUserRow = {
+  id: string;
+};
+
+export const getUserFromSession = async (c: AppContext) => {
   const sessionId = getCookie(c, "auth_session");
   if (!sessionId) return null;
   const result = await c.env.DB.prepare(
@@ -10,8 +15,8 @@ export const getUserFromSession = async (c: any) => {
      WHERE sessions.id = ? AND sessions.expires_at > ?`,
   )
     .bind(sessionId, Math.floor(Date.now() / 1000))
-    .first();
-  return result ? (result.id as string) : null;
+    .first<SessionUserRow>();
+  return result?.id ?? null;
 };
 
 export const generateShareId = async (db: D1Database) => {
