@@ -39,12 +39,12 @@
     },
     "rules": {
       "a11y": {
-        "noLabelWithoutControl": "off",
-        "noStaticElementInteractions": "off",
-        "noSvgWithoutTitle": "off",
-        "useAltText": "off",
-        "useButtonType": "off",
-        "useKeyWithClickEvents": "off"
+        "noLabelWithoutControl": "warn",
+        "noStaticElementInteractions": "warn",
+        "noSvgWithoutTitle": "warn",
+        "useAltText": "warn",
+        "useButtonType": "warn",
+        "useKeyWithClickEvents": "warn"
       },
       "complexity": {
         "noExcessiveCognitiveComplexity": {
@@ -55,12 +55,12 @@
         }
       },
       "style": {
-        "noNonNullAssertion": "off"
+        "noNonNullAssertion": "warn"
       },
       "suspicious": {
-        "noArrayIndexKey": "off",
+        "noArrayIndexKey": "warn",
         "noExplicitAny": "warn",
-        "useIterableCallbackReturn": "off"
+        "useIterableCallbackReturn": "warn"
       },
       "nursery": {
         "noExcessiveLinesPerFile": {

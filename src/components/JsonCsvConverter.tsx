@@ -168,6 +168,7 @@ export default function JsonCsvConverter() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 p-1 bg-[var(--bg-input)] rounded-full border border-[var(--border-color)]">
           <button
+            type="button"
             onClick={() => {
               setMode("json-to-csv");
               setInput("");
@@ -182,6 +183,7 @@ export default function JsonCsvConverter() {
             JSON 转 CSV
           </button>
           <button
+            type="button"
             onClick={() => {
               setMode("csv-to-json");
               setInput("");
@@ -198,6 +200,7 @@ export default function JsonCsvConverter() {
         </div>
 
         <button
+          type="button"
           onClick={toggleMode}
           className="p-2 hover:bg-[var(--hover-color)] rounded-full text-[var(--text-secondary)] transition-colors"
           title="切换模式"
@@ -212,6 +215,7 @@ export default function JsonCsvConverter() {
             {mode === "json-to-csv" ? "输入 JSON (对象或数组)" : "输入 CSV 数据"}
           </label>
           <button
+            type="button"
             onClick={() => setInput("")}
             className="text-[10px] font-bold text-[var(--text-secondary)] hover:text-red-500 transition-colors md:opacity-0 md:group-hover:opacity-100"
           >
@@ -232,6 +236,7 @@ export default function JsonCsvConverter() {
 
       <div className="flex justify-end gap-3">
         <button
+          type="button"
           onClick={handleConvert}
           className="px-6 py-2.5 bg-[var(--text-primary)] text-[var(--bg-main)] rounded-full text-sm font-medium hover:opacity-90 transition-colors flex items-center gap-2"
         >
@@ -250,6 +255,7 @@ export default function JsonCsvConverter() {
             </label>
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={downloadResult}
                 className="p-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-full hover:bg-[var(--hover-color)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 title={`下载 ${mode === "json-to-csv" ? "CSV" : "JSON"}`}
@@ -257,6 +263,7 @@ export default function JsonCsvConverter() {
                 <Download className="w-4 h-4" />
               </button>
               <button
+                type="button"
                 onClick={copyToClipboard}
                 className="p-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-full hover:bg-[var(--hover-color)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 title="复制到剪贴板"

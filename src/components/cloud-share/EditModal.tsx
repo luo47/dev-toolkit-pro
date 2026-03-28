@@ -60,6 +60,7 @@ export default function EditModal({ share, onClose, onSuccess }: EditModalProps)
             </code>
           </h2>
           <button
+            type="button"
             onClick={onClose}
             className="p-3 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
           >
@@ -75,12 +76,14 @@ export default function EditModal({ share, onClose, onSuccess }: EditModalProps)
         </div>
         <div className="p-8 bg-[var(--bg-main)] border-t border-[var(--border-color)] flex justify-end gap-4">
           <button
+            type="button"
             onClick={onClose}
             className="px-8 py-4 text-[var(--text-secondary)] font-bold hover:text-[var(--text-primary)] transition-colors"
           >
             取消
           </button>
           <button
+            type="button"
             onClick={save}
             disabled={isLoading}
             className="px-10 py-4 bg-[var(--accent-color)] text-white rounded-2xl font-bold shadow-lg shadow-[var(--accent-color)]/20 flex items-center gap-2 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"

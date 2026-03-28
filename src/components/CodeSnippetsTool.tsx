@@ -313,6 +313,7 @@ export default function CodeSnippetsTool() {
           </select>
         </div>
         <button
+          type="button"
           onClick={startCreate}
           className="flex items-center justify-center p-1.5 bg-[var(--accent-color)] text-white rounded-lg hover:opacity-90 transition-opacity shrink-0"
         >
@@ -324,6 +325,7 @@ export default function CodeSnippetsTool() {
         <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 px-0.5 min-h-[26px]">
           {languageFilter ? (
             <button
+              type="button"
               onClick={() => handleLanguageChange("")}
               className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm transition-all flex items-center gap-1"
             >
@@ -335,6 +337,7 @@ export default function CodeSnippetsTool() {
               .filter((option) => option.language !== "")
               .map((option) => (
                 <button
+                  type="button"
                   key={option.language}
                   onClick={() => handleLanguageChange(option.language)}
                   className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)] transition-all"
@@ -350,6 +353,7 @@ export default function CodeSnippetsTool() {
             <Tag className="w-3 h-3 text-[var(--text-secondary)] shrink-0 ml-0.5" />
             {activeTag ? (
               <button
+                type="button"
                 onClick={() => setActiveTag("")}
                 className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--accent-color)] border-[var(--accent-color)] text-white font-medium shadow-sm transition-all flex items-center gap-1"
               >
@@ -359,6 +363,7 @@ export default function CodeSnippetsTool() {
             ) : (
               allTags.map((tag) => (
                 <button
+                  type="button"
                   key={tag.name}
                   onClick={() => handleTagClick(tag.name)}
                   className="shrink-0 text-[10px] px-2 py-0.5 rounded-full border bg-[var(--bg-surface)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)] transition-all"

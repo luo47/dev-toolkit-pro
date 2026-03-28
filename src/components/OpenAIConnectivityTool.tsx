@@ -80,6 +80,7 @@ function ConnectivityConfigPanel({
         <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)]/60">
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={onRunTests}
               disabled={isTesting}
               title={isTesting ? "正在检测..." : "开始执行检测"}
@@ -92,6 +93,7 @@ function ConnectivityConfigPanel({
               )}
             </button>
             <button
+              type="button"
               onClick={onReset}
               disabled={isTesting}
               title="重置所有状态"
@@ -197,6 +199,7 @@ function QuickConfigCard({ label, onCopy }: { label: string; onCopy: () => void 
         &amp; ([scriptblock]::Create((irm '...'))) -BaseUrl "..." ...
       </div>
       <button
+        type="button"
         onClick={onCopy}
         className="absolute right-2 bottom-2 p-1.5 rounded bg-[var(--accent-color)] text-white opacity-0 group-hover:opacity-100 transition-all"
       >
@@ -239,6 +242,7 @@ function ModelsPanel({
             <div className="flex items-center gap-1.5">
               {allModels.length > 10 && (
                 <button
+                  type="button"
                   onClick={onToggleShowAll}
                   className="px-2 py-0.5 rounded-md bg-[var(--accent-color)]/5 text-[var(--accent-color)] text-[9px] font-bold hover:bg-[var(--accent-color)]/10 transition-all uppercase tracking-tighter"
                 >
@@ -246,6 +250,7 @@ function ModelsPanel({
                 </button>
               )}
               <button
+                type="button"
                 onClick={() =>
                   navigator.clipboard
                     .writeText(allModels.map((item) => item.id).join("\n"))
@@ -263,6 +268,7 @@ function ModelsPanel({
           >
             {displayedModels.map((item) => (
               <button
+                type="button"
                 key={item.id}
                 onClick={() =>
                   navigator.clipboard.writeText(item.id).then(() => {
@@ -277,6 +283,7 @@ function ModelsPanel({
             ))}
             {!showAllModels && allModels.length > 10 && (
               <button
+                type="button"
                 onClick={onToggleShowAll}
                 className="px-1.5 py-0.5 rounded bg-[var(--accent-color)]/5 border border-dashed border-[var(--accent-color)]/30 text-[9px] text-[var(--accent-color)] opacity-60 italic hover:opacity-100 transition-all"
               >

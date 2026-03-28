@@ -64,6 +64,7 @@ const StepItem: React.FC<StepItemProps> = ({
       <div className="flex items-center gap-3 mb-3">
         <div className="flex items-center gap-1">
           <button
+            type="button"
             onClick={() => onMove(index, "up")}
             disabled={index === 0}
             className="p-1 hover:bg-[var(--hover-color)] rounded text-[var(--text-secondary)] disabled:opacity-30"
@@ -71,6 +72,7 @@ const StepItem: React.FC<StepItemProps> = ({
             <ChevronUp className="w-3.5 h-3.5" />
           </button>
           <button
+            type="button"
             onClick={() => onMove(index, "down")}
             disabled={index === totalSteps - 1}
             className="p-1 hover:bg-[var(--hover-color)] rounded text-[var(--text-secondary)] disabled:opacity-30"
@@ -94,6 +96,7 @@ const StepItem: React.FC<StepItemProps> = ({
             className="w-4 h-4 rounded border-[var(--border-color)] text-[var(--accent-color)] focus:ring-[var(--accent-color)]"
           />
           <button
+            type="button"
             onClick={() => onRemove(step.id)}
             className="p-1.5 hover:bg-red-500/10 text-[var(--text-secondary)] hover:text-red-500 rounded-lg transition-colors"
           >

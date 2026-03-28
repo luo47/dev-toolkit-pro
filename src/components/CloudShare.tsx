@@ -99,6 +99,7 @@ export default function CloudShare() {
           <div className="h-8 w-px bg-[var(--border-color)] hidden sm:block" />
 
           <button
+            type="button"
             onClick={() => setShowUploadModal(true)}
             className="w-12 h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-bold flex items-center justify-center shadow-lg shadow-blue-600/20 active:scale-95 transition-all"
             title="创建新分享"
@@ -121,6 +122,7 @@ export default function CloudShare() {
             <AlertCircle className="mx-auto mb-4 text-white/10" size={48} />
             <p className="text-white/30 font-medium">未找到匹配的分享项</p>
             <button
+              type="button"
               onClick={() => setSearchQuery("")}
               className="mt-4 text-blue-500 text-sm underline"
             >

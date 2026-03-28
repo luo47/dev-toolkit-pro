@@ -107,6 +107,7 @@ const ShareCard: React.FC<ShareCardProps> = ({
 
       <div className="flex items-center gap-2 p-1.5 bg-[var(--bg-surface)] backdrop-blur rounded-2xl border border-[var(--border-color)] md:opacity-0 md:group-hover:opacity-100 transition-all md:scale-95 md:group-hover:scale-100 shadow-xl shadow-black/5">
         <button
+          type="button"
           onClick={() => window.open(`/s/${share.id}`, "_blank")}
           className="w-12 h-12 flex items-center justify-center hover:bg-emerald-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
           title="立即预览"
@@ -114,6 +115,7 @@ const ShareCard: React.FC<ShareCardProps> = ({
           <Eye size={20} />
         </button>
         <button
+          type="button"
           onClick={() => onCopyLink(share.id)}
           className="w-12 h-12 flex items-center justify-center hover:bg-blue-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
           title="复制链接"
@@ -122,6 +124,7 @@ const ShareCard: React.FC<ShareCardProps> = ({
         </button>
         {share.type === "text" && (
           <button
+            type="button"
             onClick={() => onEdit(share)}
             className="w-12 h-12 flex items-center justify-center hover:bg-blue-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
             title="编辑"
@@ -131,6 +134,7 @@ const ShareCard: React.FC<ShareCardProps> = ({
         )}
         <div className="w-px h-6 bg-[var(--border-color)] mx-1" />
         <button
+          type="button"
           onClick={() => onDelete(share.id)}
           className="w-12 h-12 flex items-center justify-center hover:bg-red-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
           title="删除"

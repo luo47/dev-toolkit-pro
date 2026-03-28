@@ -122,6 +122,7 @@ export default function QRCodeTool() {
             />
             {text && (
               <button
+                type="button"
                 onClick={() => setText("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-[var(--hover-color)] rounded-full text-[var(--text-secondary)] hover:text-red-500 transition-all md:opacity-0 md:group-hover:opacity-100"
               >
@@ -155,7 +156,8 @@ export default function QRCodeTool() {
             <h3 className="font-bold text-lg">识别二维码</h3>
           </div>
 
-          <div
+          <button
+            type="button"
             onDragOver={(e) => e.preventDefault()}
             onDrop={onDrop}
             onClick={() => fileInputRef.current?.click()}
@@ -173,7 +175,7 @@ export default function QRCodeTool() {
               accept="image/*"
               className="hidden"
             />
-          </div>
+          </button>
 
           <div className="text-center text-sm text-[var(--text-secondary)]">
             {error ? (
@@ -193,6 +195,7 @@ export default function QRCodeTool() {
           <h3 className="font-bold text-lg">历史记录</h3>
           {history.length > 0 && (
             <button
+              type="button"
               onClick={() => {
                 if (confirm("确定要清除所有历史记录吗？")) clearHistory();
               }}
@@ -215,6 +218,7 @@ export default function QRCodeTool() {
                 <div className="flex items-center gap-3">
                   <span className="text-xs text-[var(--text-secondary)]">{item.date}</span>
                   <button
+                    type="button"
                     onClick={() => removeFromHistory(item.id)}
                     className="text-[var(--text-secondary)] hover:text-red-500"
                   >

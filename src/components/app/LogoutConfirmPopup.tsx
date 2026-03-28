@@ -23,12 +23,14 @@ export default function LogoutConfirmPopup({
       <p className="text-xs text-[var(--text-primary)] mb-3 font-medium px-1">确定要退出登录吗？</p>
       <div className="flex gap-2">
         <button
+          type="button"
           onClick={onConfirm}
           className="flex-1 py-2 bg-red-500 text-white text-[10px] font-bold rounded-xl hover:bg-red-600 transition-colors shadow-lg shadow-red-500/20"
         >
           确定退出
         </button>
         <button
+          type="button"
           onClick={onCancel}
           className="flex-1 py-2 bg-[var(--hover-color)] text-[var(--text-secondary)] text-[10px] font-bold rounded-xl hover:bg-[var(--border-color)] transition-colors"
         >

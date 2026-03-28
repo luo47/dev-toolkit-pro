@@ -280,6 +280,7 @@ function SearchEngineSettingsModal({
         <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)] bg-[var(--bg-surface)]">
           <h2 className="text-xl font-bold">配置搜索引擎</h2>
           <button
+            type="button"
             onClick={onClose}
             className="p-2 hover:bg-[var(--hover-color)] rounded-full text-[var(--text-secondary)]"
           >
@@ -313,6 +314,7 @@ function SearchEngineSettingsModal({
                     />
                     <div className="flex justify-end pt-2">
                       <button
+                        type="button"
                         onClick={() => setEditingId(null)}
                         className="px-4 py-1.5 bg-[var(--accent-color)] text-white rounded-lg text-sm flex items-center gap-1"
                       >
@@ -324,6 +326,7 @@ function SearchEngineSettingsModal({
                   <div className="flex items-center gap-3">
                     <div className="flex flex-col text-[var(--text-secondary)]">
                       <button
+                        type="button"
                         onClick={() => moveItem(index, -1)}
                         disabled={index === 0}
                         className="hover:text-[var(--text-primary)] disabled:opacity-30"
@@ -331,6 +334,7 @@ function SearchEngineSettingsModal({
                         ▲
                       </button>
                       <button
+                        type="button"
                         onClick={() => moveItem(index, 1)}
                         disabled={index === list.length - 1}
                         className="hover:text-[var(--text-primary)] disabled:opacity-30"
@@ -342,6 +346,7 @@ function SearchEngineSettingsModal({
                     {item.icon ? (
                       <img
                         src={item.icon}
+                        alt={item.name}
                         className="w-5 h-5"
                         onError={(e) => {
                           e.currentTarget.style.display = "none";
@@ -382,6 +387,7 @@ function SearchEngineSettingsModal({
                       </label>
 
                       <button
+                        type="button"
                         onClick={() => setEditingId(item.id)}
                         className="p-1.5 text-[var(--text-secondary)] hover:bg-[var(--hover-color)] hover:text-[var(--text-primary)] rounded"
                       >
@@ -389,6 +395,7 @@ function SearchEngineSettingsModal({
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => deleteItem(item.id)}
                         className="p-1.5 text-red-500/70 hover:bg-red-500/10 hover:text-red-500 rounded"
                       >
@@ -401,6 +408,7 @@ function SearchEngineSettingsModal({
             ))}
 
           <button
+            type="button"
             onClick={addItem}
             className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-primary)] hover:bg-[var(--hover-color)] transition-all rounded-xl border-dashed"
           >
@@ -411,12 +419,14 @@ function SearchEngineSettingsModal({
 
         <div className="p-4 border-t border-[var(--border-color)] bg-[var(--bg-surface)] flex justify-end gap-3">
           <button
+            type="button"
             onClick={onClose}
             className="px-5 py-2 rounded-xl text-sm font-bold text-[var(--text-secondary)] hover:bg-[var(--hover-color)]"
           >
             取消
           </button>
           <button
+            type="button"
             onClick={handleSave}
             className="px-5 py-2 rounded-xl text-sm font-bold bg-[var(--accent-color)] text-white hover:brightness-110 shadow-lg shadow-[var(--accent-color)]/20"
           >

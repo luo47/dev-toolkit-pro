@@ -201,13 +201,17 @@ export default function ChainProcessor() {
             <ArrowRight className="w-4 h-4" /> 处理链
           </label>
           <div className="relative group">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-color)] text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--accent-color)] text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all"
+            >
               <Plus className="w-3.5 h-3.5" /> 添加步骤
             </button>
             <div className="absolute right-0 top-full pt-2 z-50 hidden group-hover:block">
               <div className="w-48 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl shadow-2xl p-1 max-h-80 overflow-y-auto custom-scrollbar">
                 {(Object.keys(STEP_CONFIG) as StepType[]).map((type) => (
                   <button
+                    type="button"
                     key={type}
                     onClick={() => addStep(type)}
                     className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[var(--hover-color)] rounded-lg text-left"
@@ -224,6 +228,7 @@ export default function ChainProcessor() {
             </div>
           </div>
           <button
+            type="button"
             onClick={() => setIsSaveModalOpen(true)}
             disabled={steps.length === 0}
             className="p-1.5 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)] disabled:opacity-30"
@@ -311,6 +316,7 @@ export default function ChainProcessor() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-bold text-[var(--text-primary)]">保存处理链</h3>
               <button
+                type="button"
                 onClick={() => setIsSaveModalOpen(false)}
                 className="p-2 hover:bg-[var(--hover-color)] rounded-full transition-colors"
               >
@@ -328,12 +334,14 @@ export default function ChainProcessor() {
             </div>
             <div className="flex gap-3 pt-2">
               <button
+                type="button"
                 onClick={() => setIsSaveModalOpen(false)}
                 className="flex-1 py-3 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-2xl font-bold text-[var(--text-secondary)] hover:bg-[var(--hover-color)] transition-all"
               >
                 取消
               </button>
               <button
+                type="button"
                 onClick={handleSaveChain}
                 className="flex-1 py-3 bg-[var(--accent-color)] text-white rounded-2xl font-bold shadow-lg shadow-[var(--accent-color)]/20 hover:opacity-90 transition-all"
               >

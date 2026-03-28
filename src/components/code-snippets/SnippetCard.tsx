@@ -47,6 +47,7 @@ const SnippetCard: React.FC<SnippetCardProps> = ({
             {snippet.copy_count || 0}
           </span>
           <button
+            type="button"
             onClick={() => onCopy(snippet.id, snippet.code)}
             className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]"
             title="复制"
@@ -58,6 +59,7 @@ const SnippetCard: React.FC<SnippetCardProps> = ({
             )}
           </button>
           <button
+            type="button"
             onClick={() => onShare(snippet)}
             disabled={sharingId === snippet.id}
             className={`p-1.5 rounded-md text-[var(--text-secondary)] ${sharingId === snippet.id ? "opacity-50 cursor-not-allowed" : "hover:bg-[var(--hover-color)] hover:text-blue-500"}`}
@@ -66,6 +68,7 @@ const SnippetCard: React.FC<SnippetCardProps> = ({
             <Share2 size={14} className={sharingId === snippet.id ? "animate-pulse" : ""} />
           </button>
           <button
+            type="button"
             onClick={() => onEdit(snippet)}
             className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]"
             title="编辑"
@@ -73,6 +76,7 @@ const SnippetCard: React.FC<SnippetCardProps> = ({
             <Edit2 size={14} />
           </button>
           <button
+            type="button"
             onClick={() => onDelete(snippet.id)}
             className="p-1.5 hover:bg-[var(--hover-color)] rounded-md hover:text-red-400 text-[var(--text-secondary)]"
             title="删除"
@@ -99,6 +103,7 @@ const SnippetCard: React.FC<SnippetCardProps> = ({
         <div className="px-2.5 py-1.5 flex items-center gap-1 flex-wrap border-t border-[var(--border-color)] bg-[var(--bg-main)]">
           {snippet.tags.map((tag) => (
             <button
+              type="button"
               key={`${snippet.id}-${tag}`}
               onClick={() => onTagClick(tag)}
               className={`text-[9px] px-1.5 py-0.5 rounded transition-colors ${activeTag === tag ? "bg-[var(--accent-color)] text-white shadow-sm" : "bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-color)] hover:border-[var(--text-secondary)]"}`}

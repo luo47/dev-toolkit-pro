@@ -26,6 +26,7 @@ export default function HistorySidebar({
           </h3>
           {!historyEmpty && (
             <button
+              type="button"
               onClick={onClearHistory}
               title="清空所有测试历史"
               className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-95"
@@ -52,6 +53,7 @@ export default function HistorySidebar({
           <div className="px-3 space-y-1.5 pb-2">
             {history.map((item) => (
               <button
+                type="button"
                 key={`${item.url}-${item.token}-${item.timestamp}`}
                 onClick={() => onLoadHistory(item)}
                 className="w-full text-left rounded-[16px] border border-[var(--border-color)] p-3 bg-[var(--bg-main)]/40 hover:bg-[var(--hover-color)] hover:border-[var(--accent-color)]/30 transition-all group relative overflow-hidden"
@@ -79,6 +81,7 @@ export default function HistorySidebar({
                 </div>
                 <div className="absolute top-1/2 -translate-y-1/2 right-2 opacity-0 group-hover:opacity-100 transition-all">
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onRemoveHistory(item);

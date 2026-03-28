@@ -34,6 +34,7 @@ function MobileSidebarToggle({
   return (
     <div className="lg:hidden absolute top-4 left-4 z-50">
       <button
+        type="button"
         onClick={onToggleSidebar}
         className="p-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl shadow-lg text-[var(--text-secondary)] hover:bg-[var(--hover-color)] transition-all"
       >
@@ -71,6 +72,7 @@ function HeaderSearch({
         />
         {searchQuery && (
           <button
+            type="button"
             onClick={onClearSearch}
             className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-[var(--hover-color)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
           >
@@ -88,6 +90,7 @@ function HeaderSearch({
                   </div>
                   {filteredTools.map((tool) => (
                     <button
+                      type="button"
                       key={tool.id}
                       onClick={() => {
                         onToolSelect(tool.id);
@@ -152,6 +155,7 @@ function HeaderUserArea({
   return (
     <div className="flex items-center gap-2">
       <button
+        type="button"
         onClick={onToggleDarkMode}
         className="p-2 hover:bg-[var(--hover-color)] rounded-full transition-colors text-[var(--text-secondary)]"
         title={isDarkMode ? "切换到浅色模式" : "切换到深色模式"}
@@ -177,6 +181,7 @@ function HeaderUserArea({
             />
           )}
           <button
+            type="button"
             onClick={() => onToggleLogoutConfirm("topbar")}
             className={`flex items-center gap-2 p-1 hover:bg-[var(--hover-color)] rounded-full transition-colors ${showLogoutConfirm && logoutConfirmSource === "topbar" ? "bg-[var(--hover-color)]" : ""}`}
             title={`${user.name || user.username} (退出)`}
@@ -196,6 +201,7 @@ function HeaderUserArea({
         </div>
       ) : (
         <button
+          type="button"
           onClick={onOpenLogin}
           className="p-2 hover:bg-[var(--hover-color)] rounded-full transition-colors text-[var(--text-secondary)]"
           title="登录"
@@ -230,7 +236,8 @@ export default function AppHeader(props: AppHeaderProps) {
           <div className="flex items-center gap-4 lg:gap-8 flex-1 overflow-hidden">
             {!isSidebarOpen && <div className="w-10 lg:hidden shrink-0" />}
 
-            <div
+            <button
+              type="button"
               onClick={() => onToolSelect("home")}
               className="flex items-center gap-2 cursor-pointer hover:bg-[var(--hover-color)] px-2 lg:px-3 py-1.5 rounded-lg transition-colors shrink-0"
             >
@@ -243,7 +250,7 @@ export default function AppHeader(props: AppHeaderProps) {
               <span className="hidden sm:inline text-[var(--text-secondary)] text-sm font-normal">
                 v1.0
               </span>
-            </div>
+            </button>
 
             <HeaderSearch
               filteredTools={filteredTools}

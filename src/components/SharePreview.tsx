@@ -113,6 +113,7 @@ const SharePreview: React.FC = () => {
           {error || "系统无法验证该分享 ID 的有效性，可能资源已被销毁或链接已失效。"}
         </p>
         <button
+          type="button"
           onClick={goBack}
           className="px-10 py-3 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl hover:bg-[var(--hover-color)] transition-all font-bold text-sm"
         >
@@ -127,6 +128,7 @@ const SharePreview: React.FC = () => {
       {/* 头部装饰 */}
       <div className="flex items-center gap-4 text-white/20">
         <button
+          type="button"
           onClick={goBack}
           className="flex items-center gap-2 hover:text-white transition-colors"
         >
@@ -181,6 +183,7 @@ const SharePreview: React.FC = () => {
           </div>
 
           <button
+            type="button"
             onClick={downloadAll}
             className="group flex items-center gap-3 px-10 py-4 bg-[var(--accent-color)] text-white rounded-2xl font-black italic uppercase tracking-tighter hover:scale-105 active:scale-95 transition-all shadow-xl shadow-[var(--accent-color)]/20"
           >
@@ -238,6 +241,7 @@ const SharePreview: React.FC = () => {
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => downloadSingle(file.path)}
                   className="p-3 bg-[var(--bg-main)] border border-[var(--border-color)] rounded-xl md:opacity-0 md:group-hover:opacity-100 hover:border-[var(--accent-color)]/50 hover:text-[var(--accent-color)] transition-all shadow-sm"
                   title="分流下载"

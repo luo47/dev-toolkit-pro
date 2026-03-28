@@ -59,7 +59,11 @@ function FileUploadArea({
                 已选资产
               </p>
             </div>
-            <button onClick={onClearFiles} className="text-xs font-bold text-red-500 underline">
+            <button
+              type="button"
+              onClick={onClearFiles}
+              className="text-xs font-bold text-red-500 underline"
+            >
               清除
             </button>
           </div>
@@ -85,12 +89,14 @@ function FileUploadArea({
           </p>
           <div className="flex gap-4">
             <button
+              type="button"
               onClick={() => fileInputRef.current?.click()}
               className="h-12 px-6 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl text-sm font-bold text-[var(--text-primary)] hover:bg-[var(--hover-color)] transition-all"
             >
               选择文件
             </button>
             <button
+              type="button"
               onClick={() => folderInputRef.current?.click()}
               className="h-12 px-6 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-xl text-sm font-bold text-[var(--text-primary)] hover:bg-[var(--hover-color)] transition-all"
             >
@@ -229,12 +235,14 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
               <h2 className="text-xl font-bold text-[var(--text-primary)]">创建新分享</h2>
               <div className="flex gap-4 mt-1">
                 <button
+                  type="button"
                   onClick={() => setShareType("text")}
                   className={`text-xs font-bold uppercase transition-colors ${shareType === "text" ? "text-blue-500" : "text-[var(--text-secondary)]"}`}
                 >
                   纯文本
                 </button>
                 <button
+                  type="button"
                   onClick={() => setShareType("file")}
                   className={`text-xs font-bold uppercase transition-colors ${shareType === "file" ? "text-emerald-500" : "text-[var(--text-secondary)]"}`}
                 >
@@ -244,6 +252,7 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-3 hover:bg-[var(--hover-color)] rounded-full transition-colors text-[var(--text-secondary)]"
           >
@@ -295,6 +304,7 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
 
         <div className="p-8 bg-[var(--bg-main)] border-t border-[var(--border-color)]">
           <button
+            type="button"
             disabled={isUploading || !canSubmit}
             onClick={createShare}
             className={`w-full h-16 rounded-[22px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all relative overflow-hidden ${isUploading ? "bg-[var(--border-color)] text-[var(--text-secondary)]" : "bg-[var(--accent-color)] text-white hover:scale-[1.02] active:scale-95 shadow-xl shadow-blue-500/20"}`}

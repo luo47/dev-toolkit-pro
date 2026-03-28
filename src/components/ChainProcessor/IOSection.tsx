@@ -47,6 +47,7 @@ export default function IOSection({
           </label>
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={onClearInput}
               className="p-1.5 hover:bg-[var(--hover-color)] rounded-lg text-[var(--text-secondary)] hover:text-red-500 transition-all"
               title="清空输入"
@@ -104,6 +105,7 @@ export default function IOSection({
           </label>
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={onExportOutput}
               disabled={!output}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--hover-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg text-xs font-medium transition-all disabled:opacity-50"
@@ -113,6 +115,7 @@ export default function IOSection({
               导出结果
             </button>
             <button
+              type="button"
               onClick={onCopyOutput}
               disabled={!output}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${

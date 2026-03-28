@@ -40,7 +40,9 @@ export default function SnippetEditorModal({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 animate-in fade-in duration-300">
-      <div
+      <button
+        type="button"
+        aria-label="关闭片段编辑器"
         className={`absolute inset-0 backdrop-blur-sm ${isDarkMode ? "bg-black/80" : "bg-black/20"}`}
         onClick={onCancel}
       />
@@ -48,6 +50,7 @@ export default function SnippetEditorModal({
         <div className="flex justify-between items-center px-6 py-5 border-b border-[var(--border-color)] shrink-0">
           <h3 className="text-xl font-bold">{isCreating ? "新建代码片段" : "编辑代码片段"}</h3>
           <button
+            type="button"
             onClick={onCancel}
             className="p-2 hover:bg-[var(--hover-color)] rounded-xl text-[var(--text-secondary)]"
           >
@@ -71,13 +74,14 @@ export default function SnippetEditorModal({
                 语言
               </label>
               <div className="relative" ref={langRef}>
-                <div
+                <button
+                  type="button"
                   onClick={() => onLangOpenChange(!isLangOpen)}
                   className="w-full h-12 bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl px-4 text-sm outline-none cursor-pointer flex justify-between items-center"
                 >
                   <span className="font-bold text-blue-500 uppercase">{formData.language}</span>
                   <ArrowUpDown className="w-4 h-4 opacity-50" />
-                </div>
+                </button>
                 {isLangOpen && (
                   <div className="absolute top-full left-0 w-full mt-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-2xl shadow-2xl z-[150] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                     <div className="p-3 border-b border-[var(--border-color)] bg-[var(--bg-main)]/50">
@@ -100,7 +104,8 @@ export default function SnippetEditorModal({
                               {group.label}
                             </div>
                             {group.options.map((option) => (
-                              <div
+                              <button
+                                type="button"
                                 key={option.value}
                                 onClick={() => {
                                   onUpdateFormData({ language: option.value });
@@ -111,7 +116,7 @@ export default function SnippetEditorModal({
                               >
                                 <span className="uppercase">{option.label}</span>
                                 {formData.language === option.value && <Check size={12} />}
-                              </div>
+                              </button>
                             ))}
                           </div>
                         ))
@@ -146,12 +151,14 @@ export default function SnippetEditorModal({
         </div>
         <div className="p-6 border-t border-[var(--border-color)] flex gap-3 shrink-0">
           <button
+            type="button"
             onClick={onCancel}
             className="flex-1 h-14 bg-[var(--hover-color)] rounded-2xl text-sm font-bold text-[var(--text-secondary)]"
           >
             取消
           </button>
           <button
+            type="button"
             onClick={onSave}
             className="flex-[2] h-14 bg-[var(--accent-color)] text-white rounded-2xl text-sm font-black uppercase tracking-wider flex items-center justify-center gap-3 shadow-xl shadow-[var(--accent-color)]/20"
           >

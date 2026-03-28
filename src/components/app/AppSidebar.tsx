@@ -43,6 +43,7 @@ function SidebarHeader({
         </div>
       )}
       <button
+        type="button"
         onClick={onToggleSidebar}
         className="p-2 hover:bg-[var(--hover-color)] rounded-full transition-colors"
         title={isSidebarOpen ? "收起菜单" : "展开菜单"}
@@ -83,6 +84,7 @@ function SidebarSearch({
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
           {searchQuery && (
             <button
+              type="button"
               onClick={onClearSearch}
               className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-[var(--hover-color)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
             >
@@ -92,6 +94,7 @@ function SidebarSearch({
         </div>
       ) : (
         <button
+          type="button"
           onClick={onToggleSidebar}
           className="w-10 h-10 flex items-center justify-center hover:bg-[var(--hover-color)] rounded-full border border-[var(--border-color)] transition-colors mx-auto"
           title="搜索工具"
@@ -117,6 +120,7 @@ function SidebarNav({
   return (
     <div className="flex-1 overflow-y-auto px-3 space-y-1 custom-scrollbar">
       <button
+        type="button"
         onClick={() => onToolSelect("home")}
         className={`flex items-center gap-3 w-full h-10 rounded-full transition-colors group ${
           activeTool === "home"
@@ -133,6 +137,7 @@ function SidebarNav({
 
       {filteredTools.map((tool) => (
         <button
+          type="button"
           key={tool.id}
           onClick={() => onToolSelect(tool.id)}
           className={`flex items-center gap-3 w-full rounded-full transition-colors group ${
@@ -189,6 +194,7 @@ function SidebarAccount({
   return (
     <div className="p-3 space-y-1 border-t border-[var(--border-color)]">
       <button
+        type="button"
         className={`flex items-center gap-3 w-full h-10 rounded-full hover:bg-[var(--hover-color)] transition-colors ${isSidebarOpen ? "px-4" : "justify-center"}`}
       >
         <Settings className="w-5 h-5 text-[var(--text-secondary)]" />
@@ -242,6 +248,7 @@ function SidebarLoggedInAccount({
         />
       )}
       <button
+        type="button"
         onClick={() => onToggleLogoutConfirm("sidebar")}
         className={`flex items-center gap-3 w-full h-12 rounded-full hover:bg-[var(--hover-color)] transition-colors ${isSidebarOpen ? "px-4" : "justify-center"} ${showLogoutConfirm && logoutConfirmSource === "sidebar" ? "bg-[var(--hover-color)]" : ""}`}
       >
@@ -277,6 +284,7 @@ function SidebarLoggedOutAccount({
 }) {
   return (
     <button
+      type="button"
       onClick={onOpenLogin}
       className={`flex items-center gap-3 w-full h-10 rounded-full hover:bg-[var(--hover-color)] transition-colors ${isSidebarOpen ? "px-4" : "justify-center"}`}
     >

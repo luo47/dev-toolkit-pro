@@ -135,7 +135,9 @@ export default function App() {
       )}
 
       {isSidebarOpen && (
-        <div
+        <button
+          type="button"
+          aria-label="关闭侧边栏"
           onClick={() => setIsSidebarOpen(false)}
           className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity animate-in fade-in"
         />

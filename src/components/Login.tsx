@@ -62,6 +62,7 @@ export default function Login({ onLogin, onClose }: LoginProps) {
     >
       <div className="bg-[var(--bg-surface)] border border-[var(--border-color)] w-full max-w-md rounded-2xl p-8 relative shadow-2xl overflow-hidden">
         <button
+          type="button"
           onClick={onClose}
           className="absolute top-4 right-4 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors z-10"
         >
@@ -90,6 +91,7 @@ export default function Login({ onLogin, onClose }: LoginProps) {
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="grid grid-cols-2 gap-3 mb-6">
               <button
+                type="button"
                 onClick={() => handleSocialLogin("GitHub")}
                 className="flex items-center justify-center gap-2 bg-[var(--bg-input)] border border-[var(--border-color)] hover:bg-[var(--hover-color)] text-[var(--text-primary)] py-2.5 rounded-xl transition-all text-sm font-medium"
               >
@@ -97,6 +99,7 @@ export default function Login({ onLogin, onClose }: LoginProps) {
                 GitHub
               </button>
               <button
+                type="button"
                 onClick={() => handleSocialLogin("Google")}
                 className="flex items-center justify-center gap-2 bg-[var(--bg-input)] border border-[var(--border-color)] hover:bg-[var(--hover-color)] text-[var(--text-primary)] py-2.5 rounded-xl transition-all text-sm font-medium"
               >
