@@ -25,23 +25,29 @@
 
 ## 目录结构
 - `src/`: 前端源代码根目录
-  - `src/App.tsx`: 前端主入口，负责路由和布局
+  - `src/App.tsx`: 前端主入口，负责路由和全局布局
   - `src/main.tsx`: React 渲染入口
-  - `src/store.ts`: 全局状态管理
-  - `src/components/`: UI 组件库
-    - `ChainProcessor/`: 链式处理工具及其子组件
-    - `CodeSnippetsTool.tsx`: 代码片段管理工具
-    - `JsonCsvConverter.tsx`: 格式转换工具
-    - `QRCodeTool.tsx`: 二维码工具
-    - `CloudShare.tsx`: 云端分享功能
-  - `src/hooks/`: 自定义 React Hooks (如 `useAuth`)
-- `server/`: Hono 后端代码 (Cloudflare Workers)
-  - `server/index.ts`: API 路由定义与入口
-  - `server/auth.ts`: 认证相关逻辑
-- `migrations/`: D1 数据库迁移 SQL 文件
-- `wrangler.toml`: Cloudflare Workers/D1 配置文件
-- `vite.config.ts`: Vite 构建配置
-- `GEMINI.md`: 项目上下文与开发指南
+  - `src/store.ts`: 基于 Zustand 的全局状态管理
+  - `src/components/`: 核心业务与 UI 组件库
+    - `Home.tsx`: 首页工具导航
+    - `Login.tsx`: GitHub OAuth 登录页面
+    - `SearchBox.tsx`: 全局工具智能搜索与跳转
+    - `ChainProcessor/`: 链式数据处理工具及核心算子
+    - `CloudShare.tsx` & `cloud-share/`: 云端大文件分享与提取功能
+    - `CodeSnippetsTool.tsx` & `code-snippets/`: 代码片段云端管理与多端同步
+    - `OpenAIConnectivityTool.tsx` & `openai-connectivity/`: 高性能 OpenAI 连通性诊断看板
+    - `JsonCsvConverter.tsx`: 格式转换（JSON/CSV/TSV）工具
+    - `QRCodeTool.tsx`: 灵活的二维码生成与扫描器
+    - `app/`: 全局通用 UI 框架组件（Header, Sidebar, Toast 等）
+  - `src/hooks/`: 逻辑解耦的 TypeScript Hooks (如 `useAuth`, `useDevice`)
+  - `src/types.ts`: 核心领域模型定义
+- `server/`: 运行在 Cloudflare Workers 上的 Hono 后端
+  - `server/index.ts`: API 接口、路由定义与中间件
+  - `server/auth.ts`: GitHub OAuth 认证逻辑与 Session 处理
+- `migrations/`: 基于 D1 的 SQLite 数据库迁移脚本
+- `wrangler.toml`: Cloudflare 生态 (Workers, D1, KV, R2) 的整体配置文件
+- `vite.config.ts`: 基于 Vite 8 & Tailwind 4 的高性能构建配置
+- `GEMINI.md`: 项目上下文、架构演进与开发规范指南
 
 ## 开发与运行
 
