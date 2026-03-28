@@ -70,11 +70,11 @@ function maskToken(token: string) {
 
 function extractTextFromResponse(data: any): string {
   if (!data) return '无响应数据';
-  
+
   let target = data;
-  
+
   // 0. 如果 data 是字符串且看起来像 JSON，尝试解析它（处理双重转义的情况）
-  if (typeof data === 'string' && (data.trim().startsWith('{') || data.trim().startsWith('['))) {
+  if (typeof data === 'string' && (data.trim().startsWith('{') || data.trim().startsWith('['))) {  
     try {
       target = JSON.parse(data);
     } catch {
@@ -84,29 +84,29 @@ function extractTextFromResponse(data: any): string {
 
   // 1.5 提取错误信息
   const errorMessage = target?.error?.message || target?.error;
-  if (typeof errorMessage === 'string' && errorMessage.trim()) return `Error: ${errorMessage}`;
-  
+  if (typeof errorMessage === 'string' && errorMessage.trim()) return `Error: ${errorMessage}`;    
+
   // 1. 标准 OpenAI Chat 格式
   const chatContent = target?.choices?.[0]?.message?.content;
   if (typeof chatContent === 'string' && chatContent.trim()) return chatContent;
-  
+
   // 2. 某些代理或模型的 output_text 格式
   if (typeof target.output_text === 'string' && target.output_text.trim()) return target.output_text;
-  
+
   // 3. 数组形式的 output 格式（适配 GPT-5 / Claude-4 深度嵌套接口）
   if (Array.isArray(target.output)) {
     const chunks = target.output
       .map((item: any) => {
         if (typeof item === 'string') return item;
-        
+
         // 如果项内包含 content 数组（如您提供的报文：item.content[0].text）
         if (Array.isArray(item?.content)) {
           return item.content
-            .map((sub: any) => (typeof sub === 'string' ? sub : sub?.text || sub?.content || ''))
+            .map((sub: any) => (typeof sub === 'string' ? sub : sub?.text || sub?.content || ''))  
             .filter(Boolean)
             .join('');
         }
-        
+
         // 优先提取 GPT-5 风格的顶级 text 字段
         return item?.text || item?.content || '';
       })
@@ -124,7 +124,7 @@ function extractTextFromResponse(data: any): string {
     if (match && match[1]) return match[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
   }
 
-  return typeof data === 'string' ? data : '接口可用，但无法解析出文本内容（请检查原始报文）';
+  return typeof data === 'string' ? data : '接口可用，但无法解析出文本内容（请检查原始报文）';     
 }
 
 function detectBestModel(models: any[]): string {
@@ -145,11 +145,22 @@ function StatusIcon({ status }: { status: TestStatus }) {
 
 function ResultPanel({
   state,
-  children,
+  title: titleOverwrite,
+  children
 }: {
   state: TestState;
-  children?: ReactNode;
+  title?: string;
+  children?: ReactNode
 }) {
+  const isSelected = !!state.requestedModel;
+
+  // 综合标题显示逻辑
+  const getDisplayTitle = () => {
+    if (state.status === 'loading') return '正在检测...';
+    return titleOverwrite || state.title || (state.status === 'error' ? '检测失败' : '检测成功');  
+  };
+
+  const title = getDisplayTitle();
   const toneClass = {
     idle: 'bg-[var(--bg-surface)] border-[var(--border-color)] opacity-60 grayscale hover:grayscale-0 hover:opacity-100',
     loading: 'bg-[var(--accent-color)]/5 border-[var(--accent-color)]/30 ring-4 ring-[var(--accent-color)]/5',
@@ -159,15 +170,15 @@ function ResultPanel({
   }[state.status];
 
   return (
-    <section className={`rounded-[24px] border p-5 transition-all duration-500 ${toneClass}`}>
+    <section className={`rounded-[16px] border p-4 transition-all duration-500 ${toneClass}`}>     
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-3 overflow-hidden">
+        <div className="flex items-center justify-between gap-2 overflow-hidden">
           <div className="min-w-0 flex-1">
             <h3 className="font-bold text-[var(--text-primary)] truncate text-xs tracking-tight uppercase opacity-90">
-              {state.title}
+              {title}
             </h3>
             {state.description && (
-              <p className="text-[10px] text-[var(--text-secondary)] mt-1 truncate opacity-70">
+              <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 truncate opacity-70">    
                 {state.description}
               </p>
             )}
@@ -177,30 +188,30 @@ function ResultPanel({
           </div>
         </div>
         {state.url && (
-          <p className="mt-2 text-[10px] font-mono break-all text-[var(--text-secondary)] opacity-40 leading-tight">
+          <p className="mt-1.5 text-[10px] font-mono break-all text-[var(--text-secondary)] opacity-40 leading-tight">
             {state.url}
           </p>
         )}
         {state.error && (
-          <div className="mt-3 rounded-xl border border-red-500/10 bg-red-500/5 p-3">
+          <div className="mt-2 rounded-xl border border-red-500/10 bg-red-500/5 p-2.5">
             <p className="text-[11px] font-medium text-red-500">{state.error}</p>
           </div>
         )}
         {(state.requestBody || state.data) && (
-          <div className="mt-4 pt-3 border-t border-[var(--border-color)]/30">
+          <div className="mt-2 pt-2 border-t border-[var(--border-color)]/30">
             <details className="group">
               <summary className="flex items-center gap-1.5 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-widest cursor-pointer hover:text-[var(--accent-color)] transition-colors list-none">
                 <FileJson className="w-3 h-3 transition-transform group-open:rotate-90" />
                 查看原始报文
               </summary>
-              <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-1 duration-300">
+              <div className="mt-2 space-y-2 animate-in fade-in slide-in-from-top-1 duration-300"> 
                 {state.requestBody && (
                   <div className="space-y-1.5">
                     <div className="text-[9px] font-bold text-[var(--accent-color)] flex items-center gap-1 uppercase opacity-60">
                       <Terminal className="w-2.5 h-2.5" />
                       Request Body
                     </div>
-                    <pre className="p-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-[9px] font-mono overflow-x-auto custom-scrollbar text-[var(--text-primary)]/80 leading-tight">
+                    <pre className="p-2 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-[9px] font-mono overflow-x-auto custom-scrollbar text-[var(--text-primary)]/80 leading-tight">
                       {JSON.stringify(state.requestBody, null, 2)}
                     </pre>
                   </div>
@@ -211,7 +222,7 @@ function ResultPanel({
                       {state.status === 'error' ? <ShieldAlert className="w-2.5 h-2.5" /> : <CheckCircle2 className="w-2.5 h-2.5" />}
                       Response Body
                     </div>
-                    <pre className="p-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-[9px] font-mono overflow-x-auto custom-scrollbar text-[var(--text-primary)]/80 leading-tight">
+                    <pre className="p-2 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-[9px] font-mono overflow-x-auto custom-scrollbar text-[var(--text-primary)]/80 leading-tight">
                       {JSON.stringify(state.data || state.details, null, 2)}
                     </pre>
                   </div>
@@ -232,6 +243,7 @@ export default function OpenAIConnectivityTool() {
   const [customModel, setCustomModel] = useState('');
   const [isTesting, setIsTesting] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [showAllModels, setShowAllModels] = useState(false);
 
   const [modelsState, setModelsState] = useState<TestState>({
     status: 'idle',
@@ -265,7 +277,7 @@ export default function OpenAIConnectivityTool() {
   const historyEmpty = useMemo(() => history.length === 0, [history]);
 
   const saveHistory = (u: string, t: string, m?: string) => {
-    const newItem: HistoryItem = { url: u, token: t, customModel: m, timestamp: Date.now() };
+    const newItem: HistoryItem = { url: u, token: t, customModel: m, timestamp: Date.now() };      
     const newHistory = [newItem, ...history.filter(h => h.url !== u || h.token !== t || h.customModel !== m)].slice(0, 10);
     setHistory(newHistory);
     localStorage.setItem('openai-api-tester-history', JSON.stringify(newHistory));
@@ -339,7 +351,7 @@ export default function OpenAIConnectivityTool() {
 
     try {
       currentStep = 'models';
-      setModelsState((prev) => ({ ...prev, status: 'loading', url: `${normalizedBase}/models` }));
+      setModelsState((prev) => ({ ...prev, status: 'loading', url: `${normalizedBase}/models` })); 
       const modelsResult = await runProxyTest({ endpoint: '/models' });
 
       if (!modelsResult.success) {
@@ -406,6 +418,7 @@ export default function OpenAIConnectivityTool() {
       const responsesPayload = {
         model: selectedModel,
         input: '你好',
+        instructions: 'You are a helpful coding assistant.',
       };
       setResponsesState((prev) => ({
         ...prev,
@@ -480,115 +493,111 @@ export default function OpenAIConnectivityTool() {
   };
 
   return (
-    <div className="max-w-[1400px] mx-auto w-full p-2 lg:p-4">
+    <div className="max-w-[1400px] mx-auto w-full p-2 lg:p-2">
       {/* 顶部布局网格 */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
         {/* 左侧主要配置区 */}
-        <div className="lg:col-span-8 flex flex-col gap-6">
-          <section className="relative overflow-hidden rounded-[32px] border border-[var(--border-color)] bg-[var(--bg-surface)] p-6 md:p-10 shadow-2xl shadow-black/5">
+        <div className="lg:col-span-8 flex flex-col gap-3">
+          <section className="relative overflow-hidden rounded-[20px] border border-[var(--border-color)] bg-[var(--bg-surface)] p-5 md:p-6 shadow-2xl shadow-black/5">
             {/* 背景装饰渐变 */}
             <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-[var(--accent-color)]/5 blur-[80px] rounded-full pointer-events-none" />
-            
-            <div className="relative flex flex-col gap-8">
+
+            <div className="relative flex flex-col gap-4">
               {/* 输入区域 */}
-              <div className="grid grid-cols-1 gap-6">
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] opacity-70">
-                    <Server className="w-3.5 h-3.5 text-[var(--accent-color)]" />
-                    API Base URL
-                  </label>
-                  <div className="group relative">
-                    <input
-                      type="url"
-                      value={url}
-                      onChange={(event) => setUrl(event.target.value)}
-                      placeholder={DEFAULT_URL}
-                      className="w-full rounded-2xl border border-[var(--border-color)] bg-[var(--bg-main)] px-5 py-4 outline-none focus:ring-4 focus:ring-[var(--accent-color)]/10 focus:border-[var(--accent-color)] transition-all text-sm font-medium shadow-sm hover:shadow-md"
-                    />
-                    {url && (
-                      <button
-                        type="button"
-                        onClick={() => setUrl('')}
-                        className="absolute inset-y-0 right-3 flex items-center px-2 text-[var(--text-secondary)] hover:text-red-500 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
+              <div className="grid grid-cols-1 gap-3">
+                {/* API Base URL */}
+                <div className="group relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--accent-color)] opacity-60 pointer-events-none transition-transform group-focus-within:scale-110">
+                    <Server className="w-4 h-4" />
                   </div>
+                  <input
+                    type="url"
+                    value={url}
+                    onChange={(event) => setUrl(event.target.value)}
+                    placeholder={DEFAULT_URL}
+                    className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] pl-10 pr-10 py-2.5 outline-none focus:ring-4 focus:ring-[var(--accent-color)]/10 focus:border-[var(--accent-color)] transition-all text-sm font-medium shadow-sm hover:shadow-md"
+                  />
+                  {url && (
+                    <button
+                      type="button"
+                      onClick={() => setUrl('')}
+                      className="absolute inset-y-0 right-3 flex items-center px-1 text-[var(--text-secondary)] hover:text-red-500 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
 
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] opacity-70">
-                    <KeyRound className="w-3.5 h-3.5 text-[var(--accent-color)]" />
-                    Bearer Token
-                  </label>
-                  <div className="group relative">
-                    <input
-                      type="password"
-                      value={token}
-                      onChange={(event) => setToken(event.target.value)}
-                      placeholder="sk-..."
-                      className="w-full rounded-2xl border border-[var(--border-color)] bg-[var(--bg-main)] px-5 py-4 outline-none focus:ring-4 focus:ring-[var(--accent-color)]/10 focus:border-[var(--accent-color)] transition-all text-sm font-mono shadow-sm hover:shadow-md"
-                    />
-                    {token && (
-                      <button
-                        type="button"
-                        onClick={() => setToken('')}
-                        className="absolute inset-y-0 right-3 flex items-center px-2 text-[var(--text-secondary)] hover:text-red-500 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
+                {/* Bearer Token */}
+                <div className="group relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--accent-color)] opacity-60 pointer-events-none transition-transform group-focus-within:scale-110">
+                    <KeyRound className="w-4 h-4" />
                   </div>
+                  <input
+                    type="password"
+                    value={token}
+                    onChange={(event) => setToken(event.target.value)}
+                    placeholder="sk-..."
+                    className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] pl-10 pr-10 py-2.5 outline-none focus:ring-4 focus:ring-[var(--accent-color)]/10 focus:border-[var(--accent-color)] transition-all text-sm font-mono shadow-sm hover:shadow-md"
+                  />
+                  {token && (
+                    <button
+                      type="button"
+                      onClick={() => setToken('')}
+                      className="absolute inset-y-0 right-3 flex items-center px-1 text-[var(--text-secondary)] hover:text-red-500 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
-                <div className="space-y-3 relative group">
-                  <div className="flex items-center gap-2 text-[11px] font-bold text-[var(--accent-color)] uppercase tracking-tight ml-4">
-                    <Cpu className="w-3.5 h-3.5" />
-                    Custom Model (Optional)
+
+                {/* Custom Model */}
+                <div className="group relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--accent-color)] opacity-60 pointer-events-none transition-transform group-focus-within:scale-110">
+                    <Cpu className="w-4 h-4" />
                   </div>
-                  <div className="relative group/input">
-                    <input
-                      type="text"
-                      value={customModel}
-                      onChange={(e) => setCustomModel(e.target.value)}
-                      placeholder="例如：gpt-4o, claude-3-5-sonnet... (留空则自动识别)"
-                      className="w-full pl-6 pr-12 py-4 rounded-[20px] border border-[var(--border-color)] bg-[var(--bg-surface)] text-sm focus:outline-none focus:ring-4 focus:ring-[var(--accent-color)]/20 focus:border-[var(--accent-color)] transition-all placeholder:text-[var(--text-secondary)]/30"
-                    />
-                    {customModel && (
-                      <button 
-                        onClick={() => setCustomModel('')}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-[var(--bg-main)] text-[var(--text-secondary)] transition-all"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
+                  <input
+                    type="text"
+                    value={customModel}
+                    onChange={(e) => setCustomModel(e.target.value)}
+                    placeholder="例如：gpt-4o, claude-3-5-sonnet... (留空自动识别)"
+                    className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] pl-10 pr-10 py-2.5 outline-none focus:ring-4 focus:ring-[var(--accent-color)]/10 focus:border-[var(--accent-color)] transition-all text-sm font-medium shadow-sm hover:shadow-md placeholder:text-[var(--text-secondary)]/30"
+                  />
+                  {customModel && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomModel('')}
+                      className="absolute inset-y-0 right-3 flex items-center px-1 text-[var(--text-secondary)] hover:text-red-500 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
 
               {/* 操作按钮区 */}
-              <div className="flex items-center justify-between pt-2 border-t border-[var(--border-color)]/60">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between pt-1 border-t border-[var(--border-color)]/60">
+                <div className="flex items-center gap-2">
                   <button
                     onClick={handleRunTests}
                     disabled={isTesting}
                     title={isTesting ? '正在检测...' : '开始执行检测'}
-                    className={`relative overflow-hidden flex items-center justify-center p-4 rounded-2xl bg-[var(--accent-color)] text-white shadow-xl shadow-[var(--accent-color)]/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
+                    className={`relative overflow-hidden flex items-center justify-center p-2.5 rounded-xl bg-[var(--accent-color)] text-white shadow-xl shadow-[var(--accent-color)]/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed`}
                   >
-                    {isTesting ? <Loader2 className="w-6 h-6 animate-spin" /> : <Play className="w-6 h-6 fill-current" />}
+                    {isTesting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5 fill-current" />}
                   </button>
                   <button
                     onClick={resetStates}
                     disabled={isTesting}
-                    title="清置所有状态"
-                    className="flex items-center justify-center p-4 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-main)] text-[var(--text-secondary)] hover:bg-red-500/5 hover:text-red-500 hover:border-red-500/30 transition-all active:scale-95 disabled:opacity-50"
+                    title="重置所有状态"
+                    className="flex items-center justify-center p-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] text-[var(--text-secondary)] hover:bg-red-500/5 hover:text-red-500 hover:border-red-500/30 transition-all active:scale-95 disabled:opacity-50"
                   >
-                    <Trash2 className="w-6 h-6" />
+                    <Trash2 className="w-5 h-5" />
                   </button>
                 </div>
-                
-                <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--bg-main)] border border-[var(--border-color)]">
+
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--bg-main)] border border-[var(--border-color)]">
                   <div className={`w-2 h-2 rounded-full ${isTesting ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
                   <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">系统准备就绪</span>
                 </div>
@@ -596,44 +605,43 @@ export default function OpenAIConnectivityTool() {
 
               {/* CLI 配置快照 - 仅在有配置时显示 */}
               {url.trim() && token.trim() && (
-                <div className="rounded-[24px] bg-gradient-to-br from-[var(--bg-main)] to-[var(--bg-main)]/50 border border-[var(--border-color)] p-5 space-y-4 shadow-sm">
+                <div className="rounded-[16px] bg-gradient-to-br from-[var(--bg-main)] to-[var(--bg-main)]/50 border border-[var(--border-color)] p-4 space-y-2 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-[11px] font-bold text-[var(--accent-color)] uppercase tracking-tight">
                       <Terminal className="w-3.5 h-3.5" />
                       CLI 快速配置 (PowerShell)
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="group relative bg-[var(--bg-surface)] p-3 rounded-xl border border-[var(--border-color)] hover:border-[var(--accent-color)]/40 transition-all">
-                      <div className="text-[9px] font-bold text-[var(--text-secondary)] mb-1.5 uppercase opacity-60">Claude Code</div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="group relative bg-[var(--bg-surface)] p-2.5 rounded-lg border border-[var(--border-color)] hover:border-[var(--accent-color)]/40 transition-all">
+                      <div className="text-[9px] font-bold text-[var(--text-secondary)] mb-1 uppercase opacity-60">Claude Code</div>
                       <div className="text-[10px] font-mono truncate opacity-80 pr-8">
                         & ([scriptblock]::Create((irm '...'))) -BaseUrl "{url}" ...
                       </div>
-                      <button 
+                      <button
                         onClick={() => {
-                          const base = url.trim().replace(/\/+$/, '');
-                          const normalized = base.endsWith('/v1') ? base : `${base}/v1`;
-                          const cmd = `& ([scriptblock]::Create((irm 'https://www.928496.xyz/s/68c6daaf'))) -BaseUrl "${normalized}" -AuthToken "${token.trim()}"`;
+                          const base = url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '');     
+                          const cmd = `& ([scriptblock]::Create((irm 'https://www.928496.xyz/s/68c6daaf'))) -BaseUrl "${base}" -AuthToken "${token.trim()}"`;
                           navigator.clipboard.writeText(cmd).then(() => window.showToast?.('已复制', 'success'));
                         }}
-                        className="absolute right-2 bottom-2 p-1.5 rounded-lg bg-[var(--accent-color)] text-white opacity-0 group-hover:opacity-100 transition-all"
+                        className="absolute right-2 bottom-2 p-1.5 rounded bg-[var(--accent-color)] text-white opacity-0 group-hover:opacity-100 transition-all"
                       >
                         <Copy className="w-3 h-3" />
                       </button>
                     </div>
-                    <div className="group relative bg-[var(--bg-surface)] p-3 rounded-xl border border-[var(--border-color)] hover:border-[var(--accent-color)]/40 transition-all">
-                      <div className="text-[9px] font-bold text-[var(--text-secondary)] mb-1.5 uppercase opacity-60">OpenAI Codex</div>
+                    <div className="group relative bg-[var(--bg-surface)] p-2.5 rounded-lg border border-[var(--border-color)] hover:border-[var(--accent-color)]/40 transition-all">
+                      <div className="text-[9px] font-bold text-[var(--text-secondary)] mb-1 uppercase opacity-60">OpenAI Codex</div>
                       <div className="text-[10px] font-mono truncate opacity-80 pr-8">
                         & ([scriptblock]::Create((irm '...'))) -BaseUrl "{url}" ...
                       </div>
-                      <button 
+                      <button
                          onClick={() => {
-                          const base = url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '');
+                          const base = url.trim().replace(/\/v1\/?$/, '').replace(/\/+$/, '');     
                           const normalized = `${base}/v1`;
                           const cmd = `& ([scriptblock]::Create((irm 'https://www.928496.xyz/s/321b2e18'))) -BaseUrl "${normalized}" -AuthToken "${token.trim()}"`;
                           navigator.clipboard.writeText(cmd).then(() => window.showToast?.('已复制', 'success'));
                         }}
-                        className="absolute right-2 bottom-2 p-1.5 rounded-lg bg-[var(--accent-color)] text-white opacity-0 group-hover:opacity-100 transition-all"
+                        className="absolute right-2 bottom-2 p-1.5 rounded bg-[var(--accent-color)] text-white opacity-0 group-hover:opacity-100 transition-all"
                       >
                         <Copy className="w-3 h-3" />
                       </button>
@@ -645,25 +653,35 @@ export default function OpenAIConnectivityTool() {
           </section>
 
           {/* 三列检测结果 - 始终显示但会有状态变化 */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <ResultPanel state={modelsState}>
               {modelsState.status === 'success' && (
-                <div className="mt-4 pt-4 border-t border-[var(--border-color)]/40 space-y-3">
+                <div className="mt-2 pt-2 border-t border-[var(--border-color)]/40 space-y-2">     
                   <div className="flex items-center justify-between">
                     <span className="text-[10px] font-medium text-[var(--text-secondary)]">识别到 {modelsState.data?.data?.length || 0} 个模型</span>
-                    <button
-                      onClick={() => {
-                        const ids = (modelsState.data?.data || []).map((m: any) => m.id).join('\n');
-                        navigator.clipboard.writeText(ids).then(() => window.showToast?.('已全部复制', 'success'));
-                      }}
-                      title="复制全部模型 ID"
-                      className="p-1.5 rounded bg-[var(--accent-color)]/10 text-[var(--accent-color)] hover:bg-[var(--accent-color)]/20 transition-all active:scale-90"
-                    >
-                      <Copy className="w-3 h-3" />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      {(modelsState.data?.data || []).length > 10 && (
+                        <button
+                          onClick={() => setShowAllModels(!showAllModels)}
+                          className="px-2 py-0.5 rounded-md bg-[var(--accent-color)]/5 text-[var(--accent-color)] text-[9px] font-bold hover:bg-[var(--accent-color)]/10 transition-all uppercase tracking-tighter"
+                        >
+                          {showAllModels ? '收起' : '详细'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          const ids = (modelsState.data?.data || []).map((m: any) => m.id).join('\n');
+                          navigator.clipboard.writeText(ids).then(() => window.showToast?.('已全部复制', 'success'));
+                        }}
+                        title="复制全部模型 ID"
+                        className="p-1 rounded bg-[var(--accent-color)]/10 text-[var(--accent-color)] hover:bg-[var(--accent-color)]/20 transition-all active:scale-90"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto custom-scrollbar">
-                    {(modelsState.data?.data || []).slice(0, 10).map((item: any) => (
+                  <div className={`flex flex-wrap gap-1.5 transition-all duration-300 ${showAllModels ? 'max-h-[300px]' : 'max-h-24'} overflow-y-auto custom-scrollbar p-0.5`}>
+                    {(showAllModels ? (modelsState.data?.data || []) : (modelsState.data?.data || []).slice(0, 10)).map((item: any) => (
                       <button
                         key={item.id}
                         onClick={() => {
@@ -672,12 +690,19 @@ export default function OpenAIConnectivityTool() {
                           });
                         }}
                         title="点击复制模型 ID"
-                        className="px-1.5 py-0.5 rounded-md bg-[var(--bg-main)] border border-[var(--border-color)] text-[9px] font-mono hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-all active:scale-95 cursor-pointer"
+                        className="px-1.5 py-0.5 rounded bg-[var(--bg-main)] border border-[var(--border-color)] text-[9px] font-mono hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-all active:scale-95 cursor-pointer"
                       >
                         {item.id}
                       </button>
                     ))}
-                    {(modelsState.data?.data || []).length > 10 && <span className="text-[9px] opacity-40 italic py-0.5">+{(modelsState.data?.data || []).length - 10} more</span>}
+                    {!showAllModels && (modelsState.data?.data || []).length > 10 && (
+                      <button 
+                        onClick={() => setShowAllModels(true)}
+                        className="px-1.5 py-0.5 rounded bg-[var(--accent-color)]/5 border border-dashed border-[var(--accent-color)]/30 text-[9px] text-[var(--accent-color)] opacity-60 italic hover:opacity-100 transition-all"
+                      >
+                        +{(modelsState.data?.data || []).length - 10} more
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -685,21 +710,23 @@ export default function OpenAIConnectivityTool() {
 
             <ResultPanel state={chatState}>
               {chatState.status === 'success' && (
-                <div className="mt-4 pt-4 border-t border-[var(--border-color)]/40 group relative">
-                  <div className="text-[10px] text-[var(--text-secondary)] mb-2 uppercase tracking-tighter opacity-60">采样响应内容</div>
-                  <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)]/50 p-3 text-[11px] leading-relaxed line-clamp-4 hover:line-clamp-none transition-all">
+                <div className="mt-2 pt-2 border-t border-[var(--border-color)]/40 group relative">
+                  <div className="text-[10px] text-[var(--text-secondary)] mb-1 uppercase tracking-tighter opacity-60">采样响应内容</div>
+                  <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-main)]/50 p-2 text-[11px] leading-relaxed line-clamp-4 hover:line-clamp-none transition-all">
                     {extractTextFromResponse(chatState.data || chatState.details)}
                   </div>
                 </div>
               )}
             </ResultPanel>
 
-            <ResultPanel state={responsesState}>
-              {(responsesState.status === 'success' || responsesState.status === 'warning') && (
-                <div className="mt-4 pt-4 border-t border-[var(--border-color)]/40 group relative text-left">
-                  <div className="text-[10px] text-[var(--text-secondary)] mb-2 uppercase tracking-tighter opacity-60">采样响应内容</div>
-                  <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)]/50 p-3 text-[11px] leading-relaxed line-clamp-4 hover:line-clamp-none transition-all">
-                    {extractTextFromResponse(responsesState.data || responsesState.details)}
+            <ResultPanel
+              title="CLAUDE CODE / RESPONSES"
+              state={responsesState}>
+              {(responsesState.status === 'success' || responsesState.status === 'warning') && (   
+                <div className="mt-2 pt-2 border-t border-[var(--border-color)]/40 group relative text-left">
+                  <div className="text-[10px] text-[var(--text-secondary)] mb-1 uppercase tracking-tighter opacity-60">采样响应内容</div>
+                  <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-main)]/50 p-2 text-[11px] leading-relaxed line-clamp-4 hover:line-clamp-none transition-all">
+                    {extractTextFromResponse(responsesState.data || responsesState.details)}       
                   </div>
                 </div>
               )}
@@ -708,10 +735,10 @@ export default function OpenAIConnectivityTool() {
         </div>
 
         {/* 右侧边栏：历史记录与辅助功能 */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
-          <aside className="h-full flex flex-col rounded-[32px] border border-[var(--border-color)] bg-[var(--bg-surface)] overflow-hidden shadow-xl">
-            <div className="p-6 border-b border-[var(--border-color)]/60 bg-[var(--bg-main)]/30">
-              <div className="flex items-center justify-between mb-2">
+        <div className="lg:col-span-4 flex flex-col gap-4">
+          <aside className="h-full flex flex-col rounded-[20px] border border-[var(--border-color)] bg-[var(--bg-surface)] overflow-hidden shadow-xl">
+            <div className="p-4 border-b border-[var(--border-color)]/60 bg-[var(--bg-main)]/30">  
+              <div className="flex items-center justify-between mb-1">
                 <h3 className="text-sm font-bold flex items-center gap-2 tracking-tight">
                   <History className="w-4 h-4 text-[var(--accent-color)]" />
                   测试历史
@@ -719,13 +746,14 @@ export default function OpenAIConnectivityTool() {
                 {!historyEmpty && (
                   <button
                     onClick={clearHistory}
-                    className="text-[10px] font-bold text-[var(--text-secondary)] hover:text-red-500 transition-colors uppercase tracking-widest"
+                    title="清空所有测试历史"
+                    className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:bg-red-500/10 hover:text-red-500 transition-all active:scale-95"
                   >
-                    清空历史
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
-              <div className="mt-4 flex gap-3 p-3 rounded-2xl bg-amber-500/5 border border-amber-500/10">
+              <div className="mt-2 flex gap-2 p-2 rounded-xl bg-amber-500/5 border border-amber-500/10">
                 <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
                 <p className="text-[9px] text-[var(--text-secondary)] leading-relaxed opacity-80 font-medium">
                   我们深知数据隐私的重要性，历史记录仅存储在当前浏览器的本地存储中，不会上传至任何服务器。
@@ -733,19 +761,19 @@ export default function OpenAIConnectivityTool() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar py-2">
+            <div className="flex-1 overflow-y-auto custom-scrollbar py-1">
               {historyEmpty ? (
                 <div className="h-40 flex flex-col items-center justify-center text-[var(--text-secondary)] opacity-20 px-10 text-center">
                   <History className="w-10 h-10 mb-2" />
                   <p className="text-[10px] font-medium">还没有任何历史记录</p>
                 </div>
               ) : (
-                <div className="px-3 space-y-2">
+                <div className="px-3 space-y-1.5 pb-2">
                   {history.map((item) => (
                     <button
                       key={`${item.url}-${item.token}-${item.timestamp}`}
                       onClick={() => loadHistory(item)}
-                      className="w-full text-left rounded-[20px] border border-[var(--border-color)] p-4 bg-[var(--bg-main)]/40 hover:bg-[var(--hover-color)] hover:border-[var(--accent-color)]/30 transition-all group relative overflow-hidden"
+                      className="w-full text-left rounded-[16px] border border-[var(--border-color)] p-3 bg-[var(--bg-main)]/40 hover:bg-[var(--hover-color)] hover:border-[var(--accent-color)]/30 transition-all group relative overflow-hidden"
                     >
                       <div className="relative z-10">
                         <p className="text-[11px] font-bold text-[var(--text-primary)] truncate max-w-[180px] mb-1">{item.url}</p>
@@ -762,8 +790,8 @@ export default function OpenAIConnectivityTool() {
                            <span className="text-[9px] text-[var(--text-secondary)] opacity-50">{new Date(item.timestamp).toLocaleDateString()}</span>
                         </div>
                       </div>
-                      <div className="absolute top-1/2 -translate-y-1/2 right-3 opacity-0 group-hover:opacity-100 transition-all">
-                        <button 
+                      <div className="absolute top-1/2 -translate-y-1/2 right-2 opacity-0 group-hover:opacity-100 transition-all">
+                        <button
                            onClick={(e) => { e.stopPropagation(); removeHistory(item); }}
                            className="p-1.5 rounded-lg bg-red-500 text-white shadow-lg shadow-red-500/20"
                         >
@@ -775,8 +803,6 @@ export default function OpenAIConnectivityTool() {
                 </div>
               )}
             </div>
-
-
           </aside>
         </div>
       </div>

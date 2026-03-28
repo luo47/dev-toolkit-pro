@@ -465,7 +465,7 @@ export default function App() {
         </div>
 
         <div className="flex-1 overflow-y-auto w-full">
-          <div className={`${activeTool === 'chain-processor' || activeTool === 'code-snippets' || activeTool === 'cloud-share' || activeTool === 'openai-api-tester' || activeTool === 'share-preview' ? 'max-w-[1400px]' : 'max-w-[840px]'} mx-auto w-full px-4 lg:px-8 py-8 flex flex-col min-h-full`}>
+          <div className={`${activeTool === 'chain-processor' || activeTool === 'code-snippets' || activeTool === 'cloud-share' || activeTool === 'openai-api-tester' || activeTool === 'share-preview' ? 'max-w-[1400px]' : 'max-w-[840px]'} mx-auto w-full px-4 lg:px-8 py-4 lg:py-6 flex flex-col min-h-full`}>
             {activeTool === 'home' ? (
               <div className="flex-1 flex flex-col pb-20">
                 <Home
@@ -477,12 +477,12 @@ export default function App() {
               </div>
             ) : (
               <div className="flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col">
-                <div className="mb-6">
-                  <h2 className="text-2xl md:text-3xl font-bold tracking-tight leading-tight">
+                <div className="mb-3 lg:mb-4">
+                  <h2 className="text-xl md:text-2xl font-bold tracking-tight leading-tight">
                     {tools.find((t) => t.id === activeTool)?.name}
                   </h2>
                 </div>
-                <div className={`flex-1 ${activeTool === 'qrcode' ? '' : 'bg-[var(--bg-surface)] p-4 md:p-8 rounded-[28px] border border-[var(--border-color)] shadow-xl'}`}>
+                <div className={`flex-1 ${activeTool === 'qrcode' || activeTool === 'openai-api-tester' ? '' : 'bg-[var(--bg-surface)] p-4 md:p-6 rounded-[24px] border border-[var(--border-color)] shadow-xl'}`}>
                   <Suspense fallback={
                     <div className="flex items-center justify-center p-20">
                       <div className="w-10 h-10 border-4 border-[var(--accent-color)] border-t-transparent rounded-full animate-spin"></div>

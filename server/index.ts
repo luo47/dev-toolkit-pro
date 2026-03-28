@@ -684,6 +684,8 @@ app.post('/api/openai/test', async (c) => {
     const headers = new Headers({
       Authorization: `Bearer ${token}`,
       Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'anthropic-version': '2023-06-01',
     });
 
     const init: RequestInit = { method, headers };
