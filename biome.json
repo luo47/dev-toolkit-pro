@@ -22,7 +22,7 @@
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
-    "lineWidth": 100
+    "lineWidth": 120
   },
   "css": {
     "parser": {
@@ -38,29 +38,39 @@
       "react": "recommended"
     },
     "rules": {
+      "recommended": true,
       "a11y": {
-        "noLabelWithoutControl": "warn",
-        "noStaticElementInteractions": "warn",
-        "noSvgWithoutTitle": "warn",
-        "useAltText": "warn",
-        "useButtonType": "warn",
-        "useKeyWithClickEvents": "warn"
+        "recommended": true
       },
       "complexity": {
+        "recommended": true,
         "noExcessiveCognitiveComplexity": {
           "level": "error",
           "options": {
             "maxAllowedComplexity": 15
           }
+        },
+        "noExcessiveLinesPerFunction": {
+          "level": "error",
+          "options": {
+            "maxLines": 50
+          }
         }
       },
+      "correctness": {
+        "recommended": true
+      },
+      "performance": {
+        "recommended": true
+      },
+      "security": {
+        "recommended": true
+      },
       "style": {
-        "noNonNullAssertion": "warn"
+        "recommended": true
       },
       "suspicious": {
-        "noArrayIndexKey": "warn",
-        "noExplicitAny": "warn",
-        "useIterableCallbackReturn": "warn"
+        "recommended": true
       },
       "nursery": {
         "noExcessiveLinesPerFile": {
