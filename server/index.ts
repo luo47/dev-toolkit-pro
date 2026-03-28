@@ -678,14 +678,9 @@ app.post('/api/openai/test', async (c) => {
       return c.json({ success: false, error: '缺少 API Base URL 或 Token' }, 400);
     }
 
-    let normalizedBaseUrl: URL;
-    try {
-      normalizedBaseUrl = new URL(baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`);
-    } catch {
-      return c.json({ success: false, error: 'API Base URL 格式无效' }, 400);
-    }
-
-    const finalUrl = new URL(endpoint.replace(/^\/+/, ''), normalizedBaseUrl).toString();
+    const finalBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    const finalEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const finalUrl = `${finalBaseUrl}${finalEndpoint}`;
     const headers = new Headers({
       Authorization: `Bearer ${token}`,
       Accept: 'application/json',

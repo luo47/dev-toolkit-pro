@@ -18,6 +18,7 @@ import {
   Trash2,
   X,
   XCircle,
+  Cpu,
 } from 'lucide-react';
 
 type TestStatus = 'idle' | 'loading' | 'success' | 'error' | 'warning';
@@ -25,6 +26,7 @@ type TestStatus = 'idle' | 'loading' | 'success' | 'error' | 'warning';
 type HistoryItem = {
   url: string;
   token: string;
+  customModel?: string;
   timestamp: number;
 };
 
@@ -67,7 +69,7 @@ function maskToken(token: string) {
 }
 
 function extractTextFromResponse(data: any): string {
-  if (!data) return '未返回空响应';
+  if (!data) return '无响应数据';
   
   let target = data;
   
@@ -80,6 +82,10 @@ function extractTextFromResponse(data: any): string {
     }
   }
 
+  // 1.5 提取错误信息
+  const errorMessage = target?.error?.message || target?.error;
+  if (typeof errorMessage === 'string' && errorMessage.trim()) return `Error: ${errorMessage}`;
+  
   // 1. 标准 OpenAI Chat 格式
   const chatContent = target?.choices?.[0]?.message?.content;
   if (typeof chatContent === 'string' && chatContent.trim()) return chatContent;
@@ -87,11 +93,23 @@ function extractTextFromResponse(data: any): string {
   // 2. 某些代理或模型的 output_text 格式
   if (typeof target.output_text === 'string' && target.output_text.trim()) return target.output_text;
   
-  // 3. 数组形式的 output 格式
+  // 3. 数组形式的 output 格式（适配 GPT-5 / Claude-4 深度嵌套接口）
   if (Array.isArray(target.output)) {
     const chunks = target.output
-      .flatMap((item: any) => item?.content || [])
-      .map((item: any) => (typeof item === 'string' ? item : item?.text || item?.content || ''))
+      .map((item: any) => {
+        if (typeof item === 'string') return item;
+        
+        // 如果项内包含 content 数组（如您提供的报文：item.content[0].text）
+        if (Array.isArray(item?.content)) {
+          return item.content
+            .map((sub: any) => (typeof sub === 'string' ? sub : sub?.text || sub?.content || ''))
+            .filter(Boolean)
+            .join('');
+        }
+        
+        // 优先提取 GPT-5 风格的顶级 text 字段
+        return item?.text || item?.content || '';
+      })
       .filter(Boolean);
     if (chunks.length > 0) return chunks.join('\n');
   }
@@ -187,14 +205,14 @@ function ResultPanel({
                     </pre>
                   </div>
                 )}
-                {state.data && (
+                {(state.data || state.details) && (
                   <div className="space-y-1.5">
-                    <div className="text-[9px] font-bold text-emerald-500 flex items-center gap-1 uppercase opacity-60">
-                      <CheckCircle2 className="w-2.5 h-2.5" />
+                    <div className={`text-[9px] font-bold flex items-center gap-1 uppercase opacity-60 ${state.status === 'error' ? 'text-red-500' : 'text-emerald-500'}`}>
+                      {state.status === 'error' ? <ShieldAlert className="w-2.5 h-2.5" /> : <CheckCircle2 className="w-2.5 h-2.5" />}
                       Response Body
                     </div>
                     <pre className="p-2.5 rounded-xl bg-[var(--bg-main)] border border-[var(--border-color)] text-[9px] font-mono overflow-x-auto custom-scrollbar text-[var(--text-primary)]/80 leading-tight">
-                      {JSON.stringify(state.data, null, 2)}
+                      {JSON.stringify(state.data || state.details, null, 2)}
                     </pre>
                   </div>
                 )}
@@ -211,6 +229,7 @@ function ResultPanel({
 export default function OpenAIConnectivityTool() {
   const [url, setUrl] = useState('');
   const [token, setToken] = useState('');
+  const [customModel, setCustomModel] = useState('');
   const [isTesting, setIsTesting] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
@@ -245,13 +264,11 @@ export default function OpenAIConnectivityTool() {
 
   const historyEmpty = useMemo(() => history.length === 0, [history]);
 
-  const saveHistory = (nextUrl: string, nextToken: string) => {
-    setHistory((prev) => {
-      const deduped = prev.filter((item) => !(item.url === nextUrl && item.token === nextToken));
-      const updated = [{ url: nextUrl, token: nextToken, timestamp: Date.now() }, ...deduped].slice(0, 12);
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
-      return updated;
-    });
+  const saveHistory = (u: string, t: string, m?: string) => {
+    const newItem: HistoryItem = { url: u, token: t, customModel: m, timestamp: Date.now() };
+    const newHistory = [newItem, ...history.filter(h => h.url !== u || h.token !== t || h.customModel !== m)].slice(0, 10);
+    setHistory(newHistory);
+    localStorage.setItem('openai-api-tester-history', JSON.stringify(newHistory));
   };
 
   const resetStates = () => {
@@ -339,7 +356,7 @@ export default function OpenAIConnectivityTool() {
       }
 
       const models = Array.isArray(modelsResult.data?.data) ? modelsResult.data.data : [];
-      selectedModel = detectBestModel(models);
+      selectedModel = customModel.trim() || detectBestModel(models);
       setModelsState((prev) => ({
         ...prev,
         status: 'success',
@@ -347,7 +364,7 @@ export default function OpenAIConnectivityTool() {
         data: modelsResult.data,
         requestedModel: selectedModel,
       }));
-      saveHistory(url.trim(), token.trim());
+      saveHistory(url.trim(), token.trim(), customModel.trim());
 
       const chatPayload = {
         model: selectedModel,
@@ -388,8 +405,7 @@ export default function OpenAIConnectivityTool() {
 
       const responsesPayload = {
         model: selectedModel,
-        input: '请回复“连接成功”。',
-        max_output_tokens: 32,
+        input: '你好',
       };
       setResponsesState((prev) => ({
         ...prev,
@@ -451,6 +467,7 @@ export default function OpenAIConnectivityTool() {
   const loadHistory = (item: HistoryItem) => {
     setUrl(item.url);
     setToken(item.token);
+    setCustomModel(item.customModel || '');
     resetStates();
   };
 
@@ -525,9 +542,32 @@ export default function OpenAIConnectivityTool() {
                     )}
                   </div>
                 </div>
+                <div className="space-y-3 relative group">
+                  <div className="flex items-center gap-2 text-[11px] font-bold text-[var(--accent-color)] uppercase tracking-tight ml-4">
+                    <Cpu className="w-3.5 h-3.5" />
+                    Custom Model (Optional)
+                  </div>
+                  <div className="relative group/input">
+                    <input
+                      type="text"
+                      value={customModel}
+                      onChange={(e) => setCustomModel(e.target.value)}
+                      placeholder="例如：gpt-4o, claude-3-5-sonnet... (留空则自动识别)"
+                      className="w-full pl-6 pr-12 py-4 rounded-[20px] border border-[var(--border-color)] bg-[var(--bg-surface)] text-sm focus:outline-none focus:ring-4 focus:ring-[var(--accent-color)]/20 focus:border-[var(--accent-color)] transition-all placeholder:text-[var(--text-secondary)]/30"
+                    />
+                    {customModel && (
+                      <button 
+                        onClick={() => setCustomModel('')}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full hover:bg-[var(--bg-main)] text-[var(--text-secondary)] transition-all"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
-              {/* 操作按钮 */}
+              {/* 操作按钮区 */}
               <div className="flex items-center justify-between pt-2 border-t border-[var(--border-color)]/60">
                 <div className="flex items-center gap-3">
                   <button
@@ -648,7 +688,7 @@ export default function OpenAIConnectivityTool() {
                 <div className="mt-4 pt-4 border-t border-[var(--border-color)]/40 group relative">
                   <div className="text-[10px] text-[var(--text-secondary)] mb-2 uppercase tracking-tighter opacity-60">采样响应内容</div>
                   <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)]/50 p-3 text-[11px] leading-relaxed line-clamp-4 hover:line-clamp-none transition-all">
-                    {extractTextFromResponse(chatState.data)}
+                    {extractTextFromResponse(chatState.data || chatState.details)}
                   </div>
                 </div>
               )}
@@ -656,11 +696,11 @@ export default function OpenAIConnectivityTool() {
 
             <ResultPanel state={responsesState}>
               {(responsesState.status === 'success' || responsesState.status === 'warning') && (
-                <div className="mt-4 pt-4 border-t border-[var(--border-color)]/40">
-                   <div className="text-[10px] text-[var(--text-secondary)] mb-2 uppercase tracking-tighter opacity-60">端点可用性</div>
-                   <div className={`rounded-xl border ${responsesState.status === 'success' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-amber-500/20 bg-amber-500/5'} p-3 text-[10px] leading-relaxed`}>
-                     {responsesState.status === 'success' ? '标准 Responses 端点响应正常' : '端点返回异常，建议确认兼容模式'}
-                   </div>
+                <div className="mt-4 pt-4 border-t border-[var(--border-color)]/40 group relative text-left">
+                  <div className="text-[10px] text-[var(--text-secondary)] mb-2 uppercase tracking-tighter opacity-60">采样响应内容</div>
+                  <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)]/50 p-3 text-[11px] leading-relaxed line-clamp-4 hover:line-clamp-none transition-all">
+                    {extractTextFromResponse(responsesState.data || responsesState.details)}
+                  </div>
                 </div>
               )}
             </ResultPanel>
@@ -710,7 +750,15 @@ export default function OpenAIConnectivityTool() {
                       <div className="relative z-10">
                         <p className="text-[11px] font-bold text-[var(--text-primary)] truncate max-w-[180px] mb-1">{item.url}</p>
                         <div className="flex items-center justify-between">
-                           <span className="text-[9px] font-mono text-[var(--text-secondary)]">{maskToken(item.token)}</span>
+                           <div className="flex flex-col gap-0.5">
+                             <span className="text-[9px] font-mono text-[var(--text-secondary)]">{maskToken(item.token)}</span>
+                             {item.customModel && (
+                               <div className="flex items-center gap-1 text-[8px] text-[var(--accent-color)] opacity-70 font-medium">
+                                 <Cpu className="w-2.5 h-2.5" />
+                                 {item.customModel}
+                               </div>
+                             )}
+                           </div>
                            <span className="text-[9px] text-[var(--text-secondary)] opacity-50">{new Date(item.timestamp).toLocaleDateString()}</span>
                         </div>
                       </div>
