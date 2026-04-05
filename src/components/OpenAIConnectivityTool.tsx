@@ -312,12 +312,14 @@ function ResponsePreview({ state, title, visible }: { state: TestState; title?: 
 
 function ResultsGrid({
   chatState,
+  messagesState,
   modelsState,
   responsesState,
   showAllModels,
   toggleShowAllModels,
 }: {
   chatState: TestState;
+  messagesState: TestState;
   modelsState: TestState;
   responsesState: TestState;
   showAllModels: boolean;
@@ -325,7 +327,7 @@ function ResultsGrid({
 }) {
   const allModels = getModelsFromState(modelsState.data);
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
       <ModelsPanel
         allModels={allModels}
         modelsState={modelsState}
@@ -334,9 +336,14 @@ function ResultsGrid({
       />
       <ResponsePreview state={chatState} visible={chatState.status === "success"} />
       <ResponsePreview
-        title="CLAUDE CODE / RESPONSES"
+        title="RESPONSES"
         state={responsesState}
         visible={responsesState.status === "success" || responsesState.status === "warning"}
+      />
+      <ResponsePreview
+        title="MESSAGES"
+        state={messagesState}
+        visible={messagesState.status === "success" || messagesState.status === "warning"}
       />
     </div>
   );
@@ -352,6 +359,7 @@ export default function OpenAIConnectivityTool() {
   const [modelsState, setModelsState] = useState<TestState>(createIdleState("模型列表检测"));
   const [chatState, setChatState] = useState<TestState>(createIdleState("Chat Completions 检测"));
   const [responsesState, setResponsesState] = useState<TestState>(createIdleState("Responses 检测"));
+  const [messagesState, setMessagesState] = useState<TestState>(createIdleState("Claude Code / Messages 检测"));
 
   useEffect(() => {
     setHistory(readHistory());
@@ -361,6 +369,7 @@ export default function OpenAIConnectivityTool() {
     setModelsState(createIdleState("模型列表检测"));
     setChatState(createIdleState("Chat Completions 检测"));
     setResponsesState(createIdleState("Responses 检测"));
+    setMessagesState(createIdleState("Claude Code / Messages 检测"));
   };
 
   const handleRunTests = async () => {
@@ -382,6 +391,7 @@ export default function OpenAIConnectivityTool() {
       setModelsState(result.modelsState);
       setChatState(result.chatState);
       setResponsesState(result.responsesState);
+      setMessagesState(result.messagesState);
 
       if (result.selectedModel) {
         const nextHistory = buildHistory(history, url.trim(), token.trim(), customModel.trim());
@@ -415,6 +425,7 @@ export default function OpenAIConnectivityTool() {
           />
           <ResultsGrid
             chatState={chatState}
+            messagesState={messagesState}
             modelsState={modelsState}
             responsesState={responsesState}
             showAllModels={showAllModels}

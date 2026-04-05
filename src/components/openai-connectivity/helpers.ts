@@ -39,8 +39,11 @@ export type ProxyResult = {
 };
 
 export const HISTORY_KEY = "openai-api-tester-history";
+export const URL_STRATEGY_KEY = "openai-api-tester-url-strategy";
 export const DEFAULT_URL = "https://api.openai.com/v1";
 const PREFERRED_MODELS = ["gpt-4.1-mini", "gpt-4o-mini", "gpt-4.1", "gpt-4o", "gpt-3.5-turbo"];
+type UrlStrategy = "with-v1" | "without-v1";
+type StrategyMap = Record<string, UrlStrategy>;
 
 export const createIdleState = (title: string): TestState => ({
   status: "idle",
@@ -98,11 +101,28 @@ const readSimpleText = (target: JsonValue | undefined) => {
   const firstChoice = choices?.[0];
   const firstChoiceObject = asObject(firstChoice);
   const messageObject = asObject(firstChoiceObject?.message);
+  const contentValue = targetObject.content;
+  const contentItems = asArray(contentValue);
+  const contentText = contentItems
+    ?.map((item) => {
+      if (typeof item === "string") return item;
+      const objectItem = asObject(item);
+      return readObjectText(objectItem);
+    })
+    .filter(Boolean)
+    .join("\n");
 
   return (
     (typeof messageObject?.content === "string" ? messageObject.content : "") ||
+    (Array.isArray(messageObject?.content)
+      ? messageObject.content
+          .map((item) => (typeof item === "string" ? item : readObjectText(item)))
+          .filter(Boolean)
+          .join("\n")
+      : "") ||
     (typeof targetObject.output_text === "string" ? targetObject.output_text : "") ||
     (typeof targetObject.text === "string" ? targetObject.text : "") ||
+    (typeof contentText === "string" ? contentText : "") ||
     (typeof targetObject.content === "string" ? targetObject.content : "") ||
     ""
   );
@@ -168,6 +188,63 @@ export const persistHistory = (history: HistoryItem[]) => {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
 };
 
+const normalizeBaseUrl = (url: string) => url.trim().replace(/\/+$/, "");
+
+const ensureV1Suffix = (url: string) => {
+  const normalized = normalizeBaseUrl(url);
+  return /\/v1$/i.test(normalized) ? normalized : `${normalized}/v1`;
+};
+
+const removeV1Suffix = (url: string) => normalizeBaseUrl(url).replace(/\/v1$/i, "");
+
+const readStrategyMap = (): StrategyMap => {
+  try {
+    const raw = localStorage.getItem(URL_STRATEGY_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as StrategyMap) : {};
+  } catch (error) {
+    console.error("读取 URL 策略缓存失败", error);
+    return {};
+  }
+};
+
+const persistStrategyMap = (value: StrategyMap) => {
+  localStorage.setItem(URL_STRATEGY_KEY, JSON.stringify(value));
+};
+
+const getStrategyKey = (url: string) => {
+  try {
+    return new URL(normalizeBaseUrl(url)).origin;
+  } catch {
+    return "";
+  }
+};
+
+const resolveStrategyFromUrl = (url: string): UrlStrategy =>
+  /\/v1$/i.test(normalizeBaseUrl(url)) ? "with-v1" : "without-v1";
+
+const rememberUrlStrategy = (inputUrl: string, resolvedUrl: string) => {
+  const strategyKey = getStrategyKey(inputUrl);
+  if (!strategyKey) return;
+  const current = readStrategyMap();
+  current[strategyKey] = resolveStrategyFromUrl(resolvedUrl);
+  persistStrategyMap(current);
+};
+
+const getCandidateBaseUrls = (url: string) => {
+  const enteredUrl = normalizeBaseUrl(url);
+  const withV1 = ensureV1Suffix(enteredUrl);
+  const withoutV1 = removeV1Suffix(enteredUrl);
+  const alternateUrl = /\/v1$/i.test(enteredUrl) ? withoutV1 : withV1;
+  const strategyKey = getStrategyKey(enteredUrl);
+  const preferredStrategy = strategyKey ? readStrategyMap()[strategyKey] : undefined;
+  const preferredUrl =
+    preferredStrategy === "with-v1" ? withV1 : preferredStrategy === "without-v1" ? withoutV1 : enteredUrl;
+
+  return Array.from(new Set([preferredUrl, enteredUrl, alternateUrl].filter(Boolean)));
+};
+
 const runProxyTest = async (
   url: string,
   token: string,
@@ -212,6 +289,39 @@ const runProxyTest = async (
       },
     };
   }
+};
+
+const hasUsableModels = (data: JsonValue | undefined) => {
+  const payload = asObject(data);
+  const models = asArray(payload?.data);
+  return Array.isArray(models) && models.length > 0;
+};
+
+const probeModelsBaseUrl = async (url: string, token: string) => {
+  let lastResult: ProxyResult | null = null;
+
+  for (const candidate of getCandidateBaseUrls(url)) {
+    const result = await runProxyTest(candidate, token, { endpoint: "/models" });
+    lastResult = result;
+    if (result.success && hasUsableModels(result.data)) {
+      rememberUrlStrategy(url, candidate);
+      return {
+        result,
+        resolvedBaseUrl: candidate,
+      };
+    }
+  }
+
+  return {
+    result:
+      lastResult ||
+      ({
+        success: false,
+        error: "模型列表检测失败",
+        url: `${normalizeBaseUrl(url)}/models`,
+      } satisfies ProxyResult),
+    resolvedBaseUrl: normalizeBaseUrl(url),
+  };
 };
 
 const createWarningState = (title: string, error: string): TestState => ({
@@ -303,6 +413,32 @@ const buildResponsesState = async (normalizedBase: string, url: string, token: s
       );
 };
 
+const buildMessagesState = async (normalizedBase: string, url: string, token: string, selectedModel: string) => {
+  const messagesPayload = {
+    model: selectedModel,
+    max_tokens: 32,
+    messages: [{ role: "user", content: "你好" }],
+  };
+  const result = await runProxyTest(url, token, {
+    endpoint: "/messages",
+    method: "POST",
+    payload: messagesPayload,
+  });
+  const targetUrl = result.url || `${normalizedBase}/messages`;
+  const warning = [400, 404, 405].includes(result.status || 0);
+  return result.success
+    ? buildSuccessState("Claude Code / Messages 检测", targetUrl, result.data, selectedModel, messagesPayload)
+    : buildErrorState(
+        "Claude Code / Messages 检测",
+        targetUrl,
+        result.error || "Claude Code / Messages 检测失败",
+        result.details,
+        selectedModel,
+        messagesPayload,
+        warning,
+      );
+};
+
 export const executeConnectivityTests = async ({
   customModel,
   token,
@@ -312,8 +448,8 @@ export const executeConnectivityTests = async ({
   token: string;
   url: string;
 }) => {
-  const normalizedBase = url.trim().replace(/\/+$/, "");
-  const modelsResult = await runProxyTest(url, token, { endpoint: "/models" });
+  const { resolvedBaseUrl, result: modelsResult } = await probeModelsBaseUrl(url, token);
+  const normalizedBase = normalizeBaseUrl(resolvedBaseUrl);
 
   if (!modelsResult.success) {
     return {
@@ -326,6 +462,7 @@ export const executeConnectivityTests = async ({
       ),
       chatState: createWarningState("Chat Completions 检测", "已跳过：模型列表检测未通过。"),
       responsesState: createWarningState("Responses 检测", "已跳过：模型列表检测未通过。"),
+      messagesState: createWarningState("Claude Code / Messages 检测", "已跳过：模型列表检测未通过。"),
     };
   }
 
@@ -344,7 +481,8 @@ export const executeConnectivityTests = async ({
       modelsResult.data,
       selectedModel,
     ),
-    chatState: await buildChatState(normalizedBase, url, token, selectedModel),
-    responsesState: await buildResponsesState(normalizedBase, url, token, selectedModel),
+    chatState: await buildChatState(normalizedBase, resolvedBaseUrl, token, selectedModel),
+    responsesState: await buildResponsesState(normalizedBase, resolvedBaseUrl, token, selectedModel),
+    messagesState: await buildMessagesState(normalizedBase, resolvedBaseUrl, token, selectedModel),
   };
 };
