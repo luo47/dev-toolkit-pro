@@ -1,5 +1,6 @@
 declare global {
   interface Window {
+    openLoginModal?: () => void;
     showToast?: (message: string, type?: "success" | "error") => void;
   }
 

@@ -3,7 +3,6 @@ import { ArrowRight, Loader2, Plus, Upload, X } from "lucide-react";
 import type React from "react";
 import { useRef, useState } from "react";
 import { useAppStore } from "../../store";
-import type { ShareContent } from "../../types";
 import type { SelectedFile } from "./cloudShareUtils";
 import { formatSize } from "./cloudShareUtils";
 
@@ -113,8 +112,6 @@ function FileUploadArea({
 
 export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
   const { isDarkMode } = useAppStore();
-  const [shareType, setShareType] = useState<"text" | "file">("text");
-  const [textContent, setTextContent] = useState("");
   const [shareName, setShareName] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -127,33 +124,6 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
   const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []) as File[];
     setSelectedFiles((prev) => [...prev, ...createSelectedFiles(files)]);
-    setShareType("file");
-  };
-
-  const createTextShare = async () => {
-    if (!textContent.trim()) return;
-    setIsUploading(true);
-    try {
-      const response = await fetch("/api/shares", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: textContent }),
-      });
-      const data = (await response.json()) as {
-        success: boolean;
-        data?: ShareContent;
-        error?: string;
-      };
-      if (data.success) {
-        window.showToast?.("文本分享创建成功", "success");
-        onSuccess();
-      }
-    } catch (error) {
-      console.error(error);
-      window.showToast?.("创建失败，请重试", "error");
-    } finally {
-      setIsUploading(false);
-    }
   };
 
   const createFileShare = async () => {
@@ -191,14 +161,10 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
   };
 
   const createShare = async () => {
-    if (shareType === "text") {
-      await createTextShare();
-      return;
-    }
     await createFileShare();
   };
 
-  const canSubmit = shareType === "text" ? !!textContent.trim() : selectedFiles.length > 0;
+  const canSubmit = selectedFiles.length > 0;
 
   return (
     <motion.div
@@ -215,29 +181,12 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
       >
         <div className="p-8 border-b border-[var(--border-color)] flex items-center justify-between opacity-80">
           <div className="flex items-center gap-4">
-            <div
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center ${shareType === "text" ? "bg-blue-500/10 text-blue-500" : "bg-emerald-500/10 text-emerald-500"}`}
-            >
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-emerald-500/10 text-emerald-500">
               <Plus size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-[var(--text-primary)]">创建新分享</h2>
-              <div className="flex gap-4 mt-1">
-                <button
-                  type="button"
-                  onClick={() => setShareType("text")}
-                  className={`text-xs font-bold uppercase transition-colors ${shareType === "text" ? "text-blue-500" : "text-[var(--text-secondary)]"}`}
-                >
-                  纯文本
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShareType("file")}
-                  className={`text-xs font-bold uppercase transition-colors ${shareType === "file" ? "text-emerald-500" : "text-[var(--text-secondary)]"}`}
-                >
-                  文件夹/文件
-                </button>
-              </div>
+              <h2 className="text-xl font-bold text-[var(--text-primary)]">创建文件分享</h2>
+              <p className="mt-1 text-xs font-bold uppercase text-emerald-500">仅支持文件夹/文件</p>
             </div>
           </div>
           <button
@@ -250,32 +199,23 @@ export default function UploadModal({ onClose, onSuccess }: UploadModalProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 custom-scrollbar space-y-8">
-          {shareType === "text" ? (
-            <textarea
-              value={textContent}
-              onChange={(e) => setTextContent(e.target.value)}
-              placeholder="粘贴您的文本或代码..."
-              className="w-full h-[300px] bg-[var(--bg-input)] border border-[var(--border-color)] rounded-2xl p-6 text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all resize-none shadow-inner"
-            />
-          ) : (
-            <FileUploadArea
-              fileInputRef={fileInputRef}
-              folderInputRef={folderInputRef}
-              isDragover={isDragover}
-              selectedFiles={selectedFiles}
-              onClearFiles={() => setSelectedFiles([])}
-              onDragLeave={() => setIsDragover(false)}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDragover(true);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                setIsDragover(false);
-              }}
-              onFileInputChange={handleFileInputChange}
-            />
-          )}
+          <FileUploadArea
+            fileInputRef={fileInputRef}
+            folderInputRef={folderInputRef}
+            isDragover={isDragover}
+            selectedFiles={selectedFiles}
+            onClearFiles={() => setSelectedFiles([])}
+            onDragLeave={() => setIsDragover(false)}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragover(true);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragover(false);
+            }}
+            onFileInputChange={handleFileInputChange}
+          />
 
           <div className="space-y-2">
             <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] opacity-50 tracking-widest ml-1">

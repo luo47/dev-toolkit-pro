@@ -1,6 +1,7 @@
 import { Copy, Cpu, KeyRound, Play, Server, Terminal, Trash2, X } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useAppStore } from "../store";
 import HistorySidebar from "./openai-connectivity/HistorySidebar";
 import {
   buildHistory,
@@ -8,6 +9,7 @@ import {
   DEFAULT_URL,
   executeConnectivityTests,
   extractTextFromResponse,
+  getHistoryDomain,
   HISTORY_KEY,
   type HistoryItem,
   type JsonValue,
@@ -17,6 +19,8 @@ import {
   type TestState,
 } from "./openai-connectivity/helpers";
 import ResultPanel from "./openai-connectivity/ResultPanel";
+
+const PENDING_SNIPPET_SAVE_KEY = "openai-api-tester-pending-snippet-save";
 
 const copyScript = (script: string) =>
   navigator.clipboard.writeText(script).then(() => window.showToast?.("已复制", "success"));
@@ -55,6 +59,7 @@ function ConnectivityConfigPanel({
       <div className="relative flex flex-col gap-4">
         <div className="grid grid-cols-1 gap-3">
           <InputField
+            copyTitle="API 地址已复制"
             icon={<Server className="w-4 h-4" />}
             placeholder={DEFAULT_URL}
             type="url"
@@ -62,6 +67,7 @@ function ConnectivityConfigPanel({
             onChange={onUrlChange}
           />
           <InputField
+            copyTitle="Token 已复制"
             icon={<KeyRound className="w-4 h-4" />}
             placeholder="sk-..."
             type="password"
@@ -118,18 +124,26 @@ function ConnectivityConfigPanel({
 }
 
 function InputField({
+  copyTitle,
   icon,
   onChange,
   placeholder,
   type,
   value,
 }: {
+  copyTitle?: string;
   icon: ReactNode;
   onChange: (value: string) => void;
   placeholder: string;
   type: string;
   value: string;
 }) {
+  const handleCopy = async () => {
+    if (!value) return;
+    await navigator.clipboard.writeText(value);
+    window.showToast?.(copyTitle || "已复制", "success");
+  };
+
   return (
     <div className="group relative">
       <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--accent-color)] opacity-60 pointer-events-none transition-transform group-focus-within:scale-110">
@@ -140,16 +154,27 @@ function InputField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] pl-10 pr-10 py-2.5 outline-none focus:ring-4 focus:ring-[var(--accent-color)]/10 focus:border-[var(--accent-color)] transition-all text-sm shadow-sm hover:shadow-md placeholder:text-[var(--text-secondary)]/30"
+        className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-main)] pl-10 pr-18 py-2.5 outline-none focus:ring-4 focus:ring-[var(--accent-color)]/10 focus:border-[var(--accent-color)] transition-all text-sm shadow-sm hover:shadow-md placeholder:text-[var(--text-secondary)]/30"
       />
       {value && (
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          className="absolute inset-y-0 right-3 flex items-center px-1 text-[var(--text-secondary)] hover:text-red-500 transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        <div className="absolute inset-y-0 right-2 flex items-center gap-1">
+          <button
+            type="button"
+            onClick={handleCopy}
+            title={copyTitle || "复制"}
+            className="flex items-center justify-center rounded-md p-1 text-[var(--text-secondary)] hover:text-[var(--accent-color)] hover:bg-[var(--accent-color)]/8 transition-colors"
+          >
+            <Copy className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            title="清空"
+            className="flex items-center justify-center rounded-md p-1 text-[var(--text-secondary)] hover:text-red-500 hover:bg-red-500/8 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       )}
     </div>
   );
@@ -213,6 +238,24 @@ const getModelsFromState = (data: JsonValue | undefined): ModelItem[] => {
     (item): item is ModelItem =>
       !!item && typeof item === "object" && !Array.isArray(item) && typeof item.id === "string",
   );
+};
+
+const buildSnippetPayloadFromHistory = (item: HistoryItem) => {
+  const domain = getHistoryDomain(item.url) || "未命名域名";
+  const modelsText = item.models && item.models.length > 0 ? item.models.join(", ") : "";
+  return {
+    title: domain.toUpperCase(),
+    code: [item.url, item.token, item.customModel || "", `models: ${modelsText}`].join("\n"),
+    language: "plaintext",
+    description: `OPENAI API 测试历史保存，域名：${domain}`,
+    tags: ["token", "公益站"],
+  };
+};
+
+const navigateToCodeSnippets = (snippetId?: string) => {
+  const targetPath = snippetId ? `/code-snippets?highlight=${snippetId}` : "/code-snippets";
+  window.history.pushState(null, "", targetPath);
+  window.dispatchEvent(new PopStateEvent("popstate"));
 };
 
 function ModelsPanel({
@@ -350,19 +393,91 @@ function ResultsGrid({
 }
 
 export default function OpenAIConnectivityTool() {
+  const { loading, user } = useAppStore();
   const [url, setUrl] = useState("");
   const [token, setToken] = useState("");
   const [customModel, setCustomModel] = useState("");
   const [isTesting, setIsTesting] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [savingHistoryKey, setSavingHistoryKey] = useState<string | null>(null);
   const [showAllModels, setShowAllModels] = useState(false);
   const [modelsState, setModelsState] = useState<TestState>(createIdleState("模型列表检测"));
   const [chatState, setChatState] = useState<TestState>(createIdleState("Chat Completions 检测"));
   const [responsesState, setResponsesState] = useState<TestState>(createIdleState("Responses 检测"));
   const [messagesState, setMessagesState] = useState<TestState>(createIdleState("Claude Code / Messages 检测"));
+  const pendingLoginSaveRef = useRef(false);
 
   useEffect(() => {
     setHistory(readHistory());
+  }, []);
+
+  const saveHistoryToSnippet = async (item: HistoryItem, fromPending = false) => {
+    const saveKey = `${item.url}-${item.timestamp}`;
+
+    if (!user) {
+      localStorage.setItem(PENDING_SNIPPET_SAVE_KEY, JSON.stringify(item));
+      pendingLoginSaveRef.current = true;
+      window.openLoginModal?.();
+      window.showToast?.("请先登录，登录成功后会自动保存到代码片段", "error");
+      return;
+    }
+
+    setSavingHistoryKey(saveKey);
+
+    try {
+      const response = await fetch("/api/snippets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildSnippetPayloadFromHistory(item)),
+      });
+
+      if (response.status === 401) {
+        localStorage.setItem(PENDING_SNIPPET_SAVE_KEY, JSON.stringify(item));
+        pendingLoginSaveRef.current = true;
+        window.openLoginModal?.();
+        window.showToast?.("登录状态已失效，请重新登录后继续保存", "error");
+        return;
+      }
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({ error: "" }))) as { error?: string };
+        window.showToast?.(data.error || "保存到代码片段失败", "error");
+        return;
+      }
+
+      const savedSnippet = (await response.json().catch(() => null)) as { id?: string } | null;
+
+      localStorage.removeItem(PENDING_SNIPPET_SAVE_KEY);
+      pendingLoginSaveRef.current = false;
+      window.showToast?.(fromPending ? "登录成功，已自动保存到代码片段" : "已保存到代码片段", "success");
+      navigateToCodeSnippets(savedSnippet?.id);
+    } catch {
+      window.showToast?.("网络错误，暂时无法保存到代码片段", "error");
+    } finally {
+      setSavingHistoryKey((current) => (current === saveKey ? null : current));
+    }
+  };
+
+  const resumePendingSnippetSave = useEffectEvent(async () => {
+    const rawPending = localStorage.getItem(PENDING_SNIPPET_SAVE_KEY);
+    if (!rawPending || !pendingLoginSaveRef.current) return;
+
+    try {
+      const pendingItem = JSON.parse(rawPending) as HistoryItem;
+      await saveHistoryToSnippet(pendingItem, true);
+    } catch {
+      localStorage.removeItem(PENDING_SNIPPET_SAVE_KEY);
+      pendingLoginSaveRef.current = false;
+    }
+  });
+
+  useEffect(() => {
+    if (loading || !user) return;
+    void resumePendingSnippetSave();
+  }, [loading, user]);
+
+  useEffect(() => {
+    pendingLoginSaveRef.current = !!localStorage.getItem(PENDING_SNIPPET_SAVE_KEY);
   }, []);
 
   const resetStates = () => {
@@ -388,13 +503,14 @@ export default function OpenAIConnectivityTool() {
 
     try {
       const result = await executeConnectivityTests({ customModel, token, url });
+      const detectedModels = getModelsFromState(result.modelsState.data).map((item) => item.id);
       setModelsState(result.modelsState);
       setChatState(result.chatState);
       setResponsesState(result.responsesState);
       setMessagesState(result.messagesState);
 
       if (result.selectedModel) {
-        const nextHistory = buildHistory(history, url.trim(), token.trim(), customModel.trim());
+        const nextHistory = buildHistory(history, url.trim(), token.trim(), customModel.trim(), detectedModels);
         setHistory(nextHistory);
         persistHistory(nextHistory);
       }
@@ -436,6 +552,7 @@ export default function OpenAIConnectivityTool() {
         <div className="lg:col-span-4 flex flex-col gap-4">
           <HistorySidebar
             history={history}
+            savingHistoryKey={savingHistoryKey}
             onClearHistory={() => {
               setHistory([]);
               localStorage.removeItem(HISTORY_KEY);
@@ -447,9 +564,13 @@ export default function OpenAIConnectivityTool() {
               resetStates();
             }}
             onRemoveHistory={(target) => {
-              const updated = history.filter((item) => item !== target);
+              const targetDomain = getHistoryDomain(target.url);
+              const updated = history.filter((item) => getHistoryDomain(item.url) !== targetDomain);
               setHistory(updated);
               persistHistory(updated);
+            }}
+            onSaveHistory={(item) => {
+              void saveHistoryToSnippet(item);
             }}
           />
         </div>

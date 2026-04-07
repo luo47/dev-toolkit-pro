@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Copy, Edit3, Eye, File as FileIcon, Files, FileText, History, Trash2 } from "lucide-react";
+import { Copy, Edit3, ExternalLink, Eye, File as FileIcon, Files, FileText, History, Trash2 } from "lucide-react";
 import type React from "react";
 import type { ShareContent } from "../../types";
 import { formatSize } from "./cloudShareUtils";
@@ -11,6 +11,7 @@ interface ShareCardProps {
   onCopyLink: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (share: ShareContent) => void;
+  onJump: (share: ShareContent, mode: "view" | "edit") => void;
 }
 
 const getShareTypeLabel = (share: ShareContent) => {
@@ -25,7 +26,73 @@ const getShareTitle = (share: ShareContent) => {
   return share.content?.slice(0, 40) || "文本片段";
 };
 
-const ShareCard: React.FC<ShareCardProps> = ({ highlighted, index, share, onCopyLink, onDelete, onEdit }) => {
+const ShareActionButtons = ({
+  share,
+  onCopyLink,
+  onDelete,
+  onEdit,
+  onJump,
+}: {
+  share: ShareContent;
+  onCopyLink: (id: string) => void;
+  onDelete: (id: string) => void;
+  onEdit: (share: ShareContent) => void;
+  onJump: (share: ShareContent, mode: "view" | "edit") => void;
+}) => {
+  const isSnippetShare = share.sourceType === "snippet" && !!share.sourceId;
+
+  return (
+    <div className="flex items-center gap-2 p-1.5 bg-[var(--bg-surface)] backdrop-blur rounded-2xl border border-[var(--border-color)] transition-all shadow-xl shadow-black/5">
+      <button
+        type="button"
+        onClick={() => window.open(`/s/${share.id}`, "_blank")}
+        className="w-12 h-12 flex items-center justify-center hover:bg-emerald-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
+        title="立即预览"
+      >
+        <Eye size={20} />
+      </button>
+      <button
+        type="button"
+        onClick={() => onCopyLink(share.id)}
+        className="w-12 h-12 flex items-center justify-center hover:bg-blue-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
+        title="复制链接"
+      >
+        <Copy size={20} />
+      </button>
+      {isSnippetShare && (
+        <button
+          type="button"
+          onClick={() => onJump(share, "view")}
+          className="w-12 h-12 flex items-center justify-center hover:bg-[var(--hover-color)] hover:text-[var(--accent-color)] rounded-xl transition-all text-[var(--text-secondary)]"
+          title="跳转到代码片段"
+        >
+          <ExternalLink size={20} />
+        </button>
+      )}
+      {share.type === "text" && (
+        <button
+          type="button"
+          onClick={() => (isSnippetShare ? onJump(share, "edit") : onEdit(share))}
+          className="w-12 h-12 flex items-center justify-center hover:bg-blue-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
+          title={isSnippetShare ? "跳转并编辑代码片段" : "编辑"}
+        >
+          <Edit3 size={20} />
+        </button>
+      )}
+      <div className="w-px h-6 bg-[var(--border-color)] mx-1" />
+      <button
+        type="button"
+        onClick={() => onDelete(share.id)}
+        className="w-12 h-12 flex items-center justify-center hover:bg-red-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
+        title="删除"
+      >
+        <Trash2 size={20} />
+      </button>
+    </div>
+  );
+};
+
+const ShareCard: React.FC<ShareCardProps> = ({ highlighted, index, share, onCopyLink, onDelete, onEdit, onJump }) => {
   return (
     <motion.div
       key={share.id}
@@ -98,43 +165,7 @@ const ShareCard: React.FC<ShareCardProps> = ({ highlighted, index, share, onCopy
         </div>
       </div>
 
-      <div className="flex items-center gap-2 p-1.5 bg-[var(--bg-surface)] backdrop-blur rounded-2xl border border-[var(--border-color)] md:opacity-0 md:group-hover:opacity-100 transition-all md:scale-95 md:group-hover:scale-100 shadow-xl shadow-black/5">
-        <button
-          type="button"
-          onClick={() => window.open(`/s/${share.id}`, "_blank")}
-          className="w-12 h-12 flex items-center justify-center hover:bg-emerald-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
-          title="立即预览"
-        >
-          <Eye size={20} />
-        </button>
-        <button
-          type="button"
-          onClick={() => onCopyLink(share.id)}
-          className="w-12 h-12 flex items-center justify-center hover:bg-blue-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
-          title="复制链接"
-        >
-          <Copy size={20} />
-        </button>
-        {share.type === "text" && (
-          <button
-            type="button"
-            onClick={() => onEdit(share)}
-            className="w-12 h-12 flex items-center justify-center hover:bg-blue-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
-            title="编辑"
-          >
-            <Edit3 size={20} />
-          </button>
-        )}
-        <div className="w-px h-6 bg-[var(--border-color)] mx-1" />
-        <button
-          type="button"
-          onClick={() => onDelete(share.id)}
-          className="w-12 h-12 flex items-center justify-center hover:bg-red-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
-          title="删除"
-        >
-          <Trash2 size={20} />
-        </button>
-      </div>
+      <ShareActionButtons share={share} onCopyLink={onCopyLink} onDelete={onDelete} onEdit={onEdit} onJump={onJump} />
     </motion.div>
   );
 };

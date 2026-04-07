@@ -11,6 +11,8 @@ type ShareRow = {
   files: string | null;
   total_size: number | null;
   name: string | null;
+  source_type: string | null;
+  source_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -44,6 +46,8 @@ const parseShareItem = (row: ShareRow) => ({
   files: parseShareFiles(row.files),
   totalSize: row.total_size,
   name: row.name,
+  sourceType: row.source_type === "snippet" ? "snippet" : null,
+  sourceId: row.source_id,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -56,6 +60,13 @@ const findExistingSharedSnippet = async (c: AppContext, userId: string, sourceId
   const exists = await c.env.DB.prepare("SELECT id FROM shares WHERE id = ? AND user_id = ?")
     .bind(existingId, userId)
     .first<ShareLookupRow>();
+  if (exists) {
+    await c.env.DB.prepare(
+      "UPDATE shares SET source_type = COALESCE(source_type, ?), source_id = COALESCE(source_id, ?) WHERE id = ? AND user_id = ?",
+    )
+      .bind("snippet", sourceId, existingId, userId)
+      .run();
+  }
   return exists ? existingId : null;
 };
 
@@ -63,9 +74,19 @@ const createTextShareRecord = async (c: AppContext, userId: string, body: TextSh
   const id = await generateShareId(c.env.DB);
   const now = new Date().toISOString();
   await c.env.DB.prepare(
-    "INSERT INTO shares (id, user_id, type, content, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO shares (id, user_id, type, content, name, source_type, source_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
   )
-    .bind(id, userId, "text", body.content, body.name || "未命名文本分享", now, now)
+    .bind(
+      id,
+      userId,
+      "text",
+      body.content,
+      body.name || "未命名文本分享",
+      body.sourceId ? "snippet" : null,
+      body.sourceId || null,
+      now,
+      now,
+    )
     .run();
   if (body.sourceId) {
     await c.env.SHARE_KV.put(`snippet_share:${userId}:${body.sourceId}`, id);
@@ -75,6 +96,8 @@ const createTextShareRecord = async (c: AppContext, userId: string, body: TextSh
     type: "text",
     content: body.content,
     name: body.name || "未命名文本分享",
+    sourceType: body.sourceId ? "snippet" : null,
+    sourceId: body.sourceId || null,
     createdAt: now,
     updatedAt: now,
   };
@@ -244,6 +267,8 @@ const registerFileUploadRoute = (app: Hono<{ Bindings: Bindings }>) => {
           files: fileItems,
           totalSize,
           name: shareName || fileItems[0].name,
+          sourceType: null,
+          sourceId: null,
           createdAt: now,
           updatedAt: now,
         },
@@ -268,6 +293,8 @@ const registerPublicShareRoutes = (app: Hono<{ Bindings: Bindings }>) => {
         name: existing.name,
         files: parseShareFiles(existing.files),
         totalSize: existing.total_size,
+        sourceType: existing.source_type === "snippet" ? "snippet" : null,
+        sourceId: existing.source_id,
         createdAt: existing.created_at,
       },
     });

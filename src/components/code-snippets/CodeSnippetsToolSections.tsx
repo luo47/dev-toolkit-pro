@@ -67,7 +67,8 @@ export const SnippetFilterBar = ({
   onClearTag,
 }: SnippetFilterBarProps) => (
   <div className="flex flex-col gap-1 shrink-0">
-    <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 px-0.5 min-h-[26px]">
+    <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar pb-0.5 min-h-[26px]">
+      <Code2 className="w-3 h-3 text-[var(--text-secondary)] shrink-0 ml-0.5" />
       {languageFilter ? (
         <button
           type="button"
@@ -128,6 +129,7 @@ type SnippetGridProps = {
   snippets: SnippetItem[];
   activeTag: string;
   copiedId: string | null;
+  highlightedSnippetId: string | null;
   sharingId: string | null;
   codeRefs: React.RefObject<Record<string, HTMLElement | null>>;
   onCopy: (id: string, code: string) => Promise<void>;
@@ -142,6 +144,7 @@ export const SnippetGrid = ({
   snippets,
   activeTag,
   copiedId,
+  highlightedSnippetId,
   sharingId,
   codeRefs,
   onCopy,
@@ -171,10 +174,11 @@ export const SnippetGrid = ({
     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-1.5 overflow-y-auto custom-scrollbar pb-1">
       {snippets.map((snippet) => (
         <SnippetCard
-          key={snippet.id}
+          key={String(snippet.id)}
           activeTag={activeTag}
           codeRefs={codeRefs}
           copiedId={copiedId}
+          highlighted={highlightedSnippetId === String(snippet.id)}
           sharingId={sharingId}
           snippet={snippet}
           onCopy={onCopy}

@@ -14,6 +14,7 @@ export type HistoryItem = {
   url: string;
   token: string;
   customModel?: string;
+  models?: string[];
   timestamp: number;
 };
 
@@ -38,7 +39,6 @@ export type ProxyResult = {
   url?: string;
 };
 
-export const HISTORY_KEY = "openai-api-tester-history";
 export const URL_STRATEGY_KEY = "openai-api-tester-url-strategy";
 export const DEFAULT_URL = "https://api.openai.com/v1";
 const PREFERRED_MODELS = ["gpt-4.1-mini", "gpt-4o-mini", "gpt-4.1", "gpt-4o", "gpt-3.5-turbo"];
@@ -50,8 +50,6 @@ export const createIdleState = (title: string): TestState => ({
   title,
   description: "",
 });
-
-export const maskToken = (token: string) => (token.length <= 10 ? token : `${token.slice(0, 6)}...${token.slice(-4)}`);
 
 const asObject = (value: JsonValue | undefined): JsonObject | undefined =>
   value && typeof value === "object" && !Array.isArray(value) ? value : undefined;
@@ -165,28 +163,15 @@ export const detectBestModel = (models: ModelItem[]): string => {
   }
   return ids[0] || "gpt-4.1-mini";
 };
-
-export const readHistory = () => {
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as HistoryItem[]) : [];
-  } catch (error) {
-    console.error("读取 OPENAI API 测试历史失败", error);
-    return [];
-  }
-};
-
-export const buildHistory = (history: HistoryItem[], url: string, token: string, customModel?: string) =>
-  [
-    { url, token, customModel, timestamp: Date.now() },
-    ...history.filter((item) => item.url !== url || item.token !== token || item.customModel !== customModel),
-  ].slice(0, 10);
-
-export const persistHistory = (history: HistoryItem[]) => {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-};
+export {
+  buildHistory,
+  dedupeHistoryByDomain,
+  getHistoryDomain,
+  HISTORY_KEY,
+  maskToken,
+  persistHistory,
+  readHistory,
+} from "./historyHelpers";
 
 const normalizeBaseUrl = (url: string) => url.trim().replace(/\/+$/, "");
 

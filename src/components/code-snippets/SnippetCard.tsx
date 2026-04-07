@@ -1,12 +1,14 @@
 import { Check, Code2, Copy, Edit2, Share2, Trash2 } from "lucide-react";
 import type React from "react";
 import type { RefObject } from "react";
+import { useEffect, useRef } from "react";
 import type { SnippetItem } from "./helpers";
 
 interface SnippetCardProps {
   activeTag: string;
   codeRefs: RefObject<Record<string, HTMLElement | null>>;
   copiedId: string | null;
+  highlighted: boolean;
   sharingId: string | null;
   snippet: SnippetItem;
   onCopy: (id: string, code: string) => void;
@@ -20,6 +22,7 @@ const SnippetCard: React.FC<SnippetCardProps> = ({
   activeTag,
   codeRefs,
   copiedId,
+  highlighted,
   sharingId,
   snippet,
   onCopy,
@@ -28,8 +31,19 @@ const SnippetCard: React.FC<SnippetCardProps> = ({
   onShare,
   onTagClick,
 }) => {
+  const cardRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!highlighted) return;
+    cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlighted]);
+
   return (
-    <div className="bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl flex flex-col overflow-hidden hover:border-[var(--text-secondary)] transition-colors group">
+    <div
+      ref={cardRef}
+      data-snippet-id={String(snippet.id)}
+      className={`bg-[var(--bg-surface)] border rounded-xl flex flex-col overflow-hidden transition-colors group ${highlighted ? "border-[var(--accent-color)] shadow-lg shadow-[var(--accent-color)]/15" : "border-[var(--border-color)] hover:border-[var(--text-secondary)]"}`}
+    >
       <div className="flex items-center justify-between px-2.5 py-1.5 bg-[var(--bg-main)] border-b border-[var(--border-color)]">
         <div className="flex items-center gap-2 overflow-hidden min-w-0">
           <Code2 className="w-3.5 h-3.5 text-[var(--accent-color)] shrink-0" />
@@ -46,7 +60,7 @@ const SnippetCard: React.FC<SnippetCardProps> = ({
           <span className="text-[9px] text-[var(--text-secondary)] mr-1">{snippet.copy_count || 0}</span>
           <button
             type="button"
-            onClick={() => onCopy(snippet.id, snippet.code)}
+            onClick={() => onCopy(String(snippet.id), snippet.code)}
             className="p-1.5 hover:bg-[var(--hover-color)] rounded-md text-[var(--text-secondary)]"
             title="复制"
           >
@@ -71,7 +85,7 @@ const SnippetCard: React.FC<SnippetCardProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => onDelete(snippet.id)}
+            onClick={() => onDelete(String(snippet.id))}
             className="p-1.5 hover:bg-[var(--hover-color)] rounded-md hover:text-red-400 text-[var(--text-secondary)]"
             title="删除"
           >

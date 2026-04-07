@@ -1,7 +1,6 @@
 import "./code-snippets/highlight";
 import { useAppStore } from "../store";
 import { SnippetFilterBar, SnippetGrid, SnippetToolbar } from "./code-snippets/CodeSnippetsToolSections";
-import ShareConfirmDialog from "./code-snippets/ShareConfirmDialog";
 import SnippetEditorModal from "./code-snippets/SnippetEditorModal";
 import { useCodeSnippetsToolController } from "./code-snippets/useCodeSnippetsToolController";
 
@@ -13,7 +12,7 @@ export default function CodeSnippetsTool() {
     cancelEdit,
     codeRefs,
     copiedId,
-    copyShareLink,
+    highlightedSnippetId,
     editingId,
     formData,
     handleCopy,
@@ -35,8 +34,6 @@ export default function CodeSnippetsTool() {
     setIsLangOpen,
     setLangSearch,
     setSearch,
-    shareConfirmData,
-    setShareConfirmData,
     sharingId,
     snippets,
     sortValue,
@@ -88,6 +85,7 @@ export default function CodeSnippetsTool() {
         snippets={snippets}
         activeTag={activeTag}
         copiedId={copiedId}
+        highlightedSnippetId={highlightedSnippetId}
         sharingId={sharingId}
         codeRefs={codeRefs}
         onCopy={handleCopy}
@@ -96,15 +94,6 @@ export default function CodeSnippetsTool() {
         onShare={handleShare}
         onTagClick={handleTagClick}
       />
-
-      {shareConfirmData && (
-        <ShareConfirmDialog
-          shareConfirmData={shareConfirmData}
-          onCancel={() => setShareConfirmData(null)}
-          onCopyLink={copyShareLink}
-          onUpdateShare={(snippet) => handleShare(snippet, true)}
-        />
-      )}
     </div>
   );
 }

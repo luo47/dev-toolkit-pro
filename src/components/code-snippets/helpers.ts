@@ -88,7 +88,7 @@ export const PRESET_LANGUAGES: Record<string, string> = {
 export const LS_SORT = "cs_filter_sort";
 
 export type SnippetItem = {
-  id: string;
+  id: string | number;
   title: string;
   code: string;
   language?: string;

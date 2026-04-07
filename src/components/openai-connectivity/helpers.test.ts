@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { executeConnectivityTests, extractTextFromResponse, type JsonValue, URL_STRATEGY_KEY } from "./helpers";
+import {
+  dedupeHistoryByDomain,
+  executeConnectivityTests,
+  extractTextFromResponse,
+  getHistoryDomain,
+  type JsonValue,
+  URL_STRATEGY_KEY,
+} from "./helpers";
 
 class MemoryStorage implements Storage {
   private store = new Map<string, string>();
@@ -293,4 +300,19 @@ test("可以从 messages 接口返回的 content 数组中提取文本", () => {
   });
 
   assert.equal(text, "你好！有什么我可以帮助你的吗？");
+});
+
+test("可以从历史 URL 中提取域名，并在异常 URL 时回退到原始文本", () => {
+  assert.equal(getHistoryDomain("https://Api.OpenAI.com/v1"), "api.openai.com");
+  assert.equal(getHistoryDomain(" custom-domain.example.com/v1 "), "custom-domain.example.com/v1");
+});
+
+test("历史记录会按域名去重，并保留每个域名最新的一条", () => {
+  const history = [
+    { url: "https://new.145678.xyz/v1", token: "sk-1", timestamp: 3 },
+    { url: "https://ice.vv.ua/v1", token: "sk-2", timestamp: 2, customModel: "gpt-4.1" },
+    { url: "https://new.145678.xyz/v1/chat", token: "sk-3", timestamp: 1, customModel: "gpt-4.1-mini" },
+  ];
+
+  assert.deepEqual(dedupeHistoryByDomain(history), [history[0], history[1]]);
 });

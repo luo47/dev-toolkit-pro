@@ -77,6 +77,13 @@ export default function App() {
     window.showToast = showToast;
   }, [showToast]);
 
+  useEffect(() => {
+    window.openLoginModal = () => setShowLogin(true);
+    return () => {
+      window.openLoginModal = undefined;
+    };
+  }, []);
+
   useAuth();
 
   useEffect(() => {

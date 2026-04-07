@@ -24,6 +24,8 @@ export interface ShareContent {
   files?: FileItem[];
   totalSize?: number;
   name?: string;
+  sourceType?: "snippet" | null;
+  sourceId?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -38,6 +40,7 @@ export interface ToolMetadata {
 
 declare global {
   interface Window {
+    openLoginModal?: () => void;
     showToast?: (message: string, type?: "success" | "error") => void;
   }
 

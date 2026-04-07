@@ -27,6 +27,7 @@ const ShareListState = ({
   onCopyLink,
   onDelete,
   onEdit,
+  onJump,
 }: {
   isLoading: boolean;
   shares: ShareContent[];
@@ -36,6 +37,7 @@ const ShareListState = ({
   onCopyLink: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (share: ShareContent | null) => void;
+  onJump: (share: ShareContent, mode: "view" | "edit") => void;
 }) => {
   if (isLoading && shares.length === 0) {
     return (
@@ -69,8 +71,22 @@ const ShareListState = ({
       onCopyLink={onCopyLink}
       onDelete={onDelete}
       onEdit={onEdit}
+      onJump={onJump}
     />
   ));
+};
+
+const jumpToSnippet = (share: ShareContent, mode: "view" | "edit") => {
+  if (!share.sourceId) return;
+  const snippetId = String(share.sourceId);
+  const searchParams = new URLSearchParams();
+  searchParams.set("highlight", snippetId);
+  if (mode === "edit") {
+    searchParams.set("edit", snippetId);
+  }
+  const targetPath = `/code-snippets?${searchParams.toString()}`;
+  window.history.pushState(null, "", targetPath);
+  window.dispatchEvent(new PopStateEvent("popstate"));
 };
 
 export default function CloudShare() {
@@ -177,6 +193,7 @@ export default function CloudShare() {
           onCopyLink={copyLink}
           onDelete={deleteShare}
           onEdit={setEditingShare}
+          onJump={jumpToSnippet}
         />
       </div>
 

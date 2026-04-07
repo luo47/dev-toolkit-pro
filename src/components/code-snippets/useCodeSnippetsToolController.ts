@@ -1,6 +1,13 @@
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  cleanupSnippetIntentQuery,
+  dedupeSnippets,
+  normalizeSnippetId,
+  upsertSnippet,
+  useSnippetIntent,
+} from "./controllerUtils";
+import {
   collectLanguages,
   collectTags,
   createSharePayload,
@@ -10,11 +17,6 @@ import {
   type SnippetItem,
   sortSnippets,
 } from "./helpers";
-
-type ShareConfirmData = {
-  snippet: SnippetItem;
-  shareId: string;
-} | null;
 
 const buildSnippetPayload = (formData: { title: string; code: string; language: string; tags: string }) => ({
   ...formData,
@@ -39,7 +41,7 @@ const useSnippetEditorState = () => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const startEdit = (snippet: SnippetItem) => {
-    setEditingId(snippet.id);
+    setEditingId(normalizeSnippetId(snippet.id));
     setIsCreating(false);
     setFormData({
       title: snippet.title,
@@ -108,14 +110,10 @@ const useSnippetCollections = (
 };
 
 const useSnippetShareActions = ({
-  shareConfirmData,
-  setShareConfirmData,
   sharingId,
   setSharingId,
   showToast,
 }: {
-  shareConfirmData: ShareConfirmData;
-  setShareConfirmData: React.Dispatch<React.SetStateAction<ShareConfirmData>>;
   sharingId: string | null;
   setSharingId: React.Dispatch<React.SetStateAction<string | null>>;
   showToast: (message: string, type?: "success" | "error" | "info") => void;
@@ -143,7 +141,7 @@ const useSnippetShareActions = ({
       return;
     }
     if (data.alreadyExists && data.shareId) {
-      setShareConfirmData({ snippet, shareId: data.shareId });
+      await updateShare(snippet, data.shareId, true);
       return;
     }
 
@@ -153,52 +151,34 @@ const useSnippetShareActions = ({
     window.dispatchEvent(new PopStateEvent("popstate"));
   };
 
-  const updateShare = async (snippet: SnippetItem, shareId: string) => {
+  const updateShare = async (snippet: SnippetItem, shareId: string, isAutoUpdate = false) => {
     const response = await fetch(`/api/shares/${shareId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(createUpdateSharePayload(snippet)),
     });
     if (response.ok) {
-      showToast("分享内容已更新", "success");
+      showToast(isAutoUpdate ? "检测到已有分享，已自动更新并跳转" : "分享内容已更新", "success");
       window.history.pushState(null, "", `/cloud-share?highlight=${shareId}`);
       window.dispatchEvent(new PopStateEvent("popstate"));
       return;
     }
-    showToast("更新失败", "error");
+    showToast(isAutoUpdate ? "检测到已有分享，但自动更新失败" : "更新失败", "error");
   };
 
-  const handleShare = async (snippet: SnippetItem, forceUpdate = false) => {
+  const handleShare = async (snippet: SnippetItem) => {
     if (sharingId) return;
-    setSharingId(snippet.id);
+    setSharingId(normalizeSnippetId(snippet.id));
     try {
-      if (forceUpdate) {
-        const shareId = shareConfirmData?.shareId;
-        setShareConfirmData(null);
-        if (!shareId) {
-          showToast("无法定位原分享记录", "error");
-          return;
-        }
-        await updateShare(snippet, shareId);
-        return;
-      }
       await createShare(snippet);
     } catch {
-      showToast(forceUpdate ? "更新出错" : "网络错误，无法分享", "error");
+      showToast("网络错误，无法分享", "error");
     } finally {
       setSharingId(null);
     }
   };
 
-  const copyShareLink = (shareId: string) => {
-    const link = `${window.location.origin}/s/${shareId}`;
-    navigator.clipboard.writeText(link).then(() => {
-      showToast("分享链接已复制", "success");
-      setShareConfirmData(null);
-    });
-  };
-
-  return { copyShareLink, handleShare };
+  return { handleShare };
 };
 
 export const useCodeSnippetsToolController = (
@@ -211,9 +191,11 @@ export const useCodeSnippetsToolController = (
   const [sortValue, setSortValue] = useState(() => localStorage.getItem(LS_SORT) || "updated_at:desc");
   const [activeTag, setActiveTag] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [highlightedSnippetId, setHighlightedSnippetId] = useState<string | null>(null);
   const [sharingId, setSharingId] = useState<string | null>(null);
-  const [shareConfirmData, setShareConfirmData] = useState<ShareConfirmData>(null);
+  const routeIntent = useSnippetIntent();
   const codeRefs = useRef<Record<string, HTMLElement | null>>({});
+  const handledIntentKeyRef = useRef("");
   const {
     cancelEdit,
     editingId,
@@ -231,9 +213,7 @@ export const useCodeSnippetsToolController = (
     startEdit,
     textareaRef,
   } = useSnippetEditorState();
-  const { copyShareLink, handleShare } = useSnippetShareActions({
-    shareConfirmData,
-    setShareConfirmData,
+  const { handleShare } = useSnippetShareActions({
     sharingId,
     setSharingId,
     showToast,
@@ -257,15 +237,72 @@ export const useCodeSnippetsToolController = (
       const response = await fetch("/api/snippets?limit=2000");
       if (response.ok) {
         const data = (await response.json()) as { snippets: SnippetItem[] };
-        setAllSnippets(data.snippets || []);
+        setAllSnippets(dedupeSnippets(data.snippets || []));
       }
     } catch {}
     setLoading(false);
   }, []);
 
+  const fetchSnippetById = useCallback(async (id: string) => {
+    try {
+      const response = await fetch(`/api/snippets/${id}`);
+      if (!response.ok) return null;
+      return (await response.json()) as SnippetItem;
+    } catch {
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const upsertSnippetIntoList = useCallback((snippet: SnippetItem) => {
+    setAllSnippets((prev) => upsertSnippet(prev, snippet));
+  }, []);
+
+  useEffect(() => {
+    if (!routeIntent) {
+      handledIntentKeyRef.current = "";
+      return;
+    }
+    if (routeIntent.mode === "edit" && isCreating) return;
+
+    const intentKey = `${routeIntent.mode}:${routeIntent.id}`;
+    if (handledIntentKeyRef.current === intentKey) return;
+    handledIntentKeyRef.current = intentKey;
+
+    let cancelled = false;
+
+    const applyIntent = async () => {
+      let targetSnippet = allSnippets.find((snippet) => normalizeSnippetId(snippet.id) === routeIntent.id);
+      if (!targetSnippet) {
+        targetSnippet = await fetchSnippetById(routeIntent.id);
+      }
+      if (!targetSnippet || cancelled) {
+        handledIntentKeyRef.current = "";
+        return;
+      }
+
+      upsertSnippetIntoList(targetSnippet);
+      setHighlightedSnippetId(routeIntent.id);
+      window.setTimeout(() => {
+        setHighlightedSnippetId((current) => (current === routeIntent.id ? null : current));
+      }, 4000);
+
+      if (routeIntent.mode === "edit") {
+        startEdit(targetSnippet);
+      }
+
+      cleanupSnippetIntentQuery();
+    };
+
+    void applyIntent();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [allSnippets, fetchSnippetById, isCreating, routeIntent, startEdit, upsertSnippetIntoList]);
 
   const { snippets, allTags, languages } = useSnippetCollections(
     allSnippets,
@@ -299,7 +336,21 @@ export const useCodeSnippetsToolController = (
       body: JSON.stringify({ copyCountsDelta: { [id]: 1 } }),
     });
     setAllSnippets((prev) =>
-      prev.map((snippet) => (snippet.id === id ? { ...snippet, copy_count: (snippet.copy_count || 0) + 1 } : snippet)),
+      prev.map((snippet) =>
+        normalizeSnippetId(snippet.id) === id ? { ...snippet, copy_count: (snippet.copy_count || 0) + 1 } : snippet,
+      ),
+    );
+  };
+
+  const removeSnippetById = (id: string) => {
+    setAllSnippets((prev) => prev.filter((snippet) => normalizeSnippetId(snippet.id) !== id));
+  };
+
+  const updateSnippetInList = (currentEditingId: string, payload: ReturnType<typeof buildSnippetPayload>) => {
+    setAllSnippets((prev) =>
+      prev.map((snippet) =>
+        normalizeSnippetId(snippet.id) === currentEditingId ? { ...snippet, ...payload } : snippet,
+      ),
     );
   };
 
@@ -307,10 +358,41 @@ export const useCodeSnippetsToolController = (
     if (!confirm("确定删除此代码片段吗？")) return;
     const response = await fetch(`/api/snippets/${id}`, { method: "DELETE" });
     if (response.ok) {
-      setAllSnippets((prev) => prev.filter((snippet) => snippet.id !== id));
+      removeSnippetById(id);
       return;
     }
     alert("无法删除");
+  };
+
+  const createSnippet = async (payload: ReturnType<typeof buildSnippetPayload>) => {
+    const response = await fetch("/api/snippets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      alert("保存失败");
+      return;
+    }
+
+    const newSnippet = (await response.json()) as SnippetItem;
+    setAllSnippets((prev) => upsertSnippet(prev, newSnippet));
+    setIsCreating(false);
+  };
+
+  const updateSnippet = async (payload: ReturnType<typeof buildSnippetPayload>, currentEditingId: string) => {
+    const response = await fetch(`/api/snippets/${currentEditingId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      alert("更新失败");
+      return;
+    }
+
+    updateSnippetInList(currentEditingId, payload);
+    setEditingId(null);
   };
 
   const saveSnippet = async () => {
@@ -323,35 +405,12 @@ export const useCodeSnippetsToolController = (
 
     try {
       if (isCreating) {
-        const response = await fetch("/api/snippets", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (response.ok) {
-          const newSnippet = (await response.json()) as SnippetItem;
-          setAllSnippets([newSnippet, ...allSnippets]);
-          setIsCreating(false);
-        } else {
-          alert("保存失败");
-        }
+        await createSnippet(payload);
         return;
       }
 
       if (!editingId) return;
-      const response = await fetch(`/api/snippets/${editingId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (response.ok) {
-        setAllSnippets((prev) =>
-          prev.map((snippet) => (snippet.id === editingId ? { ...snippet, ...payload } : snippet)),
-        );
-        setEditingId(null);
-      } else {
-        alert("更新失败");
-      }
+      await updateSnippet(payload, editingId);
     } catch {
       alert("网络错误");
     }
@@ -363,7 +422,7 @@ export const useCodeSnippetsToolController = (
     cancelEdit,
     codeRefs,
     copiedId,
-    copyShareLink,
+    highlightedSnippetId,
     editingId,
     formData,
     handleCopy,
@@ -385,8 +444,6 @@ export const useCodeSnippetsToolController = (
     setIsLangOpen,
     setLangSearch,
     setSearch,
-    shareConfirmData,
-    setShareConfirmData,
     sharingId,
     snippets,
     sortValue,

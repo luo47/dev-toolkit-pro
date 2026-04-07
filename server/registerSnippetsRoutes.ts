@@ -118,6 +118,21 @@ const buildSnippetUpdates = (body: SnippetUpdateBody) => {
   return { params, updates };
 };
 
+const syncLinkedShares = async (
+  c: AppContext,
+  userId: string,
+  snippetId: string,
+  snippet: { title: string; code: string },
+) => {
+  await c.env.DB.prepare(
+    `UPDATE shares
+     SET content = ?, name = ?, updated_at = datetime("now")
+     WHERE user_id = ? AND source_type = 'snippet' AND source_id = ?`,
+  )
+    .bind(snippet.code, snippet.title || "代码片段分享", userId, snippetId)
+    .run();
+};
+
 const getSnippetListPayload = async (
   c: AppContext,
   userId: string | null,
@@ -161,7 +176,7 @@ const registerSnippetCrudRoutes = (app: Hono<{ Bindings: Bindings }>) => {
   app.get("/api/snippets", async (c) => {
     const userId = await getUserFromSession(c);
     const url = new URL(c.req.url);
-    const limit = Math.min(parseInt(url.searchParams.get("limit") || "50", 10), 100);
+    const limit = Math.min(parseInt(url.searchParams.get("limit") || "50", 10), 2000);
     const offset = Math.max(parseInt(url.searchParams.get("offset") || "0", 10), 0);
     const filters = buildSnippetFilters({
       language: url.searchParams.get("language"),
@@ -255,6 +270,10 @@ const registerSnippetCrudRoutes = (app: Hono<{ Bindings: Bindings }>) => {
       }
 
       const updated = await c.env.DB.prepare("SELECT * FROM code_snippets WHERE id = ?").bind(id).first<SnippetRow>();
+      await syncLinkedShares(c, userId, id, {
+        title: updated?.title || body.title || "",
+        code: updated?.code || body.code || "",
+      });
       return c.json(parseSnippetRow(updated));
     } catch (error) {
       return c.json({ success: false, error: getErrorMessage(error, "Database error") }, 500);

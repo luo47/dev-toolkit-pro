@@ -11,7 +11,7 @@
     "format": "biome check --write .",
     "predeploy": "pnpm install && pnpm run clean && pnpm run lint",
     "deploy": "pnpm build && wrangler deploy",
-    "migrate": "cross-env CI=true wrangler d1 migrations apply DB --local && cross-env CI=true wrangler d1 migrations apply DB --remote"
+    "db": "cross-env CI=true wrangler d1 migrations apply DB --local && cross-env CI=true wrangler d1 migrations apply DB --remote"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
