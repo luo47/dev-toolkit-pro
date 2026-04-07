@@ -16,6 +16,7 @@ export type Bindings = {
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
   FRONTEND_URL: string;
+  OAUTH_CALLBACK_BASE_URL: string;
 };
 
 export type AppContext = Context<{ Bindings: Bindings }>;

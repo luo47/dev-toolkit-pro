@@ -18,6 +18,8 @@ type GitHubUser = {
 const app = new Hono<{ Bindings: Bindings }>();
 
 const getFrontendUrl = (c: { env: Bindings }) => c.env.FRONTEND_URL || "http://localhost:3000";
+const getOAuthCallbackBaseUrl = (c: { env: Bindings }) => c.env.OAUTH_CALLBACK_BASE_URL || getFrontendUrl(c);
+const getGitHubCallbackUrl = (c: { env: Bindings }) => `${getOAuthCallbackBaseUrl(c)}/api/auth/github/callback`;
 
 const shouldUseSecureCookie = (url: string) => {
   try {
@@ -44,8 +46,7 @@ app.use("/api/*", async (c, next) => {
 
 app.get("/api/auth/github/login", (c) => {
   const clientId = c.env.GITHUB_CLIENT_ID;
-  const frontendUrl = getFrontendUrl(c);
-  const redirectUri = `${frontendUrl}/api/auth/github/callback`;
+  const redirectUri = getGitHubCallbackUrl(c);
   console.log("收到 GitHub 登录地址请求:", { hasClientId: !!clientId, redirectUri });
   if (!clientId) return c.json({ error: "未配置 GITHUB_CLIENT_ID" }, 500);
   const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read:user`;
@@ -60,7 +61,7 @@ app.get("/api/auth/github/callback", async (c) => {
 
   try {
     const frontendUrl = getFrontendUrl(c);
-    const redirectUri = `${frontendUrl}/api/auth/github/callback`;
+    const redirectUri = getGitHubCallbackUrl(c);
     const params = new URLSearchParams();
     params.append("client_id", c.env.GITHUB_CLIENT_ID);
     params.append("client_secret", c.env.GITHUB_CLIENT_SECRET);
@@ -120,12 +121,16 @@ app.get("/api/auth/github/callback", async (c) => {
     });
 
     console.log("GitHub 登录成功，正在跳转首页");
-    return c.redirect("/", 302);
+    return c.redirect(frontendUrl, 302);
   } catch (error) {
     console.error("GitHub 鉴权异常:", error);
     return c.text("GitHub 登录失败", 500);
   }
 });
+
+app.get("/api/auth/callback", (c) =>
+  c.redirect(`/api/auth/github/callback?${new URL(c.req.url).searchParams.toString()}`, 302),
+);
 
 app.get("/api/auth/me", async (c) => {
   const sessionId = getCookie(c, "auth_session");

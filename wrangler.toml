@@ -3,6 +3,11 @@ main = "server/index.ts"
 compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
 
+[vars]
+FRONTEND_URL = "https://www.928496.xyz"
+OAUTH_CALLBACK_BASE_URL = "https://www.928496.xyz"
+GITHUB_CLIENT_ID = "Ov23liSf1CrzpHhliIJ2"
+
 [assets]
 directory = "dist"
 binding = "ASSETS"
@@ -24,4 +29,4 @@ binding = "SHARE_R2"
 bucket_name = "share-files"
 
 [observability]
-enabled = true
+enabled = false

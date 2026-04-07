@@ -1,3 +1,4 @@
-GITHUB_CLIENT_ID="你的 GitHub OAuth App Client ID"
-GITHUB_CLIENT_SECRET="你的 GitHub OAuth App Client Secret"
 FRONTEND_URL="http://localhost:3000"
+OAUTH_CALLBACK_BASE_URL="http://localhost:8787"
+GITHUB_CLIENT_ID="你的本地 GitHub OAuth App Client ID"
+GITHUB_CLIENT_SECRET="你的 GitHub OAuth App Client Secret"
