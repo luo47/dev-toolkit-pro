@@ -176,7 +176,7 @@ export default function App() {
       {showLogin && (
         <Login
           onLogin={(name) => {
-            if (name !== "GitHub 用户") setShowLogin(false);
+            if (name !== "GitHub 用户" && name !== "LINUX DO 用户") setShowLogin(false);
           }}
           onClose={() => setShowLogin(false)}
         />

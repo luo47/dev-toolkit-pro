@@ -4,7 +4,8 @@ import "../types";
 
 export interface User {
   id: string;
-  github_id: number;
+  provider: "github" | "linuxdo";
+  provider_user_id: string;
   username: string;
   name?: string;
   avatar_url?: string;
@@ -37,9 +38,9 @@ export function useAuth() {
     fetchUser();
   }, []);
 
-  const loginWithGithub = () => {
+  const loginWithProvider = (provider: User["provider"]) => {
     const baseUrl = import.meta.env.VITE_API_URL || "";
-    window.location.href = `${baseUrl}/api/auth/github/login?t=${Date.now()}`;
+    window.location.href = `${baseUrl}/api/auth/${provider}/login?t=${Date.now()}`;
   };
 
   const logout = async () => {
@@ -55,5 +56,5 @@ export function useAuth() {
     }
   };
 
-  return { user, loading, loginWithGithub, logout };
+  return { user, loading, loginWithProvider, logout };
 }

@@ -15,6 +15,8 @@ export type Bindings = {
   ASSETS: Fetcher;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
+  LINUX_DO_CLIENT_ID: string;
+  LINUX_DO_CLIENT_SECRET: string;
   FRONTEND_URL: string;
   OAUTH_CALLBACK_BASE_URL: string;
 };

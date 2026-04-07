@@ -1,4 +1,4 @@
-import { Github, LogIn, X } from "lucide-react";
+import { Github, LogIn, MessageCircleMore, X } from "lucide-react";
 import { useAppStore } from "../store";
 import "../types";
 
@@ -10,21 +10,21 @@ interface LoginProps {
 export default function Login({ onLogin, onClose }: LoginProps) {
   const { isDarkMode } = useAppStore();
 
-  const handleGithubLogin = async () => {
+  const handleProviderLogin = async (provider: "github" | "linuxdo", providerLabel: string) => {
     try {
       const baseUrl = import.meta.env.VITE_API_URL || "";
-      const res = await fetch(`${baseUrl}/api/auth/github/login?t=${Date.now()}`);
+      const res = await fetch(`${baseUrl}/api/auth/${provider}/login?t=${Date.now()}`);
       const data = (await res.json()) as { url?: string };
       if (data.url) {
-        // 在重定向到 GitHub 之前，记录当前路径以便登录后返回
+        // 在重定向到授权页之前，记录当前路径以便登录后返回
         localStorage.setItem("redirect_to", window.location.pathname);
-        onLogin("GitHub 用户");
+        onLogin(`${providerLabel} 用户`);
         window.location.href = data.url;
       } else {
-        console.error("获取 GitHub 登录地址失败:", data);
+        console.error(`获取 ${providerLabel} 登录地址失败:`, data);
       }
     } catch (error) {
-      console.error("请求 GitHub 登录地址异常:", error);
+      console.error(`请求 ${providerLabel} 登录地址异常:`, error);
     }
   };
 
@@ -47,18 +47,26 @@ export default function Login({ onLogin, onClose }: LoginProps) {
           </div>
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">欢迎回来</h2>
           <p className="text-[var(--text-secondary)] text-sm mt-2 text-center">
-            使用 GitHub 登录以解锁高级开发者工具和进阶功能。
+            使用 GitHub 或 LINUX DO 登录以解锁高级开发者工具和进阶功能。
           </p>
         </div>
 
-        <div className="animate-in fade-in slide-in-from-right-4 duration-300">
+        <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-3">
           <button
             type="button"
-            onClick={handleGithubLogin}
+            onClick={() => handleProviderLogin("github", "GitHub")}
             className="w-full flex items-center justify-center gap-3 bg-[var(--bg-input)] border border-[var(--border-color)] hover:bg-[var(--hover-color)] text-[var(--text-primary)] py-4 rounded-xl transition-all text-base font-medium"
           >
             <Github className="w-5 h-5" />
             使用 GitHub 登录
+          </button>
+          <button
+            type="button"
+            onClick={() => handleProviderLogin("linuxdo", "LINUX DO")}
+            className="w-full flex items-center justify-center gap-3 bg-[var(--accent-color)] text-white hover:opacity-90 py-4 rounded-xl transition-all text-base font-medium"
+          >
+            <MessageCircleMore className="w-5 h-5" />
+            使用 LINUX DO 登录
           </button>
         </div>
 
