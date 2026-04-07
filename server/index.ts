@@ -1,14 +1,14 @@
-import { Hono, type Context } from "hono";
+import { type Context, Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { cors } from "hono/cors";
 import {
+  type AuthProvider,
   getFrontendUrl,
   getProviderCallbackUrl,
   getProviderConfig,
   getProviderDisplayName,
-  shouldUseSecureCookie,
-  type AuthProvider,
   type OAuthUserProfile,
+  shouldUseSecureCookie,
 } from "./oauthProviders";
 import { registerChainsRoutes } from "./registerChainsRoutes";
 import { registerOpenAiRoutes } from "./registerOpenAiRoutes";
@@ -90,7 +90,11 @@ const exchangeCodeForAccessToken = async (c: { env: Bindings }, provider: AuthPr
         },
         body: params.toString(),
       });
-      const tokenData = (await tokenRes.json()) as { access_token?: string; error?: string; error_description?: string };
+      const tokenData = (await tokenRes.json()) as {
+        access_token?: string;
+        error?: string;
+        error_description?: string;
+      };
       if (tokenData.access_token) {
         return tokenData.access_token;
       }
@@ -126,38 +130,48 @@ const fetchGithubUserProfile = async (accessToken: string): Promise<OAuthUserPro
   };
 };
 
-const fetchLinuxDoUserProfile = async (accessToken: string): Promise<OAuthUserProfile> => {
+const getLinuxDoUserUrls = () => {
   const config = getProviderConfig("linuxdo");
-  const userUrls = [config.userInfoUrl || "https://connect.linux.do/api/user", ...(config.userInfoFallbackUrls || [])];
+  return [config.userInfoUrl || "https://connect.linux.do/api/user", ...(config.userInfoFallbackUrls || [])];
+};
+
+const mapLinuxDoUserProfile = (linuxDoUser: LinuxDoUser): OAuthUserProfile => {
+  const providerUserId = linuxDoUser.sub || (linuxDoUser.id ? String(linuxDoUser.id) : "");
+  const username = linuxDoUser.preferred_username || linuxDoUser.username || "";
+  if (!providerUserId || !username) {
+    throw new Error("LINUX DO 返回的用户信息缺少必要字段");
+  }
+
+  return {
+    providerUserId,
+    username,
+    name: linuxDoUser.name || username,
+    avatarUrl: linuxDoUser.picture || linuxDoUser.avatar_url || "",
+  };
+};
+
+const requestLinuxDoUserProfile = async (userUrl: string, accessToken: string): Promise<OAuthUserProfile> => {
+  const userRes = await fetch(userUrl, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  });
+  if (!userRes.ok) {
+    throw new Error(await userRes.text());
+  }
+
+  const linuxDoUser = (await userRes.json()) as LinuxDoUser;
+  return mapLinuxDoUserProfile(linuxDoUser);
+};
+
+const fetchLinuxDoUserProfile = async (accessToken: string): Promise<OAuthUserProfile> => {
+  const userUrls = getLinuxDoUserUrls();
   let lastError = "未知错误";
 
   for (const userUrl of userUrls) {
     try {
-      const userRes = await fetch(userUrl, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
-      });
-      if (!userRes.ok) {
-        lastError = await userRes.text();
-        console.error("获取 LINUX DO 用户信息失败:", { userUrl, lastError });
-        continue;
-      }
-
-      const linuxDoUser = (await userRes.json()) as LinuxDoUser;
-      const providerUserId = linuxDoUser.sub || (linuxDoUser.id ? String(linuxDoUser.id) : "");
-      const username = linuxDoUser.preferred_username || linuxDoUser.username || "";
-      if (!providerUserId || !username) {
-        throw new Error("LINUX DO 返回的用户信息缺少必要字段");
-      }
-
-      return {
-        providerUserId,
-        username,
-        name: linuxDoUser.name || username,
-        avatarUrl: linuxDoUser.picture || linuxDoUser.avatar_url || "",
-      };
+      return await requestLinuxDoUserProfile(userUrl, accessToken);
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
       console.error("获取 LINUX DO 用户信息异常:", { userUrl, lastError });
@@ -193,8 +207,8 @@ const buildProviderAuthUrl = (c: { env: Bindings }, provider: AuthProvider) => {
   return { url: authUrl.toString(), redirectUri };
 };
 
-const handleOAuthCallback = (provider: AuthProvider, displayName: string) =>
-  async (c: Context<{ Bindings: Bindings }>) => {
+const handleOAuthCallback =
+  (provider: AuthProvider, displayName: string) => async (c: Context<{ Bindings: Bindings }>) => {
     console.log(`已进入 ${displayName} 登录回调`);
     const code = c.req.query("code");
     if (!code) return c.json({ error: `缺少 ${displayName} 授权码` }, 400);
