@@ -17,6 +17,16 @@ type GitHubUser = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+const getFrontendUrl = (c: { env: Bindings }) => c.env.FRONTEND_URL || "http://localhost:3000";
+
+const shouldUseSecureCookie = (url: string) => {
+  try {
+    return new URL(url).protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
 app.use("*", async (c, next) => {
   console.log(`[${new Date().toISOString()}] Request: ${c.req.method} ${c.req.url}`);
   await next();
@@ -34,22 +44,22 @@ app.use("/api/*", async (c, next) => {
 
 app.get("/api/auth/github/login", (c) => {
   const clientId = c.env.GITHUB_CLIENT_ID;
-  const frontendUrl = c.env.FRONTEND_URL || "https://www.928496.xyz";
+  const frontendUrl = getFrontendUrl(c);
   const redirectUri = `${frontendUrl}/api/auth/github/callback`;
-  console.log("Login URL requested:", { clientId: !!clientId, redirectUri });
-  if (!clientId) return c.json({ error: "GITHUB_CLIENT_ID not configured" }, 500);
+  console.log("收到 GitHub 登录地址请求:", { hasClientId: !!clientId, redirectUri });
+  if (!clientId) return c.json({ error: "未配置 GITHUB_CLIENT_ID" }, 500);
   const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read:user`;
-  console.log("Returning auth url:", githubAuthUrl);
+  console.log("已生成 GitHub 授权地址");
   return c.json({ url: githubAuthUrl });
 });
 
 app.get("/api/auth/github/callback", async (c) => {
-  console.log("Callback reached");
+  console.log("已进入 GitHub 登录回调");
   const code = c.req.query("code");
-  if (!code) return c.json({ error: "No code provided" }, 400);
+  if (!code) return c.json({ error: "缺少 GitHub 授权码" }, 400);
 
   try {
-    const frontendUrl = c.env.FRONTEND_URL || "https://www.928496.xyz";
+    const frontendUrl = getFrontendUrl(c);
     const redirectUri = `${frontendUrl}/api/auth/github/callback`;
     const params = new URLSearchParams();
     params.append("client_id", c.env.GITHUB_CLIENT_ID);
@@ -67,8 +77,8 @@ app.get("/api/auth/github/callback", async (c) => {
     });
     const tokenData = (await tokenRes.json()) as { access_token?: string; error?: string };
     if (!tokenData.access_token) {
-      console.error("Failed to get access token:", tokenData);
-      return c.json({ error: "Failed to get access token", details: tokenData }, 400);
+      console.error("获取 GitHub access token 失败:", tokenData);
+      return c.json({ error: "获取 GitHub access token 失败", details: tokenData }, 400);
     }
 
     const userRes = await fetch("https://api.github.com/user", {
@@ -78,8 +88,8 @@ app.get("/api/auth/github/callback", async (c) => {
       },
     });
     if (!userRes.ok) {
-      console.error("Failed to get user info:", await userRes.text());
-      return c.json({ error: "Failed to get user info" }, 400);
+      console.error("获取 GitHub 用户信息失败:", await userRes.text());
+      return c.json({ error: "获取 GitHub 用户信息失败" }, 400);
     }
 
     const githubUser = (await userRes.json()) as GitHubUser;
@@ -104,16 +114,16 @@ app.get("/api/auth/github/callback", async (c) => {
     setCookie(c, "auth_session", sessionId, {
       path: "/",
       httpOnly: true,
-      secure: true,
+      secure: shouldUseSecureCookie(frontendUrl),
       sameSite: "Lax",
       maxAge: 60 * 60 * 24 * 30,
     });
 
-    console.log("Login success, redirecting home");
+    console.log("GitHub 登录成功，正在跳转首页");
     return c.redirect("/", 302);
   } catch (error) {
-    console.error("Auth error:", error);
-    return c.text("Authentication failed", 500);
+    console.error("GitHub 鉴权异常:", error);
+    return c.text("GitHub 登录失败", 500);
   }
 });
 

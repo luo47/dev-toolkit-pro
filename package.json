@@ -4,20 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "dev:front": "vite --port=3000 --host=0.0.0.0",
+    "dev": "concurrently \"vite --port=3000 --host=0.0.0.0\" \"wrangler dev\"",
     "build": "vite build",
-    "preview": "vite preview",
     "clean": "busybox rm -rf dist",
-    "lint": "pnpm run lint:types && pnpm run lint:biome",
-    "lint:types": "tsc --noEmit",
-    "lint:biome": "biome check .",
-    "format": "biome format --write .",
-    "check": "biome check .",
+    "lint": "tsc --noEmit && biome check .",
+    "format": "biome check --write .",
     "predeploy": "pnpm install && pnpm run clean && pnpm run lint",
     "deploy": "pnpm build && wrangler deploy",
-    "db:migrate:local": "wrangler d1 migrations apply dev-toolkit-db --local --yes",
-    "db:migrate": "wrangler d1 migrations apply dev-toolkit-db --remote --yes"
+    "migrate": "cross-env CI=true wrangler d1 migrations apply DB --local && cross-env CI=true wrangler d1 migrations apply DB --remote"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
@@ -41,6 +35,8 @@
     "@types/react": "^19.2.14",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.27",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.21.0",
     "typescript": "~5.9.3",

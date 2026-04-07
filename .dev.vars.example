@@ -1,0 +1,3 @@
+GITHUB_CLIENT_ID="你的 GitHub OAuth App Client ID"
+GITHUB_CLIENT_SECRET="你的 GitHub OAuth App Client Secret"
+FRONTEND_URL="http://localhost:3000"
