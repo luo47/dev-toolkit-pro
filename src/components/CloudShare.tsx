@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent, useState } from "react";
 import type { ShareContent } from "../types";
 import EditModal from "./cloud-share/EditModal";
 import ShareCard from "./cloud-share/ShareCard";
+import TokenModal from "./cloud-share/TokenModal";
 import UploadModal from "./cloud-share/UploadModal";
 
 const readHighlightId = () => new URLSearchParams(window.location.search).get("highlight");
@@ -27,6 +28,7 @@ const ShareListState = ({
   onCopyLink,
   onDelete,
   onEdit,
+  onManageToken,
   onJump,
 }: {
   isLoading: boolean;
@@ -37,6 +39,7 @@ const ShareListState = ({
   onCopyLink: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (share: ShareContent | null) => void;
+  onManageToken: (share: ShareContent | null) => void;
   onJump: (share: ShareContent, mode: "view" | "edit") => void;
 }) => {
   if (isLoading && shares.length === 0) {
@@ -71,6 +74,7 @@ const ShareListState = ({
       onCopyLink={onCopyLink}
       onDelete={onDelete}
       onEdit={onEdit}
+      onManageToken={onManageToken}
       onJump={onJump}
     />
   ));
@@ -94,6 +98,7 @@ export default function CloudShare() {
   const [isLoading, setIsLoading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [editingShare, setEditingShare] = useState<ShareContent | null>(null);
+  const [managedTokenShare, setManagedTokenShare] = useState<ShareContent | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
@@ -193,6 +198,7 @@ export default function CloudShare() {
           onCopyLink={copyLink}
           onDelete={deleteShare}
           onEdit={setEditingShare}
+          onManageToken={setManagedTokenShare}
           onJump={jumpToSnippet}
         />
       </div>
@@ -216,6 +222,18 @@ export default function CloudShare() {
             onClose={() => setEditingShare(null)}
             onSuccess={() => {
               setEditingShare(null);
+              fetchShares();
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {managedTokenShare && (
+          <TokenModal
+            share={managedTokenShare}
+            onClose={() => setManagedTokenShare(null)}
+            onUpdate={() => {
               fetchShares();
             }}
           />

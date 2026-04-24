@@ -13,6 +13,7 @@ type ShareRow = {
   name: string | null;
   source_type: string | null;
   source_id: string | null;
+  edit_token: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -48,6 +49,7 @@ const parseShareItem = (row: ShareRow) => ({
   name: row.name,
   sourceType: row.source_type === "snippet" ? "snippet" : null,
   sourceId: row.source_id,
+  editToken: row.edit_token,
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
@@ -73,8 +75,10 @@ const findExistingSharedSnippet = async (c: AppContext, userId: string, sourceId
 const createTextShareRecord = async (c: AppContext, userId: string, body: TextShareBody) => {
   const id = await generateShareId(c.env.DB);
   const now = new Date().toISOString();
+  // 不再自动生成密钥，设为 null
+  const editToken = null;
   await c.env.DB.prepare(
-    "INSERT INTO shares (id, user_id, type, content, name, source_type, source_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO shares (id, user_id, type, content, name, source_type, source_id, edit_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
   )
     .bind(
       id,
@@ -84,6 +88,7 @@ const createTextShareRecord = async (c: AppContext, userId: string, body: TextSh
       body.name || "未命名文本分享",
       body.sourceId ? "snippet" : null,
       body.sourceId || null,
+      editToken,
       now,
       now,
     )
@@ -98,6 +103,7 @@ const createTextShareRecord = async (c: AppContext, userId: string, body: TextSh
     name: body.name || "未命名文本分享",
     sourceType: body.sourceId ? "snippet" : null,
     sourceId: body.sourceId || null,
+    editToken,
     createdAt: now,
     updatedAt: now,
   };
@@ -214,6 +220,45 @@ const registerShareCrudRoutes = (app: Hono<{ Bindings: Bindings }>) => {
       return c.json({ success: false, error: getErrorMessage(error, "删除分享失败") }, 500);
     }
   });
+
+  app.post("/api/shares/:id/token/regenerate", async (c) => {
+    const userId = await getUserFromSession(c);
+    if (!userId) return c.json({ success: false, error: "Unauthorized" }, 401);
+
+    try {
+      const id = c.req.param("id");
+      const existing = await c.env.DB.prepare("SELECT * FROM shares WHERE id = ? AND user_id = ?")
+        .bind(id, userId)
+        .first<ShareRow>();
+      if (!existing) return c.json({ success: false, error: "分享不存在或无权操作" }, 404);
+
+      const newToken = crypto.randomUUID();
+      await c.env.DB.prepare("UPDATE shares SET edit_token = ? WHERE id = ?").bind(newToken, id).run();
+
+      return c.json({ success: true, editToken: newToken });
+    } catch (error) {
+      return c.json({ success: false, error: getErrorMessage(error, "重新生成密钥失败") }, 500);
+    }
+  });
+
+  app.delete("/api/shares/:id/token", async (c) => {
+    const userId = await getUserFromSession(c);
+    if (!userId) return c.json({ success: false, error: "Unauthorized" }, 401);
+
+    try {
+      const id = c.req.param("id");
+      const existing = await c.env.DB.prepare("SELECT * FROM shares WHERE id = ? AND user_id = ?")
+        .bind(id, userId)
+        .first<ShareRow>();
+      if (!existing) return c.json({ success: false, error: "分享不存在或无权操作" }, 404);
+
+      await c.env.DB.prepare("UPDATE shares SET edit_token = NULL WHERE id = ?").bind(id).run();
+
+      return c.json({ success: true });
+    } catch (error) {
+      return c.json({ success: false, error: getErrorMessage(error, "注销密钥失败") }, 500);
+    }
+  });
 };
 
 const registerFileUploadRoute = (app: Hono<{ Bindings: Bindings }>) => {
@@ -253,10 +298,22 @@ const registerFileUploadRoute = (app: Hono<{ Bindings: Bindings }>) => {
         totalSize += file.size;
       }
 
+      // 不再自动生成密钥，设为 null
+      const editToken = null;
       await c.env.DB.prepare(
-        "INSERT INTO shares (id, user_id, type, files, total_size, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO shares (id, user_id, type, files, total_size, name, edit_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
-        .bind(id, userId, "file", JSON.stringify(fileItems), totalSize, shareName || fileItems[0].name, now, now)
+        .bind(
+          id,
+          userId,
+          "file",
+          JSON.stringify(fileItems),
+          totalSize,
+          shareName || fileItems[0].name,
+          editToken,
+          now,
+          now,
+        )
         .run();
 
       return c.json({
@@ -269,6 +326,7 @@ const registerFileUploadRoute = (app: Hono<{ Bindings: Bindings }>) => {
           name: shareName || fileItems[0].name,
           sourceType: null,
           sourceId: null,
+          editToken,
           createdAt: now,
           updatedAt: now,
         },
@@ -296,8 +354,50 @@ const registerPublicShareRoutes = (app: Hono<{ Bindings: Bindings }>) => {
         sourceType: existing.source_type === "snippet" ? "snippet" : null,
         sourceId: existing.source_id,
         createdAt: existing.created_at,
+        updatedAt: existing.updated_at,
       },
     });
+  });
+
+  app.post("/api/public/share/:id/update", async (c) => {
+    try {
+      const id = c.req.param("id");
+      const body = (await c.req.json()) as ShareUpdateBody & { editToken: string };
+
+      if (!body.editToken) {
+        return c.json({ success: false, error: "缺少修改密钥 (editToken)" }, 400);
+      }
+
+      const existing = await c.env.DB.prepare("SELECT * FROM shares WHERE id = ?").bind(id).first<ShareRow>();
+
+      if (!existing) {
+        return c.json({ success: false, error: "分享不存在" }, 404);
+      }
+
+      if (!existing.edit_token || existing.edit_token !== body.editToken) {
+        return c.json({ success: false, error: "修改密钥无效或无权操作" }, 403);
+      }
+
+      const now = new Date().toISOString();
+      const newContent = existing.type === "text" && body.content !== undefined ? body.content : existing.content;
+      const newName = body.name !== undefined ? body.name : existing.name;
+
+      await c.env.DB.prepare("UPDATE shares SET content = ?, name = ?, updated_at = ? WHERE id = ?")
+        .bind(newContent, newName, now, id)
+        .run();
+
+      return c.json({
+        success: true,
+        data: {
+          ...parseShareItem(existing),
+          content: newContent,
+          name: newName,
+          updatedAt: now,
+        },
+      });
+    } catch (error) {
+      return c.json({ success: false, error: getErrorMessage(error, "更新分享失败") }, 500);
+    }
   });
 
   app.get("/api/public/download/:id/:path{.+}", async (c) => {

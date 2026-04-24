@@ -26,6 +26,7 @@ export interface ShareContent {
   name?: string;
   sourceType?: "snippet" | null;
   sourceId?: string | null;
+  editToken?: string;
   createdAt: string;
   updatedAt: string;
 }

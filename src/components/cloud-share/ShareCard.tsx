@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Copy, Edit3, ExternalLink, Eye, File as FileIcon, Files, FileText, History, Trash2 } from "lucide-react";
+import { Copy, Edit3, ExternalLink, Eye, File as FileIcon, Files, FileText, History, Key, Trash2 } from "lucide-react";
 import type React from "react";
 import type { ShareContent } from "../../types";
 import { formatSize } from "./cloudShareUtils";
@@ -11,6 +11,7 @@ interface ShareCardProps {
   onCopyLink: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (share: ShareContent) => void;
+  onManageToken: (share: ShareContent) => void;
   onJump: (share: ShareContent, mode: "view" | "edit") => void;
 }
 
@@ -31,12 +32,14 @@ const ShareActionButtons = ({
   onCopyLink,
   onDelete,
   onEdit,
+  onManageToken,
   onJump,
 }: {
   share: ShareContent;
   onCopyLink: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (share: ShareContent) => void;
+  onManageToken: (share: ShareContent) => void;
   onJump: (share: ShareContent, mode: "view" | "edit") => void;
 }) => {
   const isSnippetShare = share.sourceType === "snippet" && !!share.sourceId;
@@ -79,6 +82,14 @@ const ShareActionButtons = ({
           <Edit3 size={20} />
         </button>
       )}
+      <button
+        type="button"
+        onClick={() => onManageToken(share)}
+        className="w-12 h-12 flex items-center justify-center hover:bg-yellow-500 hover:text-white rounded-xl transition-all text-[var(--text-secondary)]"
+        title="管理修改密钥 (Token)"
+      >
+        <Key size={20} />
+      </button>
       <div className="w-px h-6 bg-[var(--border-color)] mx-1" />
       <button
         type="button"
@@ -92,7 +103,16 @@ const ShareActionButtons = ({
   );
 };
 
-const ShareCard: React.FC<ShareCardProps> = ({ highlighted, index, share, onCopyLink, onDelete, onEdit, onJump }) => {
+const ShareCard: React.FC<ShareCardProps> = ({
+  highlighted,
+  index,
+  share,
+  onCopyLink,
+  onDelete,
+  onEdit,
+  onManageToken,
+  onJump,
+}) => {
   return (
     <motion.div
       key={share.id}
@@ -165,7 +185,14 @@ const ShareCard: React.FC<ShareCardProps> = ({ highlighted, index, share, onCopy
         </div>
       </div>
 
-      <ShareActionButtons share={share} onCopyLink={onCopyLink} onDelete={onDelete} onEdit={onEdit} onJump={onJump} />
+      <ShareActionButtons
+        share={share}
+        onCopyLink={onCopyLink}
+        onDelete={onDelete}
+        onEdit={onEdit}
+        onManageToken={onManageToken}
+        onJump={onJump}
+      />
     </motion.div>
   );
 };
