@@ -105,7 +105,7 @@ function HeaderSearch({
                         <div className="text-sm font-medium text-[var(--text-primary)]">{tool.name}</div>
                         <div className="text-[10px] text-[var(--text-secondary)]">点击立即使用</div>
                       </div>
-                      {tool.isPremium && (
+                      {tool.action.type === "premium" && (
                         <span className="text-[8px] font-bold bg-[var(--accent-color)]/10 text-[var(--accent-color)] px-1.5 py-0.5 rounded uppercase tracking-wider">
                           PRO
                         </span>

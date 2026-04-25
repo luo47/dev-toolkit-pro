@@ -55,32 +55,39 @@ const getErrorMessage = (error: unknown, fallback: string) => (error instanceof 
 const getSnippetBaseQuery = (userId: string | null) =>
   `SELECT * FROM code_snippets WHERE (user_id = 'system' ${userId ? "OR user_id = ?" : ""})`;
 
-const buildSnippetFilters = ({
-  language,
-  search,
-  tag,
-}: {
-  language: string | null;
-  search: string | null;
-  tag: string | null;
-}): SnippetFilterResult => {
-  const conditions: string[] = [];
-  const params: string[] = [];
-  if (language) {
-    conditions.push("language = ?");
-    params.push(language);
+class SnippetQueryBuilder {
+  private conditions: string[] = [];
+  private params: string[] = [];
+
+  withLanguage(language: string | null) {
+    if (language) {
+      this.conditions.push("language = ?");
+      this.params.push(language);
+    }
+    return this;
   }
-  if (tag) {
-    conditions.push("tags LIKE ?");
-    params.push(`%"${tag}"%`);
+
+  withTag(tag: string | null) {
+    if (tag) {
+      this.conditions.push("tags LIKE ?");
+      this.params.push(`%"${tag}"%`);
+    }
+    return this;
   }
-  if (search) {
-    conditions.push("(title LIKE ? OR code LIKE ? OR description LIKE ?)");
-    const pattern = `%${search}%`;
-    params.push(pattern, pattern, pattern);
+
+  withSearch(search: string | null) {
+    if (search) {
+      this.conditions.push("(title LIKE ? OR code LIKE ? OR description LIKE ?)");
+      const pattern = `%${search}%`;
+      this.params.push(pattern, pattern, pattern);
+    }
+    return this;
   }
-  return { conditions, params };
-};
+
+  build(): SnippetFilterResult {
+    return { conditions: this.conditions, params: this.params };
+  }
+}
 
 const applySortAndPaging = (query: string, sort: string, order: string) => {
   const validSorts = ["copy_count", "updated_at", "created_at", "title"];
@@ -97,26 +104,30 @@ const parseSnippetRow = (row: SnippetRow) => ({
   tags: row.tags ? JSON.parse(row.tags) : [],
 });
 
-const buildSnippetUpdates = (body: SnippetUpdateBody) => {
-  const updates: string[] = [];
-  const params: Array<string> = [];
-  [
-    ["title", body.title],
-    ["code", body.code],
-    ["language", body.language],
-    ["description", body.description],
-  ].forEach(([field, value]) => {
+class SnippetUpdateBuilder {
+  private updates: string[] = [];
+  private params: string[] = [];
+
+  withField(field: string, value: string | undefined) {
     if (value !== undefined) {
-      updates.push(`${field} = ?`);
-      params.push(value);
+      this.updates.push(`${field} = ?`);
+      this.params.push(value);
     }
-  });
-  if (body.tags !== undefined) {
-    updates.push("tags = ?");
-    params.push(JSON.stringify(body.tags));
+    return this;
   }
-  return { params, updates };
-};
+
+  withTags(tags: string[] | undefined) {
+    if (tags !== undefined) {
+      this.updates.push("tags = ?");
+      this.params.push(JSON.stringify(tags));
+    }
+    return this;
+  }
+
+  build() {
+    return { updates: this.updates, params: this.params };
+  }
+}
 
 const syncLinkedShares = async (
   c: AppContext,
@@ -178,11 +189,11 @@ const registerSnippetCrudRoutes = (app: Hono<{ Bindings: Bindings }>) => {
     const url = new URL(c.req.url);
     const limit = Math.min(parseInt(url.searchParams.get("limit") || "50", 10), 2000);
     const offset = Math.max(parseInt(url.searchParams.get("offset") || "0", 10), 0);
-    const filters = buildSnippetFilters({
-      language: url.searchParams.get("language"),
-      search: url.searchParams.get("search"),
-      tag: url.searchParams.get("tag"),
-    });
+    const filters = new SnippetQueryBuilder()
+      .withLanguage(url.searchParams.get("language"))
+      .withSearch(url.searchParams.get("search"))
+      .withTag(url.searchParams.get("tag"))
+      .build();
 
     try {
       return c.json(
@@ -259,7 +270,13 @@ const registerSnippetCrudRoutes = (app: Hono<{ Bindings: Bindings }>) => {
       if (await applyCopyCountDelta(c, body, id)) return c.json({ success: true });
       if (existing.user_id !== userId) return c.json({ error: "Forbidden" }, 403);
 
-      const snippetUpdates = buildSnippetUpdates(body);
+      const snippetUpdates = new SnippetUpdateBuilder()
+        .withField("title", body.title)
+        .withField("code", body.code)
+        .withField("language", body.language)
+        .withField("description", body.description)
+        .withTags(body.tags)
+        .build();
       if (snippetUpdates.updates.length > 0) {
         snippetUpdates.updates.push('updated_at = datetime("now")');
         await c.env.DB.prepare(

@@ -31,13 +31,16 @@ export interface ShareContent {
   updatedAt: string;
 }
 
+export type ToolAction = { type: "internal" } | { type: "external"; url: string } | { type: "premium" };
+
 export interface ToolMetadata {
   id: ToolId;
   name: string;
   icon: React.ElementType;
-  isPremium: boolean;
+  action: ToolAction;
   subName?: string;
-  url?: string;
+  layoutVariant?: "plain" | "surface";
+  isWide?: boolean;
 }
 
 declare global {

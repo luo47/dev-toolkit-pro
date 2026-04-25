@@ -2,6 +2,8 @@ import { JSONPath } from "jsonpath-plus";
 import type { Step, StepType } from "./ChainTypes";
 import { beautifyMarkup, compressMarkup, jsonToXml, xmlToJson } from "./xmlTransforms";
 
+type StepExecutionStrategy = (value: string, current: string) => string;
+
 const BYLINE_STEP_TYPES = new Set<StepType>([
   "jsonpath",
   "xpath",
@@ -211,58 +213,35 @@ export const resolveStepByLine = (step: Step) => {
   }
 };
 
-const executeSimpleTransform = (type: StepType, current: string) => {
-  switch (type) {
-    case "base64-encode":
-      return btoa(unescape(encodeURIComponent(current)));
-    case "base64-decode":
-      return decodeURIComponent(escape(atob(current)));
-    case "url-encode":
-      return encodeURIComponent(current);
-    case "url-decode":
-      return decodeURIComponent(current);
-    case "trim":
-      return current.trim();
-    case "lowercase":
-      return current.toLowerCase();
-    case "uppercase":
-      return current.toUpperCase();
-    case "json-beautify":
-      return JSON.stringify(JSON.parse(current), null, 2);
-    case "json-compress":
-      return JSON.stringify(JSON.parse(current));
-    default:
-      return current;
-  }
+const stepStrategies: Partial<Record<StepType, StepExecutionStrategy>> = {
+  jsonpath: executeJsonPath,
+  xpath: executeXPath,
+  css: executeCssSelector,
+  js: executeJavaScript,
+  "regex-replace": executeRegexReplace,
+  "xml-beautify": (_, current) => beautifyMarkup(current),
+  "xml-compress": (_, current) => compressMarkup(current),
+  "xml-to-json": (_, current) => xmlToJson(current),
+  "json-to-xml": (value, current) => jsonToXml(current, value),
+  "json-to-csv": (_, current) => jsonToCsv(current),
+  "csv-to-json": (_, current) => csvToJson(current),
+  "base64-encode": (_, current) => btoa(decodeURI(encodeURIComponent(current))),
+  "base64-decode": (_, current) => decodeURIComponent(encodeURI(atob(current))),
+  "url-encode": (_, current) => encodeURIComponent(current),
+  "url-decode": (_, current) => decodeURIComponent(current),
+  trim: (_, current) => current.trim(),
+  lowercase: (_, current) => current.toLowerCase(),
+  uppercase: (_, current) => current.toUpperCase(),
+  "json-beautify": (_, current) => JSON.stringify(JSON.parse(current), null, 2),
+  "json-compress": (_, current) => JSON.stringify(JSON.parse(current)),
 };
 
 export const executeStepLogic = (type: StepType, value: string, current: string): string => {
-  switch (type) {
-    case "jsonpath":
-      return executeJsonPath(value, current);
-    case "xpath":
-      return executeXPath(value, current);
-    case "css":
-      return executeCssSelector(value, current);
-    case "js":
-      return executeJavaScript(value, current);
-    case "regex-replace":
-      return executeRegexReplace(value, current);
-    case "xml-beautify":
-      return beautifyMarkup(current);
-    case "xml-compress":
-      return compressMarkup(current);
-    case "xml-to-json":
-      return xmlToJson(current);
-    case "json-to-xml":
-      return jsonToXml(current, value);
-    case "json-to-csv":
-      return jsonToCsv(current);
-    case "csv-to-json":
-      return csvToJson(current);
-    default:
-      return executeSimpleTransform(type, current);
+  const strategy = stepStrategies[type];
+  if (strategy) {
+    return strategy(value, current);
   }
+  return current;
 };
 
 const runStep = (step: Step, current: string) => {

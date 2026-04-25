@@ -2,12 +2,12 @@ import React, { Suspense, useEffect, useState } from "react";
 import AppHeader from "./components/app/AppHeader";
 import AppOverlays from "./components/app/AppOverlays";
 import AppSidebar from "./components/app/AppSidebar";
-import { BREAKPOINTS, tools, WIDE_TOOLS } from "./components/app/appConstants";
+import { BREAKPOINTS, tools } from "./components/app/appConstants";
 import Home from "./components/Home";
 import Login from "./components/Login";
 import { useAuth } from "./hooks/useAuth";
 import { useAppStore } from "./store";
-import type { ToolId } from "./types";
+import type { ToolAction, ToolId } from "./types";
 
 const QRCodeTool = React.lazy(() => import("./components/QRCodeTool"));
 const ChainProcessor = React.lazy(() => import("./components/ChainProcessor"));
@@ -21,7 +21,8 @@ const getToolIdFromLocation = () => {
   return (path === "" ? "home" : path) as ToolId;
 };
 
-const getContentWidthClass = (activeTool: ToolId) => (WIDE_TOOLS.has(activeTool) ? "max-w-[1400px]" : "max-w-[840px]");
+const getContentWidthClass = (activeTool: ToolId) =>
+  tools.find((t) => t.id === activeTool)?.isWide ? "max-w-[1400px]" : "max-w-[840px]";
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center p-20">
@@ -29,15 +30,23 @@ const LoadingFallback = () => (
   </div>
 );
 
-const ToolContent = ({ activeTool }: { activeTool: ToolId }) => (
-  <Suspense fallback={<LoadingFallback />}>
-    {activeTool === "chain-processor" && <ChainProcessor />}
-    {activeTool === "qrcode" && <QRCodeTool />}
-    {activeTool === "code-snippets" && <CodeSnippetsTool />}
-    {activeTool === "cloud-share" && <CloudShare />}
-    {activeTool === "share-preview" && <SharePreview />}
-  </Suspense>
-);
+const TOOL_COMPONENTS: Partial<Record<ToolId, React.ComponentType>> = {
+  "chain-processor": ChainProcessor,
+  qrcode: QRCodeTool,
+  "code-snippets": CodeSnippetsTool,
+  "cloud-share": CloudShare,
+  "share-preview": SharePreview,
+};
+
+const ToolContent = ({ activeTool }: { activeTool: ToolId }) => {
+  const Component = TOOL_COMPONENTS[activeTool];
+  if (!Component) return null;
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <Component />
+    </Suspense>
+  );
+};
 
 const AppFooter = () => (
   <div className="py-2 bg-[var(--bg-main)]/80 backdrop-blur-md border-t border-[var(--border-color)] z-20">
@@ -55,7 +64,7 @@ const ActiveToolPanel = ({ activeTool }: { activeTool: ToolId }) => (
       </h2>
     </div>
     <div
-      className={`flex-1 ${activeTool === "qrcode" ? "" : "bg-[var(--bg-surface)] p-4 md:p-6 rounded-[24px] border border-[var(--border-color)] shadow-xl"}`}
+      className={`flex-1 ${tools.find((t) => t.id === activeTool)?.layoutVariant === "plain" ? "" : "bg-[var(--bg-surface)] p-4 md:p-6 rounded-[24px] border border-[var(--border-color)] shadow-xl"}`}
     >
       <ToolContent activeTool={activeTool} />
     </div>
@@ -139,17 +148,24 @@ export default function App() {
       return;
     }
 
-    if (tool.url) {
-      window.open(tool.url, "_blank");
-      return;
-    }
+    const strategies: Record<ToolAction["type"], () => void> = {
+      internal: () => navigateToTool(id),
+      external: () => {
+        if (tool.action.type === "external") {
+          window.open(tool.action.url, "_blank");
+        }
+      },
+      premium: () => {
+        if (!user) {
+          localStorage.setItem("redirect_to", `/${id}`);
+          setShowLogin(true);
+        } else {
+          navigateToTool(id);
+        }
+      },
+    };
 
-    if (tool.isPremium && !user) {
-      localStorage.setItem("redirect_to", `/${id}`);
-      setShowLogin(true);
-      return;
-    }
-    navigateToTool(id);
+    strategies[tool.action.type]();
   };
 
   const toggleLogoutConfirm = (source: "sidebar" | "topbar") => {
@@ -188,12 +204,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-main)] text-[var(--text-primary)] flex font-sans transition-colors duration-300">
-      {showLogin && (
-        <Login
-          onLogin={() => setShowLogin(false)}
-          onClose={() => setShowLogin(false)}
-        />
-      )}
+      {showLogin && <Login onLogin={() => setShowLogin(false)} onClose={() => setShowLogin(false)} />}
 
       {isSidebarOpen && (
         <button

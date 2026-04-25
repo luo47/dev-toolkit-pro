@@ -137,6 +137,34 @@ const buildZipResponse = async (bucket: R2Bucket, files: ShareFile[], zipName: s
   });
 };
 
+interface ShareStrategy {
+  getNewContent(existing: ShareRow, body: ShareUpdateBody): string | null;
+  onDelete?(c: AppContext, existing: ShareRow): void;
+  onPreview(c: AppContext, existing: ShareRow): Response | Promise<Response>;
+}
+
+const shareStrategies: Record<string, ShareStrategy> = {
+  text: {
+    getNewContent: (existing, body) => (body.content !== undefined ? body.content : existing.content),
+    onPreview: (c, existing) => {
+      c.header("Content-Type", "text/plain; charset=utf-8");
+      return c.text((existing.content as string) || "");
+    },
+  },
+  file: {
+    getNewContent: (existing) => existing.content,
+    onDelete: (c, existing) => {
+      if (existing.files) {
+        const files = parseShareFiles(existing.files) || [];
+        c.executionCtx.waitUntil(Promise.all(files.map((file) => c.env.SHARE_R2.delete(file.key))));
+      }
+    },
+    onPreview: (c, existing) => {
+      return c.redirect(`${c.env.FRONTEND_URL || "https://www.928496.xyz"}/share-preview/${existing.id}`, 302);
+    },
+  },
+};
+
 const registerShareCrudRoutes = (app: Hono<{ Bindings: Bindings }>) => {
   app.get("/api/shares", async (c) => {
     const userId = await getUserFromSession(c);
@@ -178,7 +206,8 @@ const registerShareCrudRoutes = (app: Hono<{ Bindings: Bindings }>) => {
 
       const body = (await c.req.json()) as ShareUpdateBody;
       const now = new Date().toISOString();
-      const newContent = existing.type === "text" && body.content !== undefined ? body.content : existing.content;
+      const strategy = shareStrategies[existing.type] || shareStrategies.text;
+      const newContent = strategy.getNewContent(existing, body);
       const newName = body.name !== undefined ? body.name : existing.name;
 
       await c.env.DB.prepare("UPDATE shares SET content = ?, name = ?, updated_at = ? WHERE id = ?")
@@ -209,10 +238,8 @@ const registerShareCrudRoutes = (app: Hono<{ Bindings: Bindings }>) => {
         .first<ShareRow>();
       if (!existing) return c.json({ success: false, error: "分享不存在或无权操作" }, 404);
 
-      if (existing.type === "file" && existing.files) {
-        const files = parseShareFiles(existing.files) || [];
-        c.executionCtx.waitUntil(Promise.all(files.map((file) => c.env.SHARE_R2.delete(file.key))));
-      }
+      const strategy = shareStrategies[existing.type];
+      strategy?.onDelete?.(c, existing);
 
       await c.env.DB.prepare("DELETE FROM shares WHERE id = ?").bind(c.req.param("id")).run();
       return c.json({ success: true });
@@ -379,7 +406,8 @@ const registerPublicShareRoutes = (app: Hono<{ Bindings: Bindings }>) => {
       }
 
       const now = new Date().toISOString();
-      const newContent = existing.type === "text" && body.content !== undefined ? body.content : existing.content;
+      const strategy = shareStrategies[existing.type] || shareStrategies.text;
+      const newContent = strategy.getNewContent(existing, body);
       const newName = body.name !== undefined ? body.name : existing.name;
 
       await c.env.DB.prepare("UPDATE shares SET content = ?, name = ?, updated_at = ? WHERE id = ?")
@@ -436,11 +464,9 @@ const registerPublicShareRoutes = (app: Hono<{ Bindings: Bindings }>) => {
       .bind(c.req.param("id"))
       .first<ShareRow>();
     if (!existing) return c.text("分享不存在或已过期", 404);
-    if (existing.type === "text") {
-      c.header("Content-Type", "text/plain; charset=utf-8");
-      return c.text((existing.content as string) || "");
-    }
-    return c.redirect(`${c.env.FRONTEND_URL || "https://www.928496.xyz"}/share-preview/${c.req.param("id")}`, 302);
+    const strategy = shareStrategies[existing.type];
+    if (!strategy) return c.text("不支持的分享类型", 400);
+    return strategy.onPreview(c, existing);
   });
 };
 

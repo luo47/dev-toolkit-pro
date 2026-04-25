@@ -14,36 +14,35 @@ const HOME_TOOLS = [
     name: "云分享",
     icon: Server,
     description: "极简且高效的云端资产同步工具，支持文本片段与多文件包分享。",
-    isPremium: false,
+    action: { type: "internal" },
   },
   {
     id: "openai-api-tester",
     name: "OPENAI-API测试",
     icon: PlugZap,
     description: "使用外部工具检测 OpenAI 及兼容接口的可用性，支持多模型列表与对话接口诊断。",
-    isPremium: false,
-    url: "https://ai-model-tester.928496.xyz/",
+    action: { type: "external", url: "https://ai-model-tester.928496.xyz/" },
   },
   {
     id: "code-snippets",
     name: "代码片段",
     icon: Code,
     description: "代码片段管理工具，带有标签过滤和一键复制功能。",
-    isPremium: true,
+    action: { type: "premium" },
   },
   {
     id: "chain-processor",
     name: "链式文本处理",
     icon: FileSearch,
     description: "强大的链式文本处理引擎，支持 JS、JSONPath 等多种处理步骤。",
-    isPremium: true,
+    action: { type: "premium" },
   },
   {
     id: "qrcode",
     name: "二维码",
     icon: QrCode,
     description: "二维码生成与识别，支持实时生成及图片识别。",
-    isPremium: false,
+    action: { type: "internal" },
   },
 ] as const;
 
@@ -58,11 +57,20 @@ export default function Home({ onSelectTool, isLoggedIn, onOpenLogin, searchQuer
   const tools = filterHomeTools(searchQuery);
 
   const handleToolClick = (tool: (typeof HOME_TOOLS)[number]) => {
-    if (tool.isPremium && !isLoggedIn) {
-      onOpenLogin();
-    } else {
-      onSelectTool(tool.id);
-    }
+    const { action } = tool;
+
+    // 应用行为策略逻辑
+    const strategy: Record<string, () => void> = {
+      internal: () => onSelectTool(tool.id),
+      external: () => {
+        if (action.type === "external") {
+          window.open(action.url, "_blank");
+        }
+      },
+      premium: () => (!isLoggedIn ? onOpenLogin() : onSelectTool(tool.id)),
+    };
+
+    (strategy[action.type] || strategy.internal)();
   };
 
   return (
@@ -86,7 +94,7 @@ export default function Home({ onSelectTool, isLoggedIn, onOpenLogin, searchQuer
                   <div className="flex items-center gap-4">
                     <div
                       className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-300 shrink-0 ${
-                        tool.isPremium && !isLoggedIn
+                        tool.action.type === "premium" && !isLoggedIn
                           ? "bg-[var(--bg-main)] text-[var(--text-secondary)]"
                           : "bg-[var(--bg-main)] text-[var(--accent-color)] group-hover:bg-[var(--bg-surface)]"
                       }`}
@@ -98,7 +106,7 @@ export default function Home({ onSelectTool, isLoggedIn, onOpenLogin, searchQuer
                     </h3>
                   </div>
 
-                  {tool.isPremium && (
+                  {tool.action.type === "premium" && (
                     <div className="flex items-center gap-1.5 shrink-0">
                       {!isLoggedIn && <Lock className="w-3.5 h-3.5 text-[var(--text-secondary)]" />}
                       <div className="flex items-center gap-1 px-2.5 py-1 bg-[var(--accent-color)]/10 border border-[var(--accent-color)]/20 rounded-full">
