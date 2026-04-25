@@ -55,7 +55,7 @@ const ActiveToolPanel = ({ activeTool }: { activeTool: ToolId }) => (
       </h2>
     </div>
     <div
-      className={`flex-1 ${activeTool === "qrcode" || activeTool === "openai-api-tester" ? "" : "bg-[var(--bg-surface)] p-4 md:p-6 rounded-[24px] border border-[var(--border-color)] shadow-xl"}`}
+      className={`flex-1 ${activeTool === "qrcode" ? "" : "bg-[var(--bg-surface)] p-4 md:p-6 rounded-[24px] border border-[var(--border-color)] shadow-xl"}`}
     >
       <ToolContent activeTool={activeTool} />
     </div>
@@ -190,9 +190,7 @@ export default function App() {
     <div className="min-h-screen bg-[var(--bg-main)] text-[var(--text-primary)] flex font-sans transition-colors duration-300">
       {showLogin && (
         <Login
-          onLogin={(name) => {
-            if (name !== "GitHub 用户" && name !== "LINUX DO 用户") setShowLogin(false);
-          }}
+          onLogin={() => setShowLogin(false)}
           onClose={() => setShowLogin(false)}
         />
       )}

@@ -21,6 +21,4 @@ export const WIDE_TOOLS = new Set<ToolId>([
   "chain-processor",
   "code-snippets",
   "cloud-share",
-  "openai-api-tester",
-  "share-preview",
 ]);

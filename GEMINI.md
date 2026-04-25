@@ -35,7 +35,7 @@
     - `ChainProcessor/`: 链式数据处理工具及核心算子
     - `CloudShare.tsx` & `cloud-share/`: 云端大文件分享与提取功能
     - `CodeSnippetsTool.tsx` & `code-snippets/`: 代码片段云端管理与多端同步
-    - `OpenAIConnectivityTool.tsx` & `openai-connectivity/`: 高性能 OpenAI 连通性诊断看板
+    - `OpenAIConnectivityTool.tsx`: (已移除，功能改为外部跳转)
     - `JsonCsvConverter.tsx`: 格式转换（JSON/CSV/TSV）工具
     - `QRCodeTool.tsx`: 灵活的二维码生成与扫描器
     - `app/`: 全局通用 UI 框架组件（Header, Sidebar, Toast 等）
