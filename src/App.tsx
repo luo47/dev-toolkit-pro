@@ -13,7 +13,6 @@ const QRCodeTool = React.lazy(() => import("./components/QRCodeTool"));
 const ChainProcessor = React.lazy(() => import("./components/ChainProcessor"));
 const CodeSnippetsTool = React.lazy(() => import("./components/CodeSnippetsTool"));
 const CloudShare = React.lazy(() => import("./components/CloudShare"));
-const OpenAIConnectivityTool = React.lazy(() => import("./components/OpenAIConnectivityTool"));
 const SharePreview = React.lazy(() => import("./components/SharePreview"));
 
 const getToolIdFromLocation = () => {
@@ -36,7 +35,6 @@ const ToolContent = ({ activeTool }: { activeTool: ToolId }) => (
     {activeTool === "qrcode" && <QRCodeTool />}
     {activeTool === "code-snippets" && <CodeSnippetsTool />}
     {activeTool === "cloud-share" && <CloudShare />}
-    {activeTool === "openai-api-tester" && <OpenAIConnectivityTool />}
     {activeTool === "share-preview" && <SharePreview />}
   </Suspense>
 );
@@ -136,7 +134,17 @@ export default function App() {
 
   const handleToolSelect = (id: ToolId) => {
     const tool = tools.find((item) => item.id === id);
-    if (tool?.isPremium && !user) {
+    if (!tool) {
+      if (id === "home") navigateToTool("home");
+      return;
+    }
+
+    if (tool.url) {
+      window.open(tool.url, "_blank");
+      return;
+    }
+
+    if (tool.isPremium && !user) {
       localStorage.setItem("redirect_to", `/${id}`);
       setShowLogin(true);
       return;

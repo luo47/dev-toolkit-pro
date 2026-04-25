@@ -11,7 +11,6 @@ import {
   shouldUseSecureCookie,
 } from "./oauthProviders";
 import { registerChainsRoutes } from "./registerChainsRoutes";
-import { registerOpenAiRoutes } from "./registerOpenAiRoutes";
 import { registerSearchEngineRoutes } from "./registerSearchEngineRoutes";
 import { registerShareRoutes } from "./registerShareRoutes";
 import { registerSnippetsRoutes } from "./registerSnippetsRoutes";
@@ -312,7 +311,6 @@ app.post("/api/auth/logout", async (c) => {
 registerChainsRoutes(app);
 registerSnippetsRoutes(app);
 registerSearchEngineRoutes(app);
-registerOpenAiRoutes(app);
 registerShareRoutes(app);
 
 app.get("/api/health", (c) =>

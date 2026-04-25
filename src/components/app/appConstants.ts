@@ -8,7 +8,13 @@ export const tools: ToolMetadata[] = [
   { id: "code-snippets", name: "代码片段", icon: Code, isPremium: true },
   { id: "chain-processor", name: "链式文本处理", icon: FileSearch, isPremium: true },
   { id: "qrcode", name: "二维码", icon: QrCode, isPremium: false },
-  { id: "openai-api-tester", name: "OPENAI-API测试", icon: PlugZap, isPremium: false },
+  {
+    id: "openai-api-tester",
+    name: "OPENAI-API测试",
+    icon: PlugZap,
+    isPremium: false,
+    url: "https://ai-model-tester.928496.xyz/",
+  },
 ];
 
 export const WIDE_TOOLS = new Set<ToolId>([

@@ -20,8 +20,9 @@ const HOME_TOOLS = [
     id: "openai-api-tester",
     name: "OPENAI-API测试",
     icon: PlugZap,
-    description: "检测 OpenAI 及兼容接口的模型列表、Chat Completions 与 Responses 可用性。",
+    description: "使用外部工具检测 OpenAI 及兼容接口的可用性，支持多模型列表与对话接口诊断。",
     isPremium: false,
+    url: "https://ai-model-tester.928496.xyz/",
   },
   {
     id: "code-snippets",

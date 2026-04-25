@@ -37,6 +37,7 @@ export interface ToolMetadata {
   icon: React.ElementType;
   isPremium: boolean;
   subName?: string;
+  url?: string;
 }
 
 declare global {
