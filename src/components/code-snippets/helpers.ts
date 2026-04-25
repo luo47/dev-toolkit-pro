@@ -179,12 +179,9 @@ export const highlightSnippetCode = (codeRefs: Record<string, HTMLElement | null
     const block = codeRefs[snippet.id];
     if (!block) return;
     try {
-      const language =
-        snippet.language && snippet.language !== "plaintext" ? snippet.language.toLowerCase() : undefined;
-      const highlighted = language
-        ? hljs.highlight(snippet.code, { language, ignoreIllegals: true })
-        : hljs.highlightAuto(snippet.code);
-      block.innerHTML = highlighted.value;
+      // 使用 highlight.js 官方推荐的 DOM 操作方式，比直接操作 innerHTML 更规范且可控
+      block.textContent = snippet.code;
+      hljs.highlightElement(block);
     } catch {
       block.textContent = snippet.code;
     }

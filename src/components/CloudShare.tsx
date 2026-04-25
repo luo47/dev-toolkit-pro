@@ -1,6 +1,6 @@
 import { AnimatePresence } from "framer-motion";
 import { AlertCircle, Loader2, Plus, Search } from "lucide-react";
-import { useEffect, useEffectEvent, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ShareContent } from "../types";
 import EditModal from "./cloud-share/EditModal";
 import ShareCard from "./cloud-share/ShareCard";
@@ -55,9 +55,9 @@ const ShareListState = ({
 
   if (filteredShares.length === 0) {
     return (
-      <div className="bg-white/5 rounded-[32px] border border-white/5 p-32 text-center">
-        <AlertCircle className="mx-auto mb-4 text-white/10" size={48} />
-        <p className="text-white/30 font-medium">未找到匹配的分享项</p>
+      <div className="bg-[var(--bg-surface)] rounded-[32px] border border-[var(--border-color)] p-32 text-center">
+        <AlertCircle className="mx-auto mb-4 text-[var(--text-secondary)] opacity-20" size={48} />
+        <p className="text-[var(--text-secondary)] font-medium">未找到匹配的分享项</p>
         <button type="button" onClick={onClearSearch} className="mt-4 text-blue-500 text-sm underline">
           清除搜索
         </button>
@@ -102,7 +102,7 @@ export default function CloudShare() {
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
-  const fetchShares = useEffectEvent(async () => {
+  const fetchShares = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/shares?_t=${Date.now()}`);
@@ -116,7 +116,7 @@ export default function CloudShare() {
     } finally {
       setIsLoading(false);
     }
-  });
+  }, []);
 
   useEffect(() => {
     fetchShares();
@@ -130,7 +130,7 @@ export default function CloudShare() {
       window.history.replaceState(null, "", window.location.pathname);
     }, 5000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [fetchShares]);
 
   const copyLink = (id: string) => {
     const link = `${window.location.origin}/s/${id}`;

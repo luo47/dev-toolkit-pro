@@ -120,8 +120,21 @@ const executeCssSelector = (value: string, current: string) => {
 
 const executeJavaScript = (value: string, current: string) => {
   const inputData = current === "undefined" ? undefined : parseJsonInput(current);
-  const fn = new Function("input", value);
-  const result = fn(inputData);
+  // 初级沙箱：屏蔽敏感全局变量以减少注入风险
+  const fn = new Function(
+    "input",
+    "window",
+    "document",
+    "location",
+    "localStorage",
+    "cookie",
+    `
+    "use strict";
+    ${value}
+  `,
+  );
+  // 调用时传入 null 来覆盖这些全局变量
+  const result = fn(inputData, null, null, null, null, null);
   return typeof result === "object" && result !== null ? JSON.stringify(result, null, 2) : String(result);
 };
 
@@ -225,8 +238,11 @@ const stepStrategies: Partial<Record<StepType, StepExecutionStrategy>> = {
   "json-to-xml": (value, current) => jsonToXml(current, value),
   "json-to-csv": (_, current) => jsonToCsv(current),
   "csv-to-json": (_, current) => csvToJson(current),
-  "base64-encode": (_, current) => btoa(decodeURI(encodeURIComponent(current))),
-  "base64-decode": (_, current) => decodeURIComponent(encodeURI(atob(current))),
+  "base64-encode": (_, current) => btoa(String.fromCharCode(...new TextEncoder().encode(current))),
+  "base64-decode": (_, current) => {
+    const bytes = Uint8Array.from(atob(current), (c) => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  },
   "url-encode": (_, current) => encodeURIComponent(current),
   "url-decode": (_, current) => decodeURIComponent(current),
   trim: (_, current) => current.trim(),

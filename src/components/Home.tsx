@@ -1,4 +1,6 @@
-import { ArrowRight, Code, FileSearch, Lock, PlugZap, QrCode, Server, Sparkles } from "lucide-react";
+import { ArrowRight, Lock, Sparkles } from "lucide-react";
+import type { ToolMetadata } from "../types";
+import { tools as ALL_TOOLS } from "./app/appConstants";
 import SearchBox from "./SearchBox";
 
 interface HomeProps {
@@ -8,55 +10,17 @@ interface HomeProps {
   searchQuery?: string;
 }
 
-const HOME_TOOLS = [
-  {
-    id: "cloud-share",
-    name: "云分享",
-    icon: Server,
-    description: "极简且高效的云端资产同步工具，支持文本片段与多文件包分享。",
-    action: { type: "internal" },
-  },
-  {
-    id: "openai-api-tester",
-    name: "OPENAI-API测试",
-    icon: PlugZap,
-    description: "使用外部工具检测 OpenAI 及兼容接口的可用性，支持多模型列表与对话接口诊断。",
-    action: { type: "external", url: "https://ai-model-tester.928496.xyz/" },
-  },
-  {
-    id: "code-snippets",
-    name: "代码片段",
-    icon: Code,
-    description: "代码片段管理工具，带有标签过滤和一键复制功能。",
-    action: { type: "premium" },
-  },
-  {
-    id: "chain-processor",
-    name: "链式文本处理",
-    icon: FileSearch,
-    description: "强大的链式文本处理引擎，支持 JS、JSONPath 等多种处理步骤。",
-    action: { type: "premium" },
-  },
-  {
-    id: "qrcode",
-    name: "二维码",
-    icon: QrCode,
-    description: "二维码生成与识别，支持实时生成及图片识别。",
-    action: { type: "internal" },
-  },
-] as const;
-
 const filterHomeTools = (searchQuery: string) =>
-  HOME_TOOLS.filter(
+  ALL_TOOLS.filter(
     (tool) =>
       tool.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tool.description.toLowerCase().includes(searchQuery.toLowerCase()),
+      (tool.description || "").toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
 export default function Home({ onSelectTool, isLoggedIn, onOpenLogin, searchQuery = "" }: HomeProps) {
   const tools = filterHomeTools(searchQuery);
 
-  const handleToolClick = (tool: (typeof HOME_TOOLS)[number]) => {
+  const handleToolClick = (tool: ToolMetadata) => {
     const { action } = tool;
 
     // 应用行为策略逻辑

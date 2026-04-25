@@ -3,23 +3,12 @@ import { Image as ImageIcon, QrCode, Trash2, Upload } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
-import { useAppStore } from "../store";
 
 export default function QRCodeTool() {
-  useAppStore();
   const [text, setText] = useState("https://example.com");
   const [scanResult, setScanResult] = useState<string | null>(null);
-  const [_isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const _handleCopy = () => {
-    if (scanResult) {
-      navigator.clipboard.writeText(scanResult);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    }
-  };
 
   const processImage = (file: File) => {
     setError(null);

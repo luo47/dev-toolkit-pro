@@ -144,6 +144,43 @@ const syncLinkedShares = async (
     .run();
 };
 
+const executeSnippetUpdate = async (
+  c: AppContext,
+  id: string,
+  userId: string,
+  body: SnippetUpdateBody,
+  existing: SnippetRow,
+) => {
+  if (await applyCopyCountDelta(c, body, id)) return { success: true };
+  if (existing.user_id !== userId) return { error: "Forbidden", status: 403 };
+
+  const snippetUpdates = new SnippetUpdateBuilder()
+    .withField("title", body.title)
+    .withField("code", body.code)
+    .withField("language", body.language)
+    .withField("description", body.description)
+    .withTags(body.tags)
+    .build();
+
+  if (snippetUpdates.updates.length > 0) {
+    snippetUpdates.updates.push('updated_at = datetime("now")');
+    const sql = `UPDATE code_snippets SET ${snippetUpdates.updates.join(", ")} WHERE id = ? AND user_id = ?`;
+    await c.env.DB.prepare(sql)
+      .bind(...snippetUpdates.params, id, userId)
+      .run();
+  }
+
+  const updated = await c.env.DB.prepare("SELECT * FROM code_snippets WHERE id = ?").bind(id).first<SnippetRow>();
+  if (!updated) return { error: "Failed to update snippet", status: 500 };
+
+  await syncLinkedShares(c, userId, id, {
+    title: updated.title || body.title || "",
+    code: updated.code || body.code || "",
+  });
+
+  return { success: true, data: parseSnippetRow(updated) };
+};
+
 const getSnippetListPayload = async (
   c: AppContext,
   userId: string | null,
@@ -251,6 +288,7 @@ const registerSnippetCrudRoutes = (app: Hono<{ Bindings: Bindings }>) => {
       const newSnippet = await c.env.DB.prepare("SELECT * FROM code_snippets WHERE id = ?")
         .bind(result.meta.last_row_id)
         .first<SnippetRow>();
+      if (!newSnippet) return c.json({ error: "Failed to create snippet" }, 500);
       return c.json(parseSnippetRow(newSnippet), 201);
     } catch (error) {
       return c.json({ success: false, error: getErrorMessage(error, "Database error") }, 500);
@@ -265,33 +303,15 @@ const registerSnippetCrudRoutes = (app: Hono<{ Bindings: Bindings }>) => {
     try {
       const body = (await c.req.json()) as SnippetUpdateBody;
       const existing = await c.env.DB.prepare("SELECT * FROM code_snippets WHERE id = ?").bind(id).first<SnippetRow>();
+
       if (!existing) return c.json({ error: "Snippet not found" }, 404);
 
-      if (await applyCopyCountDelta(c, body, id)) return c.json({ success: true });
-      if (existing.user_id !== userId) return c.json({ error: "Forbidden" }, 403);
-
-      const snippetUpdates = new SnippetUpdateBuilder()
-        .withField("title", body.title)
-        .withField("code", body.code)
-        .withField("language", body.language)
-        .withField("description", body.description)
-        .withTags(body.tags)
-        .build();
-      if (snippetUpdates.updates.length > 0) {
-        snippetUpdates.updates.push('updated_at = datetime("now")');
-        await c.env.DB.prepare(
-          `UPDATE code_snippets SET ${snippetUpdates.updates.join(", ")} WHERE id = ? AND user_id = ?`,
-        )
-          .bind(...snippetUpdates.params, id, userId)
-          .run();
+      const result = await executeSnippetUpdate(c, id, userId, body, existing);
+      if ("error" in result) {
+        return c.json({ error: result.error }, (result.status as 403 | 500) || 500);
       }
 
-      const updated = await c.env.DB.prepare("SELECT * FROM code_snippets WHERE id = ?").bind(id).first<SnippetRow>();
-      await syncLinkedShares(c, userId, id, {
-        title: updated?.title || body.title || "",
-        code: updated?.code || body.code || "",
-      });
-      return c.json(parseSnippetRow(updated));
+      return c.json(result.data || { success: true });
     } catch (error) {
       return c.json({ success: false, error: getErrorMessage(error, "Database error") }, 500);
     }

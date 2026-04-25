@@ -1,9 +1,10 @@
 import { Github, LogIn, MessageCircleMore, X } from "lucide-react";
+import { API_BASE_URL } from "../config";
 import { useAppStore } from "../store";
 import "../types";
 
 interface LoginProps {
-  onLogin: (username: string) => void;
+  onLogin?: () => void;
   onClose: () => void;
 }
 
@@ -12,13 +13,12 @@ export default function Login({ onLogin, onClose }: LoginProps) {
 
   const handleProviderLogin = async (provider: "github" | "linuxdo", providerLabel: string) => {
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || "";
-      const res = await fetch(`${baseUrl}/api/auth/${provider}/login?t=${Date.now()}`);
+      const res = await fetch(`${API_BASE_URL}/api/auth/${provider}/login?t=${Date.now()}`);
       const data = (await res.json()) as { url?: string };
       if (data.url) {
         // 在重定向到授权页之前，记录当前路径以便登录后返回
         localStorage.setItem("redirect_to", window.location.pathname);
-        onLogin(`${providerLabel} 用户`);
+        onLogin?.();
         window.location.href = data.url;
       } else {
         console.error(`获取 ${providerLabel} 登录地址失败:`, data);

@@ -185,7 +185,7 @@ const fetchOAuthUserProfile = (provider: AuthProvider, accessToken: string) => {
   return fetchLinuxDoUserProfile(accessToken);
 };
 
-const buildProviderAuthUrl = (c: { env: Bindings }, provider: AuthProvider) => {
+const buildProviderAuthUrl = (c: { env: Bindings }, provider: AuthProvider, state: string) => {
   const config = getProviderConfig(provider);
   const clientId = config.getClientId(c.env);
 
@@ -202,6 +202,7 @@ const buildProviderAuthUrl = (c: { env: Bindings }, provider: AuthProvider) => {
   authUrl.searchParams.set("redirect_uri", redirectUri);
   authUrl.searchParams.set("response_type", "code");
   authUrl.searchParams.set("scope", config.scope);
+  authUrl.searchParams.set("state", state);
 
   return { url: authUrl.toString(), redirectUri };
 };
@@ -210,7 +211,17 @@ const handleOAuthCallback =
   (provider: AuthProvider, displayName: string) => async (c: Context<{ Bindings: Bindings }>) => {
     console.log(`已进入 ${displayName} 登录回调`);
     const code = c.req.query("code");
+    const state = c.req.query("state");
+    const savedState = getCookie(c, "oauth_state");
+
     if (!code) return c.json({ error: `缺少 ${displayName} 授权码` }, 400);
+    if (!state || !savedState || state !== savedState) {
+      console.warn(`${displayName} 登录 state 校验失败:`, { state, savedState });
+      return c.text("安全校验失败 (Invalid state)，请尝试重新登录", 403);
+    }
+
+    // 校验通过后立即删除 state cookie
+    deleteCookie(c, "oauth_state", { path: "/" });
 
     try {
       const frontendUrl = getFrontendUrl(c.env);
@@ -251,26 +262,46 @@ app.use("/api/*", async (c, next) => {
 });
 
 app.get("/api/auth/github/login", (c) => {
-  const result = buildProviderAuthUrl(c, "github");
+  const state = crypto.randomUUID();
+  const result = buildProviderAuthUrl(c, "github", state);
   console.log("收到 GitHub 登录地址请求:", {
     hasClientId: !("error" in result),
     redirectUri: result.redirectUri,
   });
   if ("error" in result) return c.json({ error: result.error }, 500);
-  console.log("已生成 GitHub 授权地址");
+
+  setCookie(c, "oauth_state", state, {
+    path: "/",
+    httpOnly: true,
+    secure: shouldUseSecureCookie(getFrontendUrl(c.env)),
+    sameSite: "Lax",
+    maxAge: 60 * 10, // 10 分钟内有效
+  });
+
+  console.log("已生成 GitHub 授权地址并设置 state");
   return c.json({ url: result.url });
 });
 
 app.get("/api/auth/github/callback", handleOAuthCallback("github", "GitHub"));
 
 app.get("/api/auth/linuxdo/login", (c) => {
-  const result = buildProviderAuthUrl(c, "linuxdo");
+  const state = crypto.randomUUID();
+  const result = buildProviderAuthUrl(c, "linuxdo", state);
   console.log("收到 LINUX DO 登录地址请求:", {
     hasClientId: !("error" in result),
     redirectUri: result.redirectUri,
   });
   if ("error" in result) return c.json({ error: result.error }, 500);
-  console.log("已生成 LINUX DO 授权地址");
+
+  setCookie(c, "oauth_state", state, {
+    path: "/",
+    httpOnly: true,
+    secure: shouldUseSecureCookie(getFrontendUrl(c.env)),
+    sameSite: "Lax",
+    maxAge: 60 * 10,
+  });
+
+  console.log("已生成 LINUX DO 授权地址并设置 state");
   return c.json({ url: result.url });
 });
 

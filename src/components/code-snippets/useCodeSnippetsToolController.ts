@@ -239,9 +239,12 @@ export const useCodeSnippetsToolController = (
         const data = (await response.json()) as { snippets: SnippetItem[] };
         setAllSnippets(dedupeSnippets(data.snippets || []));
       }
-    } catch {}
+    } catch (error) {
+      console.error("加载代码片段失败:", error);
+      showToast("无法加载代码片段，请刷新页面重试", "error");
+    }
     setLoading(false);
-  }, []);
+  }, [showToast]);
 
   const fetchSnippetById = useCallback(async (id: string) => {
     try {
@@ -275,7 +278,9 @@ export const useCodeSnippetsToolController = (
     let cancelled = false;
 
     const applyIntent = async () => {
-      let targetSnippet = allSnippets.find((snippet) => normalizeSnippetId(snippet.id) === routeIntent.id);
+      let targetSnippet: SnippetItem | null | undefined = allSnippets.find(
+        (snippet) => normalizeSnippetId(snippet.id) === routeIntent.id,
+      );
       if (!targetSnippet) {
         targetSnippet = await fetchSnippetById(routeIntent.id);
       }
@@ -334,7 +339,7 @@ export const useCodeSnippetsToolController = (
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ copyCountsDelta: { [id]: 1 } }),
-    });
+    }).catch((err) => console.warn("更新复制计数失败:", err));
     setAllSnippets((prev) =>
       prev.map((snippet) =>
         normalizeSnippetId(snippet.id) === id ? { ...snippet, copy_count: (snippet.copy_count || 0) + 1 } : snippet,

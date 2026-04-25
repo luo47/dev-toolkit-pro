@@ -1,5 +1,6 @@
 import { ArrowRight, Plus, Save, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { API_BASE_URL } from "../config";
 import { useAppStore } from "../store";
 import "../types";
 import ChainLibrary from "./ChainProcessor/ChainLibrary";
@@ -53,8 +54,7 @@ const FALLBACK_CHAINS: SavedChain[] = [
 
 const loadSavedChains = async () => {
   try {
-    const baseUrl = import.meta.env.VITE_API_URL || "";
-    const res = await fetch(`${baseUrl}/api/chains`, { credentials: "include" });
+    const res = await fetch(`${API_BASE_URL}/api/chains`, { credentials: "include" });
     if (!res.ok) return FALLBACK_CHAINS;
 
     const data = (await res.json()) as { success: boolean; data: SavedChain[] };
@@ -259,7 +259,10 @@ export default function ChainProcessor() {
   }, [input, steps]);
 
   useEffect(() => {
-    processChain();
+    const timer = setTimeout(() => {
+      processChain();
+    }, 300);
+    return () => clearTimeout(timer);
   }, [processChain]);
 
   useEffect(() => {
@@ -282,8 +285,7 @@ export default function ChainProcessor() {
   const handleSaveChain = async () => {
     if (!newChainName.trim() || steps.length === 0) return;
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || "";
-      const res = await fetch(`${baseUrl}/api/chains`, {
+      const res = await fetch(`${API_BASE_URL}/api/chains`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -292,7 +294,7 @@ export default function ChainProcessor() {
       const data = (await res.json()) as { success: boolean; error?: string };
       if (data.success) {
         window.showToast?.("处理链已保存", "success");
-        const fetchRes = await fetch(`${baseUrl}/api/chains`, { credentials: "include" });
+        const fetchRes = await fetch(`${API_BASE_URL}/api/chains`, { credentials: "include" });
         const fetchData = (await fetchRes.json()) as { success: boolean; data: SavedChain[] };
         if (fetchData.success) setSavedChains(fetchData.data);
       } else throw new Error(data.error);
@@ -368,8 +370,7 @@ export default function ChainProcessor() {
         savedChains={savedChains}
         onLoadChain={(c) => setSteps(JSON.parse(JSON.stringify(c.steps)))}
         onDeleteChain={async (id) => {
-          const baseUrl = import.meta.env.VITE_API_URL || "";
-          await fetch(`${baseUrl}/api/chains/${id}`, { method: "DELETE", credentials: "include" });
+          await fetch(`${API_BASE_URL}/api/chains/${id}`, { method: "DELETE", credentials: "include" });
           setSavedChains(savedChains.filter((c) => c.id !== id));
         }}
         onToggleFavorite={async (id) => {
@@ -377,8 +378,7 @@ export default function ChainProcessor() {
           if (!chain) return;
           const newFav = !chain.isFavorite;
           setSavedChains(savedChains.map((c) => (c.id === id ? { ...c, isFavorite: newFav } : c)));
-          const baseUrl = import.meta.env.VITE_API_URL || "";
-          await fetch(`${baseUrl}/api/chains/${id}/favorite`, {
+          await fetch(`${API_BASE_URL}/api/chains/${id}/favorite`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             credentials: "include",

@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 
 interface AppOverlaysProps {
   loading: boolean;
-  toast: { message: string; type: "success" | "error" } | null;
+  toast: { message: string; type: "success" | "error" | "info" } | null;
 }
 
 export default function AppOverlays({ loading, toast }: AppOverlaysProps) {
@@ -34,11 +34,15 @@ export default function AppOverlays({ loading, toast }: AppOverlaysProps) {
               className={`px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-xl border ${
                 toast.type === "success"
                   ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
-                  : "bg-red-500/10 border-red-500/20 text-red-500"
+                  : toast.type === "info"
+                    ? "bg-blue-500/10 border-blue-500/20 text-blue-500"
+                    : "bg-red-500/10 border-red-500/20 text-red-500"
               }`}
             >
               <div
-                className={`w-2 h-2 rounded-full ${toast.type === "success" ? "bg-emerald-500" : "bg-red-500"} animate-pulse`}
+                className={`w-2 h-2 rounded-full ${
+                  toast.type === "success" ? "bg-emerald-500" : toast.type === "info" ? "bg-blue-500" : "bg-red-500"
+                } animate-pulse`}
               />
               <span className="text-sm font-bold">{toast.message}</span>
             </div>

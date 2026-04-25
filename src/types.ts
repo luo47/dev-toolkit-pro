@@ -38,6 +38,7 @@ export interface ToolMetadata {
   name: string;
   icon: React.ElementType;
   action: ToolAction;
+  description?: string;
   subName?: string;
   layoutVariant?: "plain" | "surface";
   isWide?: boolean;

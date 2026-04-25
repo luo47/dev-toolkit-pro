@@ -120,11 +120,21 @@ const canDownloadShare = (existing: ShareRow | null) => {
   return { files, status: 200 };
 };
 
+const sanitizePath = (path: string) => {
+  return path
+    .replace(/[\\/]\.\.[\\/]/g, "/")
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\.\.[\\/]/g, "");
+};
+
 const buildZipResponse = async (bucket: R2Bucket, files: ShareFile[], zipName: string) => {
   const zipData: Record<string, Uint8Array> = {};
   for (const file of files) {
     const object = await bucket.get(file.key);
-    if (object) zipData[file.path] = new Uint8Array(await object.arrayBuffer());
+    if (object) {
+      const safePath = sanitizePath(file.path);
+      zipData[safePath || file.name] = new Uint8Array(await object.arrayBuffer());
+    }
   }
   const zipped = zipSync(zipData, { level: 6 });
   const zipBuffer = zipped.buffer.slice(zipped.byteOffset, zipped.byteOffset + zipped.byteLength) as ArrayBuffer;
@@ -288,6 +298,33 @@ const registerShareCrudRoutes = (app: Hono<{ Bindings: Bindings }>) => {
   });
 };
 
+const processUploadedFiles = async (c: AppContext, id: string, files: File[]) => {
+  const fileItems: FileItem[] = [];
+  let totalSize = 0;
+
+  for (const file of files) {
+    const relativePath = sanitizePath(file.name);
+    const key = `${id}/${relativePath}`;
+    await c.env.SHARE_R2.put(key, file.stream(), {
+      httpMetadata: { contentType: file.type || "application/octet-stream" },
+      customMetadata: {
+        fileName: file.name,
+        filePath: relativePath,
+        shareId: id,
+      },
+    });
+    fileItems.push({
+      key,
+      name: file.name.split("/").pop() || file.name,
+      path: relativePath,
+      size: file.size,
+      mimeType: file.type || "application/octet-stream",
+    });
+    totalSize += file.size;
+  }
+  return { fileItems, totalSize };
+};
+
 const registerFileUploadRoute = (app: Hono<{ Bindings: Bindings }>) => {
   app.post("/api/files", async (c) => {
     const userId = await getUserFromSession(c);
@@ -299,31 +336,15 @@ const registerFileUploadRoute = (app: Hono<{ Bindings: Bindings }>) => {
       const shareName = (formData.get("name") as string) || "";
       if (files.length === 0) return c.json({ success: false, error: "没有提供文件" }, 400);
 
-      const id = await generateShareId(c.env.DB);
-      const now = new Date().toISOString();
-      const fileItems: FileItem[] = [];
-      let totalSize = 0;
-
-      for (const file of files) {
-        const relativePath = file.name;
-        const key = `${id}/${relativePath}`;
-        await c.env.SHARE_R2.put(key, file.stream(), {
-          httpMetadata: { contentType: file.type || "application/octet-stream" },
-          customMetadata: {
-            fileName: file.name,
-            filePath: relativePath,
-            shareId: id,
-          },
-        });
-        fileItems.push({
-          key,
-          name: file.name.split("/").pop() || file.name,
-          path: relativePath,
-          size: file.size,
-          mimeType: file.type || "application/octet-stream",
-        });
-        totalSize += file.size;
+      const MAX_TOTAL_SIZE = 100 * 1024 * 1024; // 100MB
+      const totalUploadSize = files.reduce((acc, f) => acc + f.size, 0);
+      if (totalUploadSize > MAX_TOTAL_SIZE) {
+        return c.json({ success: false, error: "总文件大小不能超过 100MB" }, 400);
       }
+
+      const id = await generateShareId(c.env.DB);
+      const { fileItems, totalSize } = await processUploadedFiles(c, id, files);
+      const now = new Date().toISOString();
 
       // 不再自动生成密钥，设为 null
       const editToken = null;
@@ -451,6 +472,8 @@ const registerPublicShareRoutes = (app: Hono<{ Bindings: Bindings }>) => {
     if ("error" in downloadable) {
       return c.json({ success: false, error: downloadable.error }, downloadable.status as 400 | 404);
     }
+
+    if (!existing) return c.json({ success: false, error: "分享不存在" }, 404);
 
     try {
       return buildZipResponse(c.env.SHARE_R2, downloadable.files, `${existing.name || c.req.param("id")}.zip`);

@@ -1,4 +1,5 @@
-import { useEffect, useEffectEvent } from "react";
+import { useCallback, useEffect } from "react";
+import { API_BASE_URL } from "../config";
 import { useAppStore } from "../store";
 import "../types";
 
@@ -14,10 +15,9 @@ export interface User {
 export function useAuth() {
   const { user, loading, setUser, setLoading } = useAppStore();
 
-  const fetchUser = useEffectEvent(async () => {
+  const fetchUser = useCallback(async () => {
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || "";
-      const response = await fetch(`${baseUrl}/api/auth/me`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/me`, {
         credentials: "include",
       });
       if (response.ok) {
@@ -32,21 +32,19 @@ export function useAuth() {
     } finally {
       setLoading(false);
     }
-  });
+  }, [setLoading, setUser]);
 
   useEffect(() => {
     fetchUser();
-  }, []);
+  }, [fetchUser]);
 
   const loginWithProvider = (provider: User["provider"]) => {
-    const baseUrl = import.meta.env.VITE_API_URL || "";
-    window.location.href = `${baseUrl}/api/auth/${provider}/login?t=${Date.now()}`;
+    window.location.href = `${API_BASE_URL}/api/auth/${provider}/login?t=${Date.now()}`;
   };
 
   const logout = async () => {
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || "";
-      await fetch(`${baseUrl}/api/auth/logout`, {
+      await fetch(`${API_BASE_URL}/api/auth/logout`, {
         method: "POST",
         credentials: "include",
       });

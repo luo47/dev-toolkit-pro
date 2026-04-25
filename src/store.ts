@@ -1,19 +1,22 @@
 import { create } from "zustand";
+import { API_BASE_URL } from "./config";
 import type { User } from "./hooks/useAuth";
 
 interface AppState {
   user: User | null;
   loading: boolean;
   isDarkMode: boolean;
-  toast: { message: string; type: "success" | "error" } | null;
+  toast: { message: string; type: "success" | "error" | "info" } | null;
 
   setUser: (user: User | null) => void;
   setLoading: (loading: boolean) => void;
   toggleDarkMode: () => void;
-  showToast: (message: string, type?: "success" | "error") => void;
+  showToast: (message: string, type?: "success" | "error" | "info") => void;
   hideToast: () => void;
   logout: () => Promise<void>;
 }
+
+let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const useAppStore = create<AppState>((set) => ({
   user: null,
@@ -32,14 +35,17 @@ export const useAppStore = create<AppState>((set) => ({
       return { isDarkMode: next };
     }),
   showToast: (message, type = "success") => {
+    if (toastTimer) clearTimeout(toastTimer);
     set({ toast: { message, type } });
-    setTimeout(() => set({ toast: null }), 3000);
+    toastTimer = setTimeout(() => {
+      set({ toast: null });
+      toastTimer = null;
+    }, 3000);
   },
   hideToast: () => set({ toast: null }),
   logout: async () => {
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || "";
-      await fetch(`${baseUrl}/api/auth/logout`, { method: "POST", credentials: "include" });
+      await fetch(`${API_BASE_URL}/api/auth/logout`, { method: "POST", credentials: "include" });
       set({ user: null });
     } catch (error) {
       console.error("Failed to logout:", error);
