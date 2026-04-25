@@ -1,4 +1,4 @@
-import hljs from "highlight.js/lib/core";
+import hljs from "./highlight";
 
 export const SORT_OPTIONS = [
   { value: "updated_at:desc", label: "最新修改" },
