@@ -37,6 +37,7 @@ function SidebarHeader({ isSidebarOpen, onToggleSidebar }: { isSidebarOpen: bool
         onClick={onToggleSidebar}
         className="p-2 hover:bg-[var(--hover-color)] rounded-full transition-colors"
         title={isSidebarOpen ? "收起菜单" : "展开菜单"}
+        aria-label={isSidebarOpen ? "收起菜单" : "展开菜单"}
       >
         {isSidebarOpen ? <X className="w-6 h-6 text-[var(--text-secondary)] lg:hidden" /> : null}
         <Menu className={`w-6 h-6 text-[var(--text-secondary)] ${isSidebarOpen ? "hidden lg:block" : ""}`} />
@@ -75,6 +76,7 @@ function SidebarSearch({
               type="button"
               onClick={onClearSearch}
               className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-[var(--hover-color)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+              aria-label="清除搜索"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -184,6 +186,8 @@ function SidebarAccount({
       <button
         type="button"
         className={`flex items-center gap-3 w-full h-10 rounded-full hover:bg-[var(--hover-color)] transition-colors ${isSidebarOpen ? "px-4" : "justify-center"}`}
+        aria-label="设置"
+        title="设置"
       >
         <Settings className="w-5 h-5 text-[var(--text-secondary)]" />
         {isSidebarOpen && <span className="text-sm">设置</span>}
@@ -239,6 +243,8 @@ function SidebarLoggedInAccount({
         type="button"
         onClick={() => onToggleLogoutConfirm("sidebar")}
         className={`flex items-center gap-3 w-full h-12 rounded-full hover:bg-[var(--hover-color)] transition-colors ${isSidebarOpen ? "px-4" : "justify-center"} ${showLogoutConfirm && logoutConfirmSource === "sidebar" ? "bg-[var(--hover-color)]" : ""}`}
+        aria-label="用户菜单"
+        title="用户菜单"
       >
         {user.avatar_url ? (
           <img src={user.avatar_url} alt="avatar" className="w-8 h-8 rounded-full border border-white/10 shrink-0" />

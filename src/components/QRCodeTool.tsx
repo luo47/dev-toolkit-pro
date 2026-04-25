@@ -112,6 +112,7 @@ export default function QRCodeTool() {
                 type="button"
                 onClick={() => setText("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-[var(--hover-color)] rounded-full text-[var(--text-secondary)] hover:text-red-500 transition-all md:opacity-0 md:group-hover:opacity-100"
+                aria-label="清空内容"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -166,6 +167,7 @@ export default function QRCodeTool() {
                 if (confirm("确定要清除所有历史记录吗？")) clearHistory();
               }}
               className="text-[var(--text-secondary)] hover:text-red-500"
+              aria-label="清空历史记录"
             >
               <Trash2 className="w-5 h-5" />
             </button>
@@ -187,6 +189,7 @@ export default function QRCodeTool() {
                     type="button"
                     onClick={() => removeFromHistory(item.id)}
                     className="text-[var(--text-secondary)] hover:text-red-500"
+                    aria-label="删除此条记录"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

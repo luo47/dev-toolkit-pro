@@ -17,23 +17,10 @@ type ShareRow = {
   created_at: string;
   updated_at: string;
 };
-
 type ShareFile = FileItem;
-
-type TextShareBody = {
-  content: string;
-  name?: string;
-  sourceId?: string;
-};
-
-type ShareUpdateBody = {
-  content?: string;
-  name?: string;
-};
-
-type ShareLookupRow = {
-  id: string;
-};
+type TextShareBody = { content: string; name?: string; sourceId?: string };
+type ShareUpdateBody = { content?: string; name?: string };
+type ShareLookupRow = { id: string };
 
 const getErrorMessage = (error: unknown, fallback: string) => (error instanceof Error ? error.message : fallback);
 
@@ -429,9 +416,15 @@ const registerPublicShareRoutes = (app: Hono<{ Bindings: Bindings }>) => {
       const newContent = strategy.getNewContent(existing, body);
       const newName = body.name !== undefined ? body.name : existing.name;
 
-      await c.env.DB.prepare("UPDATE shares SET content = ?, name = ?, updated_at = ? WHERE id = ?")
-        .bind(newContent, newName, now, id)
+      const result = await c.env.DB.prepare(
+        "UPDATE shares SET content = ?, name = ?, updated_at = ? WHERE id = ? AND updated_at = ?",
+      )
+        .bind(newContent, newName, now, id, existing.updated_at)
         .run();
+
+      if (result.meta.changes === 0) {
+        return c.json({ success: false, error: "更新失败：数据已被他人修改，请刷新后重试" }, 409);
+      }
 
       return c.json({
         success: true,

@@ -194,14 +194,6 @@ const ValueEditor = ({ step, onUpdate }: Pick<StepItemProps, "step" | "onUpdate"
 
   return (
     <div className="space-y-2">
-      {step.type === "js" && (
-        <div className="p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-start gap-2 text-[10px] text-yellow-600/80 dark:text-yellow-500/80 mb-2">
-          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-          <p>
-            <b>安全提示:</b> JavaScript 步骤将在浏览器中执行。请勿运行来自不信任来源的处理链，以防数据泄露。
-          </p>
-        </div>
-      )}
       <textarea
         value={step.value}
         onChange={(e) => onUpdate(step.id, { value: e.target.value })}

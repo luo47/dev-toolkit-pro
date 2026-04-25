@@ -96,6 +96,8 @@ export default function ChainLibrary({
                     type="button"
                     onClick={() => onToggleFavorite(chain.id)}
                     className={`p-1.5 rounded-lg transition-colors ${chain.isFavorite ? "text-[var(--warning-color)] hover:bg-[var(--warning-color)]/10" : "text-[var(--text-secondary)] hover:bg-[var(--hover-color)] md:opacity-0 md:group-hover:opacity-100"}`}
+                    aria-label={chain.isFavorite ? "取消收藏" : "加入收藏"}
+                    title={chain.isFavorite ? "取消收藏" : "加入收藏"}
                   >
                     <Star className={`w-3.5 h-3.5 ${chain.isFavorite ? "fill-current" : ""}`} />
                   </button>
@@ -103,6 +105,8 @@ export default function ChainLibrary({
                     type="button"
                     onClick={() => onDeleteChain(chain.id)}
                     className="p-1.5 text-[var(--text-secondary)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors md:opacity-0 md:group-hover:opacity-100"
+                    aria-label="删除处理链"
+                    title="删除"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>

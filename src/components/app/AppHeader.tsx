@@ -37,6 +37,8 @@ function MobileSidebarToggle({
         type="button"
         onClick={onToggleSidebar}
         className="p-2 bg-[var(--bg-surface)] border border-[var(--border-color)] rounded-xl shadow-lg text-[var(--text-secondary)] hover:bg-[var(--hover-color)] transition-all"
+        aria-label="打开侧边栏"
+        title="打开菜单"
       >
         <Menu className="w-5 h-5" />
       </button>
@@ -75,6 +77,7 @@ function HeaderSearch({
             type="button"
             onClick={onClearSearch}
             className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-[var(--hover-color)] rounded-full text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+            aria-label="清除搜索"
           >
             <X className="w-4 h-4" />
           </button>
@@ -157,6 +160,7 @@ function HeaderUserArea({
         onClick={onToggleDarkMode}
         className="p-2 hover:bg-[var(--hover-color)] rounded-full transition-colors text-[var(--text-secondary)]"
         title={isDarkMode ? "切换到浅色模式" : "切换到深色模式"}
+        aria-label={isDarkMode ? "切换到浅色模式" : "切换到深色模式"}
       >
         {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
       </button>
@@ -181,6 +185,7 @@ function HeaderUserArea({
             onClick={() => onToggleLogoutConfirm("topbar")}
             className={`flex items-center gap-2 p-1 hover:bg-[var(--hover-color)] rounded-full transition-colors ${showLogoutConfirm && logoutConfirmSource === "topbar" ? "bg-[var(--hover-color)]" : ""}`}
             title={`${user.name || user.username} (退出)`}
+            aria-label="用户菜单"
           >
             {user.avatar_url ? (
               <img src={user.avatar_url} alt="avatar" className="w-8 h-8 rounded-full border border-white/20" />
@@ -197,6 +202,7 @@ function HeaderUserArea({
           onClick={onOpenLogin}
           className="p-2 hover:bg-[var(--hover-color)] rounded-full transition-colors text-[var(--text-secondary)]"
           title="登录"
+          aria-label="登录"
         >
           <LogIn className="w-6 h-6" />
         </button>
@@ -230,6 +236,7 @@ export default function AppHeader(props: AppHeaderProps) {
               type="button"
               onClick={() => onToolSelect("home")}
               className="flex items-center gap-2 cursor-pointer hover:bg-[var(--hover-color)] px-2 lg:px-3 py-1.5 rounded-lg transition-colors shrink-0"
+              aria-label="返回首页"
             >
               <div className="hidden sm:flex w-8 h-8 rounded-lg bg-gradient-to-br from-[#4285f4] to-[#9b72cb] items-center justify-center text-white shadow-lg shadow-blue-500/10">
                 <Cloud className="w-5 h-5" />

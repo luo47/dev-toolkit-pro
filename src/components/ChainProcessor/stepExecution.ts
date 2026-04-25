@@ -1,3 +1,4 @@
+import { Interpreter } from "eval5";
 import { JSONPath } from "jsonpath-plus";
 import type { Step, StepType } from "./ChainTypes";
 import { beautifyMarkup, compressMarkup, jsonToXml, xmlToJson } from "./xmlTransforms";
@@ -22,6 +23,8 @@ const BYLINE_STEP_TYPES = new Set<StepType>([
   "xml-compress",
   "xml-to-json",
   "json-to-xml",
+  "json-to-csv",
+  "csv-to-json",
 ]);
 
 const parseJsonInput = (current: string) => {
@@ -120,22 +123,30 @@ const executeCssSelector = (value: string, current: string) => {
 
 const executeJavaScript = (value: string, current: string) => {
   const inputData = current === "undefined" ? undefined : parseJsonInput(current);
-  // 初级沙箱：屏蔽敏感全局变量以减少注入风险
-  const fn = new Function(
-    "input",
-    "window",
-    "document",
-    "location",
-    "localStorage",
-    "cookie",
-    `
-    "use strict";
-    ${value}
-  `,
-  );
-  // 调用时传入 null 来覆盖这些全局变量
-  const result = fn(inputData, null, null, null, null, null);
-  return typeof result === "object" && result !== null ? JSON.stringify(result, null, 2) : String(result);
+
+  // 使用 eval5 Interpreter 进行沙箱化执行，完全隔离 window/document 等
+  const interpreter = new Interpreter({
+    input: inputData,
+    JSON: JSON,
+    Math: Math,
+    Date: Date,
+    // 注入常用的安全全局函数
+    parseInt: parseInt,
+    parseFloat: parseFloat,
+    decodeURIComponent: decodeURIComponent,
+    encodeURIComponent: encodeURIComponent,
+  });
+
+  try {
+    // 将代码包装在 IIFE 中以支持 return 语句
+    const result = interpreter.evaluate(`(function(input){ 
+      "use strict";
+      ${value} 
+    })(input)`);
+    return typeof result === "object" && result !== null ? JSON.stringify(result, null, 2) : String(result);
+  } catch (error) {
+    throw new Error(`JavaScript 执行错误: ${error instanceof Error ? error.message : String(error)}`);
+  }
 };
 
 const executeRegexReplace = (value: string, current: string) => {
