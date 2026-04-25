@@ -366,7 +366,7 @@ export const useCodeSnippetsToolController = (
       removeSnippetById(id);
       return;
     }
-    alert("无法删除");
+    showToast("无法删除", "error");
   };
 
   const createSnippet = async (payload: ReturnType<typeof buildSnippetPayload>) => {
@@ -376,7 +376,7 @@ export const useCodeSnippetsToolController = (
       body: JSON.stringify(payload),
     });
     if (!response.ok) {
-      alert("保存失败");
+      showToast("保存失败", "error");
       return;
     }
 
@@ -392,7 +392,7 @@ export const useCodeSnippetsToolController = (
       body: JSON.stringify(payload),
     });
     if (!response.ok) {
-      alert("更新失败");
+      showToast("更新失败", "error");
       return;
     }
 
@@ -402,7 +402,7 @@ export const useCodeSnippetsToolController = (
 
   const saveSnippet = async () => {
     if (!formData.code) {
-      alert("代码不能为空");
+      showToast("代码不能为空", "error");
       return;
     }
 
@@ -417,7 +417,7 @@ export const useCodeSnippetsToolController = (
       if (!editingId) return;
       await updateSnippet(payload, editingId);
     } catch {
-      alert("网络错误");
+      showToast("网络错误", "error");
     }
   };
 

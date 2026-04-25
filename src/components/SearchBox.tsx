@@ -152,6 +152,7 @@ export default function SearchBox() {
             type="button"
             onClick={() => setKeyword("")}
             className="p-1.5 text-[var(--text-secondary)] hover:bg-[var(--hover-color)] rounded-full mr-1"
+            aria-label="清除搜索词"
           >
             <X className="w-4 h-4" />
           </button>
@@ -161,6 +162,7 @@ export default function SearchBox() {
           type="submit"
           className="w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-r from-[var(--accent-color)] to-[var(--accent-color)]/80 text-white hover:opacity-90 transition-all hover:scale-105 shadow-md active:scale-95 shrink-0"
           title="点击搜索"
+          aria-label="执行搜索"
         >
           <Search className="w-5 h-5" />
         </button>
@@ -170,6 +172,7 @@ export default function SearchBox() {
           onClick={() => setIsSettingOpen(true)}
           className="ml-2 p-2 rounded-full text-[var(--text-secondary)] hover:bg-[var(--hover-color)] hover:text-[var(--text-primary)] transition-colors"
           title="搜索引擎配置"
+          aria-label="打开搜索设置"
         >
           <Settings className="w-5 h-5" />
         </button>
@@ -400,7 +403,7 @@ function SearchEngineSettingsModal({
           <button
             type="button"
             onClick={addItem}
-            className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-primary)] hover:bg-[var(--hover-color)] transition-all rounded-xl border-dashed"
+            className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-primary)] hover:bg-[var(--hover-color)] transition-all rounded-xl"
           >
             <Plus className="w-5 h-5" />
             <span className="font-medium text-sm">添加自定义搜索引擎</span>

@@ -270,7 +270,7 @@ export default function ChainProcessor() {
   }, []);
 
   const addStep = (type: StepType) =>
-    setSteps([...steps, { id: Math.random().toString(36).substr(2, 9), type, value: "", active: true }]);
+    setSteps([...steps, { id: Math.random().toString(36).slice(2, 11), type, value: "", active: true }]);
   const removeStep = (id: string) => setSteps(steps.filter((s) => s.id !== id));
   const updateStep = (id: string, updates: Partial<Step>) =>
     setSteps(steps.map((s) => (s.id === id ? { ...s, ...updates } : s)));

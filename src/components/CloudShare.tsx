@@ -102,15 +102,16 @@ export default function CloudShare() {
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
-  const fetchShares = useCallback(async () => {
+  const fetchShares = useCallback(async (signal?: AbortSignal) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/shares?_t=${Date.now()}`);
+      const response = await fetch(`/api/shares?_t=${Date.now()}`, { signal });
       const data = (await response.json()) as { success: boolean; data?: ShareContent[] };
       if (data.success) {
         setShares(data.data || []);
       }
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
       console.error("获取分享列表失败:", error);
       window.showToast?.("同步数据失败，请检查网络", "error");
     } finally {
@@ -119,17 +120,23 @@ export default function CloudShare() {
   }, []);
 
   useEffect(() => {
-    fetchShares();
+    const controller = new AbortController();
+    fetchShares(controller.signal);
 
     const highlight = readHighlightId();
-    if (!highlight) return;
+    if (!highlight) {
+      return () => controller.abort();
+    }
 
     setHighlightedId(highlight);
     const timer = setTimeout(() => {
       setHighlightedId(null);
       window.history.replaceState(null, "", window.location.pathname);
     }, 5000);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [fetchShares]);
 
   const copyLink = (id: string) => {

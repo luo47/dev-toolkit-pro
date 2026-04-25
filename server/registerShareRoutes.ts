@@ -37,8 +37,15 @@ type ShareLookupRow = {
 
 const getErrorMessage = (error: unknown, fallback: string) => (error instanceof Error ? error.message : fallback);
 
-const parseShareFiles = (files: string | null): ShareFile[] | undefined =>
-  files ? (JSON.parse(files) as ShareFile[]) : undefined;
+const parseShareFiles = (files: string | null): ShareFile[] | undefined => {
+  if (!files) return undefined;
+  try {
+    return JSON.parse(files) as ShareFile[];
+  } catch (e) {
+    console.error("Failed to parse share files:", e);
+    return [];
+  }
+};
 
 const parseShareItem = (row: ShareRow) => ({
   id: row.id,
@@ -53,7 +60,6 @@ const parseShareItem = (row: ShareRow) => ({
   createdAt: row.created_at,
   updatedAt: row.updated_at,
 });
-
 const findExistingSharedSnippet = async (c: AppContext, userId: string, sourceId?: string) => {
   if (!sourceId) return null;
   const kvKey = `snippet_share:${userId}:${sourceId}`;
@@ -75,7 +81,6 @@ const findExistingSharedSnippet = async (c: AppContext, userId: string, sourceId
 const createTextShareRecord = async (c: AppContext, userId: string, body: TextShareBody) => {
   const id = await generateShareId(c.env.DB);
   const now = new Date().toISOString();
-  // 不再自动生成密钥，设为 null
   const editToken = null;
   await c.env.DB.prepare(
     "INSERT INTO shares (id, user_id, type, content, name, source_type, source_id, edit_token, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -108,7 +113,6 @@ const createTextShareRecord = async (c: AppContext, userId: string, body: TextSh
     updatedAt: now,
   };
 };
-
 const canDownloadShare = (existing: ShareRow | null) => {
   if (!existing) return { error: "分享不存在", status: 404 };
   if (existing.type !== "file" || !existing.files) return { error: "没有可下载的文件", status: 404 };
@@ -119,14 +123,12 @@ const canDownloadShare = (existing: ShareRow | null) => {
   }
   return { files, status: 200 };
 };
-
 const sanitizePath = (path: string) => {
   return path
     .replace(/[\\/]\.\.[\\/]/g, "/")
     .replace(/^\/+|\/+$/g, "")
     .replace(/\.\.[\\/]/g, "");
 };
-
 const buildZipResponse = async (bucket: R2Bucket, files: ShareFile[], zipName: string) => {
   const zipData: Record<string, Uint8Array> = {};
   for (const file of files) {
@@ -146,13 +148,11 @@ const buildZipResponse = async (bucket: R2Bucket, files: ShareFile[], zipName: s
     },
   });
 };
-
 interface ShareStrategy {
   getNewContent(existing: ShareRow, body: ShareUpdateBody): string | null;
   onDelete?(c: AppContext, existing: ShareRow): void;
   onPreview(c: AppContext, existing: ShareRow): Response | Promise<Response>;
 }
-
 const shareStrategies: Record<string, ShareStrategy> = {
   text: {
     getNewContent: (existing, body) => (body.content !== undefined ? body.content : existing.content),
@@ -174,7 +174,6 @@ const shareStrategies: Record<string, ShareStrategy> = {
     },
   },
 };
-
 const registerShareCrudRoutes = (app: Hono<{ Bindings: Bindings }>) => {
   app.get("/api/shares", async (c) => {
     const userId = await getUserFromSession(c);
@@ -188,7 +187,6 @@ const registerShareCrudRoutes = (app: Hono<{ Bindings: Bindings }>) => {
       return c.json({ success: false, error: getErrorMessage(error, "Failed to list shares") }, 500);
     }
   });
-
   app.post("/api/shares", async (c) => {
     const userId = await getUserFromSession(c);
     if (!userId) return c.json({ success: false, error: "Unauthorized" }, 401);
